@@ -4,7 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { nanoid } from "nanoid";
-
+export const dynamic = 'force-dynamic';
 const OnboardSchema = z.object({
   name: z.string().min(1),
   company: z.string().min(1),
