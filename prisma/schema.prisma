@@ -1,0 +1,750 @@
+// WebinarForge AI - Prisma Schema
+// Production-ready multi-tenant SaaS architecture
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────
+
+enum Plan {
+  FREE_TRIAL
+  STARTER
+  PRO
+  SCALE
+  ENTERPRISE
+}
+
+enum WebinarStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  PAUSED
+}
+
+enum WebinarMode {
+  EVERGREEN
+  LIVE
+  REPLAY
+}
+
+enum CTAType {
+  SOFT
+  MID
+  FINAL
+  URGENCY
+}
+
+enum CommentType {
+  SOCIAL_PROOF
+  FAQ
+  OBJECTION
+  MODERATOR
+  URGENCY
+  CTA_REMINDER
+  TESTIMONIAL
+}
+
+enum NicheType {
+  REAL_ESTATE
+  COACH_CONSULTANT
+  TRAVEL
+  SAAS
+  LOCAL_SERVICES
+  OTHER
+}
+
+enum AffiliateStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum IntegrationProvider {
+  STRIPE
+  ZAPIER
+  GOHIGHLEVEL
+  CLICKFUNNELS
+  CALENDLY
+  MAILCHIMP
+  ACTIVECAMPAIGN
+  WEBHOOK
+  CUSTOM
+}
+
+enum WebhookEventType {
+  WEBINAR_CREATED
+  WEBINAR_PUBLISHED
+  WEBINAR_REGISTRATION_CREATED
+  WEBINAR_ROOM_JOINED
+  WEBINAR_COMPLETED
+  CTA_CLICKED
+  PLAN_UPGRADED
+  AFFILIATE_REFERRAL_CREATED
+  PURCHASE_COMPLETED
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum OfferType {
+  COURSE
+  COACHING
+  SAAS
+  SERVICE
+  PRODUCT
+  MEMBERSHIP
+  OTHER
+}
+
+// ─────────────────────────────────────────────────────
+// CORE — USER + WORKSPACE
+// ─────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String?   @unique
+  email         String    @unique
+  name          String?
+  avatarUrl     String?
+  company       String?
+  niche         NicheType?
+  primaryOffer  String?
+  targetAudience String?
+  webinarGoal   String?
+  onboardingComplete Boolean @default(false)
+  isAdmin       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  workspaceMembers WorkspaceMember[]
+  affiliate        Affiliate?
+  referredBy       Referral?        @relation("ReferredUser")
+  aiPresenters     AIPresenter[]
+  analyticsEvents  AnalyticsEvent[]
+
+  @@index([email])
+  @@index([clerkId])
+}
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logoUrl     String?
+  brandColor  String?
+  isWhiteLabel Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members          WorkspaceMember[]
+  webinars         Webinar[]
+  webinarTemplates WebinarTemplate[]
+  subscription     Subscription?
+  planUsage        PlanUsage?
+  aiPresenters     AIPresenter[]
+  integrations     IntegrationConnection[]
+  webhookSubs      WebhookSubscription[]
+  analyticsEvents  AnalyticsEvent[]
+  affiliate        Affiliate?
+
+  @@index([slug])
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        String   @default("member") // owner | admin | member
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────
+// BILLING
+// ─────────────────────────────────────────────────────
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  workspaceId          String    @unique
+  plan                 Plan      @default(FREE_TRIAL)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  stripePriceId        String?
+  status               String    @default("trialing") // active | trialing | past_due | cancelled | paused
+  trialEndsAt          DateTime?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+}
+
+model PlanUsage {
+  id            String   @id @default(cuid())
+  workspaceId   String   @unique
+  webinarsBuilt Int      @default(0)
+  webinarsPublished Int  @default(0)
+  aiGenerations Int      @default(0)
+  resetAt       DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────
+// WEBINARS
+// ─────────────────────────────────────────────────────
+
+model Webinar {
+  id              String        @id @default(cuid())
+  workspaceId     String
+  templateId      String?
+  title           String
+  subtitle        String?
+  niche           NicheType     @default(OTHER)
+  status          WebinarStatus @default(DRAFT)
+  mode            WebinarMode   @default(EVERGREEN)
+  slug            String        @unique
+  thumbnailUrl    String?
+  durationMinutes Int?
+  hasWatermark    Boolean       @default(true)
+  publishedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Generator inputs stored for regeneration
+  generatorInputs Json?
+
+  workspace      Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  template       WebinarTemplate?  @relation(fields: [templateId], references: [id])
+  sections       WebinarSection[]
+  slides         Slide[]
+  offers         Offer[]
+  bonuses        Bonus[]
+  objections     Objection[]
+  ctaSequences   CTASequence[]
+  timedComments  TimedComment[]
+  evergreenConfig EvergreenAutomation?
+  analyticsEvents AnalyticsEvent[]
+  registrations  WebinarRegistration[]
+
+  @@index([workspaceId])
+  @@index([slug])
+  @@index([status])
+}
+
+model WebinarSection {
+  id          String   @id @default(cuid())
+  webinarId   String
+  type        String   // hook | promise | credibility | belief_shift | teaching | offer_transition | stack | bonus | urgency | cta | faq
+  title       String?
+  content     String   @db.Text
+  order       Int
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@index([webinarId])
+}
+
+model Slide {
+  id          String   @id @default(cuid())
+  webinarId   String
+  sectionId   String?
+  title       String?
+  body        String?  @db.Text
+  bulletPoints Json?   // string[]
+  imageUrl    String?
+  speakerNotes String? @db.Text
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@index([webinarId])
+}
+
+model Offer {
+  id          String    @id @default(cuid())
+  webinarId   String
+  name        String
+  type        OfferType @default(OTHER)
+  price       Float?
+  originalPrice Float?
+  description String?   @db.Text
+  valueItems  Json?     // string[] - value stack items
+  checkoutUrl String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@index([webinarId])
+}
+
+model Bonus {
+  id          String   @id @default(cuid())
+  webinarId   String
+  name        String
+  description String?  @db.Text
+  value       Float?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@index([webinarId])
+}
+
+model Objection {
+  id       String   @id @default(cuid())
+  webinarId String
+  question String   @db.Text
+  answer   String   @db.Text
+  order    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@index([webinarId])
+}
+
+model CTASequence {
+  id          String   @id @default(cuid())
+  webinarId   String
+  type        CTAType  @default(FINAL)
+  triggerAt   Int      // seconds from webinar start
+  headline    String
+  body        String?  @db.Text
+  buttonText  String
+  buttonUrl   String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@index([webinarId])
+}
+
+model TimedComment {
+  id          String      @id @default(cuid())
+  webinarId   String
+  type        CommentType @default(SOCIAL_PROOF)
+  authorName  String
+  authorAvatar String?
+  content     String      @db.Text
+  triggerAt   Int         // seconds from webinar start
+  isActive    Boolean     @default(true)
+  order       Int         @default(0)
+  createdAt   DateTime    @default(now())
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@index([webinarId])
+}
+
+model EvergreenAutomation {
+  id                String   @id @default(cuid())
+  webinarId         String   @unique
+  isSimulatedLive   Boolean  @default(false)
+  viewerCountMin    Int      @default(10)
+  viewerCountMax    Int      @default(250)
+  replayEnabled     Boolean  @default(true)
+  scheduleConfig    Json?    // cron or recurring schedule config
+  autoEmailEnabled  Boolean  @default(false)
+  autoSmsEnabled    Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+}
+
+model WebinarRegistration {
+  id          String   @id @default(cuid())
+  webinarId   String
+  email       String
+  name        String?
+  source      String?
+  affiliateId String?
+  joinedAt    DateTime?
+  completedAt DateTime?
+  ctaClicked  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@index([webinarId])
+  @@index([email])
+}
+
+// ─────────────────────────────────────────────────────
+// TEMPLATES
+// ─────────────────────────────────────────────────────
+
+model WebinarTemplate {
+  id          String    @id @default(cuid())
+  workspaceId String?   // null = system template
+  niche       NicheType
+  name        String
+  description String?   @db.Text
+  thumbnailUrl String?
+  isPremium   Boolean   @default(false)
+  isPublic    Boolean   @default(true)
+  tags        String[]
+  structure   Json      // template section/slide/cta structure
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id])
+  webinars  Webinar[]
+
+  @@index([niche])
+  @@index([isPremium])
+}
+
+model NichePack {
+  id          String    @id @default(cuid())
+  niche       NicheType @unique
+  displayName String
+  description String?   @db.Text
+  iconEmoji   String?
+  color       String?
+  promptHints Json?     // AI prompt guidance per niche
+  createdAt   DateTime  @default(now())
+}
+
+// ─────────────────────────────────────────────────────
+// AI PRESENTER
+// ─────────────────────────────────────────────────────
+
+model AIPresenter {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  userId          String?
+  name            String
+  speakingStyle   String?  // conversational | authoritative | energetic | calm
+  tone            String?  // professional | casual | motivational
+  brandVoice      String?  @db.Text
+  nicheSpecialty  NicheType?
+  avatarUrl       String?
+  voiceProfileId  String?
+  isDefault       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id])
+  voiceProfile VoiceProfile? @relation(fields: [voiceProfileId], references: [id])
+
+  @@index([workspaceId])
+}
+
+model VoiceProfile {
+  id          String   @id @default(cuid())
+  name        String
+  provider    String?  // elevenlabs | azure | openai
+  externalId  String?  // provider voice ID
+  sampleUrl   String?
+  createdAt   DateTime @default(now())
+
+  presenters AIPresenter[]
+}
+
+model PromptTemplate {
+  id          String   @id @default(cuid())
+  key         String   @unique // webinar_generator | section_hook | cta_copy | etc.
+  name        String
+  description String?
+  systemPrompt String  @db.Text
+  userPrompt  String   @db.Text
+  variables   String[] // variable names used in the template
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+}
+
+// ─────────────────────────────────────────────────────
+// ANALYTICS + EVENTS
+// ─────────────────────────────────────────────────────
+
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  workspaceId String
+  webinarId   String?
+  userId      String?
+  sessionId   String?
+  event       String   // webinar.viewed | cta.clicked | registration.created | etc.
+  properties  Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  webinar   Webinar?  @relation(fields: [webinarId], references: [id])
+  user      User?     @relation(fields: [userId], references: [id])
+
+  @@index([workspaceId])
+  @@index([webinarId])
+  @@index([event])
+  @@index([createdAt])
+}
+
+model WebhookEvent {
+  id          String           @id @default(cuid())
+  workspaceId String?
+  type        WebhookEventType
+  payload     Json
+  source      String?          // internal | stripe | etc.
+  processed   Boolean          @default(false)
+  attempts    Int              @default(0)
+  lastError   String?          @db.Text
+  processedAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@index([type])
+  @@index([processed])
+  @@index([createdAt])
+}
+
+model JobRun {
+  id          String    @id @default(cuid())
+  type        String    // webinar.generate | email.send | webhook.dispatch | etc.
+  status      JobStatus @default(QUEUED)
+  payload     Json?
+  result      Json?
+  error       String?   @db.Text
+  attempts    Int       @default(0)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([type])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+// ─────────────────────────────────────────────────────
+// INTEGRATIONS
+// ─────────────────────────────────────────────────────
+
+model IntegrationConnection {
+  id          String              @id @default(cuid())
+  workspaceId String
+  provider    IntegrationProvider
+  isActive    Boolean             @default(false)
+  config      Json?               // non-secret config
+  metadata    Json?
+  connectedAt DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  credentials ProviderCredential[]
+
+  @@unique([workspaceId, provider])
+  @@index([workspaceId])
+}
+
+model WebhookSubscription {
+  id          String   @id @default(cuid())
+  workspaceId String
+  url         String
+  secret      String   // HMAC signing secret
+  events      String[] // WebhookEventType values
+  isActive    Boolean  @default(true)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model ProviderCredential {
+  id            String   @id @default(cuid())
+  connectionId  String
+  key           String   // token | api_key | client_id | etc.
+  encryptedValue String  @db.Text // always encrypted at rest
+  expiresAt     DateTime?
+  createdAt     DateTime @default(now())
+
+  connection IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, key])
+}
+
+// ─────────────────────────────────────────────────────
+// AFFILIATES
+// ─────────────────────────────────────────────────────
+
+model Affiliate {
+  id              String          @id @default(cuid())
+  workspaceId     String          @unique
+  userId          String          @unique
+  referralCode    String          @unique
+  status          AffiliateStatus @default(PENDING)
+  commissionRate  Float           @default(0.30) // 30%
+  paypalEmail     String?
+  stripeAccountId String?
+  notes           String?         @db.Text
+  approvedAt      DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id])
+  referrals   Referral[]
+  commissions Commission[]
+  payouts     Payout[]
+
+  @@index([referralCode])
+  @@index([status])
+}
+
+model Referral {
+  id              String   @id @default(cuid())
+  affiliateId     String
+  referredUserId  String   @unique
+  referralCode    String
+  source          String?  // utm_source
+  cookieSetAt     DateTime?
+  convertedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  affiliate    Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  referredUser User      @relation("ReferredUser", fields: [referredUserId], references: [id])
+
+  @@index([affiliateId])
+}
+
+model Commission {
+  id          String           @id @default(cuid())
+  affiliateId String
+  referralId  String?
+  amount      Float
+  currency    String           @default("usd")
+  status      CommissionStatus @default(PENDING)
+  description String?
+  periodStart DateTime?
+  periodEnd   DateTime?
+  approvedAt  DateTime?
+  paidAt      DateTime?
+  payoutId    String?
+  createdAt   DateTime         @default(now())
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  payout    Payout?   @relation(fields: [payoutId], references: [id])
+
+  @@index([affiliateId])
+  @@index([status])
+}
+
+model Payout {
+  id          String   @id @default(cuid())
+  affiliateId String
+  amount      Float
+  currency    String   @default("usd")
+  method      String?  // paypal | stripe | manual
+  reference   String?  // external transaction ID
+  status      String   @default("pending") // pending | processing | paid | failed
+  paidAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  affiliate   Affiliate    @relation(fields: [affiliateId], references: [id])
+  commissions Commission[]
+
+  @@index([affiliateId])
+}
+
+// ─────────────────────────────────────────────────────
+// FUTURE-READY PLACEHOLDERS
+// ─────────────────────────────────────────────────────
+
+model AICloserConfig {
+  id              String   @id @default(cuid())
+  webinarId       String   @unique
+  isEnabled       Boolean  @default(false)
+  systemPrompt    String?  @db.Text
+  calendarUrl     String?  // Calendly link for booking
+  objectionsGuide Json?    // structured objection handling map
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // webinar Webinar @relation(fields: [webinarId], references: [id])
+  // Commented until module is activated
+}
+
+model WebinarCloneJob {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  sourceType    String    // transcript | video_url | url
+  sourceUrl     String?
+  transcript    String?   @db.Text
+  extractedData Json?     // structure extracted from analysis
+  newWebinarId  String?
+  status        JobStatus @default(QUEUED)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([workspaceId])
+}
+
+model MarketplaceTemplate {
+  id          String   @id @default(cuid())
+  templateId  String?  // links to WebinarTemplate if public
+  creatorId   String   // userId
+  title       String
+  description String?  @db.Text
+  price       Float    @default(0)
+  salesCount  Int      @default(0)
+  rating      Float?
+  isApproved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([creatorId])
+  @@index([isApproved])
+}
