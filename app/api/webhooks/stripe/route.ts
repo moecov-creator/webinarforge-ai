@@ -1,7 +1,7 @@
 // app/api/webhooks/stripe/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { billingAdapter } from "@/lib/adapters/stripe/billing";
-
+export const dynamic = 'force-dynamic';
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
