@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { billingAdapter } from "@/lib/adapters/stripe/billing";
-
+export const dynamic = 'force-dynamic';
 const CheckoutSchema = z.object({
   planKey: z.enum(["STARTER", "PRO", "SCALE"]),
 });
