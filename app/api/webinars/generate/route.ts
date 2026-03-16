@@ -5,7 +5,7 @@ import { z } from "zod";
 import OpenAI from "openai";
 import { prisma } from "@/lib/db/prisma";
 import { nanoid } from "nanoid";
-
+export const dynamic = 'force-dynamic';
 const GenerateSchema = z.object({
   niche: z.string().min(1),
   idealAudience: z.string().min(10),
