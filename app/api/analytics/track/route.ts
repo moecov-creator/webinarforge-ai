@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { analyticsService } from "@/lib/services/analytics/analytics.service";
-
+export const dynamic = 'force-dynamic';
 const TrackSchema = z.object({
   workspaceId: z.string(),
   event: z.string(),
