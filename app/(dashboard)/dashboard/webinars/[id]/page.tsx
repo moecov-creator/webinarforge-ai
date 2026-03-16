@@ -52,7 +52,7 @@ const NAV_TABS = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-export default function WebinarEditorPage({ params }: { params: { id: string } }) {
+export default function WebinarEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const [activeSection, setActiveSection] = useState(MOCK_WEBINAR.sections[0].id);
   const [activeTab, setActiveTab] = useState("script");
   const [sections, setSections] = useState(MOCK_WEBINAR.sections);
