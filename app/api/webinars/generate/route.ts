@@ -5,7 +5,7 @@ import { z } from "zod";
 import OpenAI from "openai";
 import { prisma } from "@/lib/db/prisma";
 import { nanoid } from "nanoid";
-export const dynamic = 'force-dynamic';
+
 const GenerateSchema = z.object({
   niche: z.string().min(1),
   idealAudience: z.string().min(10),
@@ -20,7 +20,7 @@ const GenerateSchema = z.object({
   guarantee: z.string().optional(),
   ctaGoal: z.string().optional(),
 });
-
+export const dynamic = 'force-dynamic'
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req: NextRequest) {
