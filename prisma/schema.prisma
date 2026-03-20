@@ -768,3 +768,27 @@ model Webinar {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
+model Webinar {
+  id              String          @id @default(cuid())
+  title           String
+  niche           String?
+  offerType       String?
+  corePromise     String?
+  mainCta         String?
+  painPoints      String?
+  objections      String?
+  transformation  String?
+
+  webinarStyle    String?
+  presenterType   String?
+  webinarLength   String?
+  replayMode      String?
+
+  status          WebinarStatus   @default(DRAFT)
+
+  registrations   Int             @default(0)
+  clicks          Int             @default(0)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
