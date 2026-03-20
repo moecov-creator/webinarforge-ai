@@ -748,9 +748,6 @@ model MarketplaceTemplate {
   @@index([creatorId])
   @@index([isApproved])
 }
-// ===============================
-// WEBINAR MODEL (ADD THIS)
-// ===============================
 
 model Webinar {
   id              String   @id @default(cuid())
