@@ -21,8 +21,7 @@ export default function NewWebinarPage() {
         </div>
 
         <div className="grid gap-8 xl:grid-cols-3">
-          {/* Left/Main Form */}
-          <div className="xl:col-span-2 space-y-8">
+          <div className="space-y-8 xl:col-span-2">
             <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
               <h2 className="mb-6 text-2xl font-bold">Webinar Details</h2>
 
@@ -178,7 +177,6 @@ export default function NewWebinarPage() {
             </section>
           </div>
 
-          {/* Right Sidebar */}
           <div className="space-y-8">
             <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
               <h2 className="mb-4 text-2xl font-bold">AI Actions</h2>
