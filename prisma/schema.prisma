@@ -753,7 +753,7 @@ model MarketplaceTemplate {
 // ===============================
 
 model Webinar {
-  id              String          @id @default(cuid())
+  id              String   @id @default(cuid())
   title           String
 
   niche           String?
@@ -770,12 +770,11 @@ model Webinar {
   webinarLength   String?
   replayMode      String?
 
-  status          WebinarStatus   @default(DRAFT)
+  status          String   @default("DRAFT")
 
-  registrations   Int             @default(0)
-  clicks          Int             @default(0)
+  registrations   Int      @default(0)
+  clicks          Int      @default(0)
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
-
