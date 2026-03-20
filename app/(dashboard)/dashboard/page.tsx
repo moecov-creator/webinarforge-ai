@@ -1,241 +1,308 @@
-// app/(dashboard)/dashboard/page.tsx
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Plus, PlayCircle, TrendingUp, Users, BarChart2,
-  ArrowRight, Zap, Globe, Clock, Star,
-} from "lucide-react";
+import Link from "next/link"
 
-// In production, fetch from DB via server action / service
-const MOCK_STATS = {
-  totalWebinars: 4,
-  publishedEvergreen: 2,
-  plan: "PRO",
-  trialDaysLeft: null,
-  webinarsBuilt: 4,
-  webinarLimit: null,
-  registrationsThisMonth: 147,
-  ctaClicksThisMonth: 31,
-  completionRate: 0.42,
-};
+const stats = [
+  { label: "Active Webinars", value: "4", subtext: "+2 this week" },
+  { label: "Registrations", value: "312", subtext: "+18% vs last week" },
+  { label: "CTA Clicks", value: "47", subtext: "+12% vs last week" },
+  { label: "Conversion Rate", value: "18.4%", subtext: "Healthy performance" },
+]
 
-const RECENT_WEBINARS = [
+const webinars = [
   {
-    id: "1",
-    title: "The 3-Step System to Land High-Ticket Coaching Clients",
-    niche: "Coaching",
-    status: "PUBLISHED",
-    registrations: 89,
-    updatedAt: "2 hours ago",
+    name: "3-Step High-Ticket Coaching System",
+    status: "Live",
+    registrations: 128,
+    clicks: 19,
   },
   {
-    id: "2",
-    title: "Real Estate Lead Machine: 10 Qualified Appointments/Month",
-    niche: "Real Estate",
-    status: "DRAFT",
+    name: "Real Estate Lead Machine",
+    status: "Live",
+    registrations: 94,
+    clicks: 14,
+  },
+  {
+    name: "SaaS Demo-to-Trial Converter",
+    status: "Draft",
     registrations: 0,
-    updatedAt: "1 day ago",
+    clicks: 0,
   },
-];
+]
 
-const QUICK_ACTIONS = [
-  { label: "New Webinar", href: "/dashboard/webinars/new", icon: Plus, desc: "Generate with AI" },
-  { label: "Browse Templates", href: "/dashboard/templates", icon: Star, desc: "Ready-to-use structures" },
-  { label: "View Analytics", href: "/dashboard/analytics", icon: BarChart2, desc: "Track performance" },
-  { label: "Invite Affiliates", href: "/dashboard/affiliates", icon: Users, desc: "30% recurring commission" },
-];
+const automations = [
+  "Reminder email scheduled for tomorrow at 9:00 AM",
+  "Replay link follow-up goes out 2 hours after webinar ends",
+  "CTA boost sequence triggers after 60% watch time",
+  "Lead scoring updates nightly",
+]
+
+const quickActions = [
+  { label: "Create Webinar", href: "/dashboard/webinars/new" },
+  { label: "Generate AI Script", href: "/dashboard/webinars/new" },
+  { label: "Launch Funnel", href: "/dashboard/webinars" },
+  { label: "View Analytics", href: "/dashboard/analytics" },
+]
 
 export default function DashboardPage() {
   return (
-    <div className="p-8 max-w-7xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-sm text-white/40 mt-1">Welcome back. Here's what's happening.</p>
-        </div>
-        <Link href="/dashboard/webinars/new">
-          <Button className="gradient-brand border-0 hover:opacity-90 glow-on-hover">
-            <Plus className="w-4 h-4 mr-2" />
-            New Webinar
-          </Button>
-        </Link>
-      </div>
-
-      {/* Plan badge */}
-      {MOCK_STATS.trialDaysLeft !== null && (
-        <div className="mb-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-yellow-400" />
-            <div>
-              <p className="text-sm font-medium text-yellow-300">
-                {MOCK_STATS.trialDaysLeft} days left in your free trial
-              </p>
-              <p className="text-xs text-yellow-400/60">Upgrade to keep your webinars and data</p>
+    <main className="min-h-screen bg-black text-white">
+      <div className="flex min-h-screen">
+        {/* Sidebar */}
+        <aside className="hidden md:flex w-72 flex-col border-r border-white/10 bg-[#050505] p-6">
+          <div className="mb-10">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600 font-bold">
+                ⚡
+              </div>
+              <div>
+                <p className="text-lg font-bold">WebinarForge AI</p>
+                <p className="text-sm text-gray-400">Dashboard</p>
+              </div>
             </div>
           </div>
-          <Link href="/dashboard/billing">
-            <Button size="sm" className="bg-yellow-500 hover:bg-yellow-400 text-black border-0 font-semibold">
-              Upgrade Now
-            </Button>
-          </Link>
-        </div>
-      )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[
-          {
-            label: "Total Webinars",
-            value: MOCK_STATS.totalWebinars,
-            icon: PlayCircle,
-            color: "text-purple-400",
-            bg: "bg-purple-500/10",
-          },
-          {
-            label: "Published Evergreen",
-            value: MOCK_STATS.publishedEvergreen,
-            icon: Globe,
-            color: "text-blue-400",
-            bg: "bg-blue-500/10",
-          },
-          {
-            label: "Registrations (30d)",
-            value: MOCK_STATS.registrationsThisMonth,
-            icon: Users,
-            color: "text-green-400",
-            bg: "bg-green-500/10",
-          },
-          {
-            label: "CTA Clicks (30d)",
-            value: MOCK_STATS.ctaClicksThisMonth,
-            icon: TrendingUp,
-            color: "text-yellow-400",
-            bg: "bg-yellow-500/10",
-          },
-        ].map((stat) => (
-          <div key={stat.label} className="p-5 rounded-xl bg-white/3 border border-white/8">
-            <div className={`w-9 h-9 rounded-lg ${stat.bg} flex items-center justify-center mb-3`}>
-              <stat.icon className={`w-4.5 h-4.5 ${stat.color}`} />
-            </div>
-            <div className="font-display text-2xl font-bold text-white mb-0.5">
-              {stat.value}
-            </div>
-            <div className="text-xs text-white/40">{stat.label}</div>
-          </div>
-        ))}
-      </div>
+          <nav className="space-y-2">
+            <Link
+              href="/dashboard"
+              className="block rounded-xl bg-white/10 px-4 py-3 font-medium"
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/dashboard/webinars"
+              className="block rounded-xl px-4 py-3 text-gray-300 hover:bg-white/5"
+            >
+              Webinars
+            </Link>
+            <Link
+              href="/dashboard/presenters"
+              className="block rounded-xl px-4 py-3 text-gray-300 hover:bg-white/5"
+            >
+              AI Presenters
+            </Link>
+            <Link
+              href="/dashboard/funnels"
+              className="block rounded-xl px-4 py-3 text-gray-300 hover:bg-white/5"
+            >
+              Funnels
+            </Link>
+            <Link
+              href="/dashboard/automation"
+              className="block rounded-xl px-4 py-3 text-gray-300 hover:bg-white/5"
+            >
+              Automation
+            </Link>
+            <Link
+              href="/dashboard/analytics"
+              className="block rounded-xl px-4 py-3 text-gray-300 hover:bg-white/5"
+            >
+              Analytics
+            </Link>
+            <Link
+              href="/dashboard/affiliates"
+              className="block rounded-xl px-4 py-3 text-gray-300 hover:bg-white/5"
+            >
+              Affiliates
+            </Link>
+            <Link
+              href="/dashboard/settings"
+              className="block rounded-xl px-4 py-3 text-gray-300 hover:bg-white/5"
+            >
+              Settings
+            </Link>
+          </nav>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Recent Webinars */}
-        <div className="lg:col-span-2 rounded-xl bg-white/3 border border-white/8 overflow-hidden">
-          <div className="p-5 border-b border-white/5 flex items-center justify-between">
-            <h2 className="font-display font-semibold text-sm text-white">Recent Webinars</h2>
-            <Link href="/dashboard/webinars">
-              <Button variant="ghost" size="sm" className="text-xs text-white/40 hover:text-white h-7">
-                View all <ArrowRight className="w-3 h-3 ml-1" />
-              </Button>
+          <div className="mt-auto rounded-2xl border border-white/10 bg-white/5 p-5">
+            <p className="mb-2 text-sm text-gray-400">Current Plan</p>
+            <p className="text-xl font-bold text-purple-400">Pro</p>
+            <p className="mt-2 text-sm text-gray-400">
+              Unlimited webinar funnels, automation, and AI presenter tools.
+            </p>
+            <Link
+              href="/pricing"
+              className="mt-4 inline-block text-sm font-semibold text-purple-400"
+            >
+              Upgrade Plan →
             </Link>
           </div>
-          <div className="divide-y divide-white/5">
-            {RECENT_WEBINARS.map((webinar) => (
-              <Link
-                key={webinar.id}
-                href={`/dashboard/webinars/${webinar.id}`}
-                className="flex items-center justify-between p-5 hover:bg-white/3 transition-colors group"
-              >
-                <div className="flex-1 min-w-0 mr-4">
-                  <p className="text-sm font-medium text-white truncate group-hover:text-purple-300 transition-colors">
-                    {webinar.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-white/30">{webinar.niche}</span>
-                    <span className="text-white/20">·</span>
-                    <span className="text-xs text-white/30">{webinar.updatedAt}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  {webinar.registrations > 0 && (
-                    <span className="text-xs text-white/40">{webinar.registrations} regs</span>
-                  )}
-                  <Badge
-                    className={`text-xs border-0 ${
-                      webinar.status === "PUBLISHED"
-                        ? "bg-green-500/15 text-green-400"
-                        : "bg-white/8 text-white/40"
-                    }`}
-                  >
-                    {webinar.status}
-                  </Badge>
-                </div>
-              </Link>
-            ))}
-            {RECENT_WEBINARS.length === 0 && (
-              <div className="p-8 text-center">
-                <PlayCircle className="w-8 h-8 text-white/15 mx-auto mb-3" />
-                <p className="text-sm text-white/30">No webinars yet</p>
+        </aside>
+
+        {/* Main content */}
+        <div className="flex-1">
+          {/* Top bar */}
+          <header className="border-b border-white/10 bg-black/80 px-6 py-5 backdrop-blur">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold">Welcome back</h1>
+                <p className="text-sm text-gray-400">
+                  Manage your webinars, funnels, and automations from one place.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
                 <Link href="/dashboard/webinars/new">
-                  <Button size="sm" className="mt-3 gradient-brand border-0 text-xs">
-                    Create your first webinar
-                  </Button>
+                  <button className="rounded-xl bg-purple-600 px-5 py-3 font-semibold hover:bg-purple-700">
+                    + Create Webinar
+                  </button>
                 </Link>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          </header>
 
-        {/* Quick Actions */}
-        <div className="space-y-3">
-          <h2 className="font-display font-semibold text-sm text-white px-1">Quick Actions</h2>
-          {QUICK_ACTIONS.map((action) => (
-            <Link key={action.href} href={action.href}>
-              <div className="p-4 rounded-xl bg-white/3 border border-white/8 hover:border-purple-500/30 hover:bg-white/5 transition-all cursor-pointer group">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
-                    <action.icon className="w-4 h-4 text-purple-400" />
+          <div className="mx-auto max-w-7xl px-6 py-8">
+            {/* Stats */}
+            <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              {stats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-6"
+                >
+                  <p className="text-sm text-gray-400">{stat.label}</p>
+                  <p className="mt-2 text-3xl font-bold">{stat.value}</p>
+                  <p className="mt-2 text-sm text-purple-400">{stat.subtext}</p>
+                </div>
+              ))}
+            </section>
+
+            {/* Main grid */}
+            <section className="mt-8 grid gap-8 xl:grid-cols-3">
+              {/* Left column */}
+              <div className="space-y-8 xl:col-span-2">
+                {/* Recent webinars */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-bold">Recent Webinars</h2>
+                      <p className="text-sm text-gray-400">
+                        Your latest webinar funnels and their performance.
+                      </p>
+                    </div>
+                    <Link
+                      href="/dashboard/webinars"
+                      className="text-sm font-semibold text-purple-400"
+                    >
+                      View all →
+                    </Link>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-white">{action.label}</p>
-                    <p className="text-xs text-white/35">{action.desc}</p>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="border-b border-white/10 text-sm text-gray-400">
+                        <tr>
+                          <th className="pb-3">Webinar</th>
+                          <th className="pb-3">Status</th>
+                          <th className="pb-3">Registrations</th>
+                          <th className="pb-3">CTA Clicks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {webinars.map((webinar) => (
+                          <tr
+                            key={webinar.name}
+                            className="border-b border-white/5 last:border-b-0"
+                          >
+                            <td className="py-4 font-medium">{webinar.name}</td>
+                            <td className="py-4">
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                  webinar.status === "Live"
+                                    ? "bg-green-500/20 text-green-400"
+                                    : "bg-yellow-500/20 text-yellow-400"
+                                }`}
+                              >
+                                {webinar.status}
+                              </span>
+                            </td>
+                            <td className="py-4 text-gray-300">
+                              {webinar.registrations}
+                            </td>
+                            <td className="py-4 text-gray-300">
+                              {webinar.clicks}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-white/20 ml-auto group-hover:text-white/50 group-hover:translate-x-0.5 transition-all" />
+                </div>
+
+                {/* Funnel performance */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                  <div className="mb-5">
+                    <h2 className="text-xl font-bold">Funnel Performance</h2>
+                    <p className="text-sm text-gray-400">
+                      Snapshot of registrations over the last 7 days.
+                    </p>
+                  </div>
+
+                  <div className="flex h-64 items-end gap-4 rounded-2xl border border-white/10 bg-black/30 p-6">
+                    {[45, 60, 38, 72, 58, 86, 52].map((height, index) => (
+                      <div key={index} className="flex flex-1 flex-col items-center gap-3">
+                        <div
+                          className="w-full rounded-t-xl bg-gradient-to-t from-purple-600 to-blue-400"
+                          style={{ height: `${height}%` }}
+                        />
+                        <span className="text-xs text-gray-500">
+                          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index]}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </Link>
-          ))}
 
-          {/* Usage meter */}
-          <div className="p-4 rounded-xl bg-white/3 border border-white/8 mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-white/40">Webinars this month</span>
-              <span className="text-xs text-white/60">
-                {MOCK_STATS.webinarsBuilt} / {MOCK_STATS.webinarLimit ?? "∞"}
-              </span>
-            </div>
-            <div className="h-1.5 rounded-full bg-white/8">
-              <div
-                className="h-full rounded-full gradient-brand"
-                style={{
-                  width: MOCK_STATS.webinarLimit
-                    ? `${(MOCK_STATS.webinarsBuilt / MOCK_STATS.webinarLimit) * 100}%`
-                    : "30%",
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <Badge className="text-xs bg-purple-500/10 text-purple-300 border-purple-500/20">
-                {MOCK_STATS.plan} Plan
-              </Badge>
-              <Link href="/dashboard/billing">
-                <button className="text-xs text-white/30 hover:text-white/60 transition-colors">
-                  Manage →
-                </button>
-              </Link>
-            </div>
+              {/* Right column */}
+              <div className="space-y-8">
+                {/* Quick actions */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                  <h2 className="mb-5 text-xl font-bold">Quick Actions</h2>
+                  <div className="grid gap-3">
+                    {quickActions.map((action) => (
+                      <Link key={action.label} href={action.href}>
+                        <button className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-4 text-left font-medium hover:bg-white/5">
+                          {action.label}
+                        </button>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI assistant */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                  <h2 className="mb-2 text-xl font-bold">AI Assistant</h2>
+                  <p className="mb-5 text-sm text-gray-400">
+                    Generate your next webinar script or funnel idea instantly.
+                  </p>
+
+                  <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5">
+                    <p className="text-sm text-gray-300">
+                      “Want me to generate a webinar for coaches selling a high-ticket offer?”
+                    </p>
+                  </div>
+
+                  <button className="mt-4 w-full rounded-xl bg-purple-600 px-4 py-3 font-semibold hover:bg-purple-700">
+                    Generate With AI →
+                  </button>
+                </div>
+
+                {/* Automation */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                  <h2 className="mb-5 text-xl font-bold">Upcoming Automations</h2>
+                  <div className="space-y-3">
+                    {automations.map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-xl border border-white/10 bg-black/30 p-4 text-sm text-gray-300"
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>
-    </div>
-  );
+    </main>
+  )
 }
