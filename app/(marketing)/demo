@@ -25,7 +25,8 @@ export default function DemoPage() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 justify-center">
-          <Link href="/sign-up">
+          {/* 🔥 UPDATED LINK */}
+          <Link href="/start-free-trial">
             <button className="bg-purple-600 hover:bg-purple-700 px-8 py-4 rounded-xl font-semibold text-lg transition">
               Start Free Trial →
             </button>
@@ -73,46 +74,6 @@ export default function DemoPage() {
         </div>
       </section>
 
-      <section className="py-20 px-6 max-w-5xl mx-auto text-center">
-        <h2 className="text-3xl md:text-4xl font-bold mb-10">
-          Why This Demo Matters
-        </h2>
-
-        <div className="grid md:grid-cols-2 gap-8 text-left">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <h3 className="text-xl font-semibold mb-3">Stop Repeating The Same Webinar Live</h3>
-            <p className="text-gray-400">
-              If you’re tired of manually presenting over and over again, this demo will show
-              you how to move toward a more scalable evergreen model.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <h3 className="text-xl font-semibold mb-3">Turn Your Webinar Into A Real Asset</h3>
-            <p className="text-gray-400">
-              Instead of treating your webinar like a one-time event, learn how to turn it into
-              an always-on sales and lead-generation asset.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <h3 className="text-xl font-semibold mb-3">Create More Leverage</h3>
-            <p className="text-gray-400">
-              WebinarForge AI helps you create systems that do more of the heavy lifting,
-              so you can spend less time manually selling.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <h3 className="text-xl font-semibold mb-3">Get Clear Before You Commit</h3>
-            <p className="text-gray-400">
-              This demo gives you a simple way to understand the platform before starting
-              your free trial or upgrading to a paid plan.
-            </p>
-          </div>
-        </div>
-      </section>
-
       <section className="py-24 px-6 text-center max-w-4xl mx-auto">
         <h2 className="text-3xl md:text-5xl font-bold mb-6">
           Ready To Build Your Automated Webinar Machine?
@@ -123,7 +84,8 @@ export default function DemoPage() {
         </p>
 
         <div className="flex flex-col md:flex-row gap-4 justify-center">
-          <Link href="/sign-up">
+          {/* 🔥 UPDATED LINK */}
+          <Link href="/start-free-trial">
             <button className="bg-purple-600 hover:bg-purple-700 px-10 py-5 rounded-xl font-semibold text-xl transition">
               Start Free Trial →
             </button>
