@@ -1,118 +1,38 @@
-// WebinarForge AI - Prisma Schema (READY TO RUN)
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-//////////////////////////////////////
-// ENUMS
-//////////////////////////////////////
-
-enum Plan {
-  FREE_TRIAL
-  STARTER
-  PRO
-  SCALE
-  ENTERPRISE
-}
-
-enum WebinarStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
-  PAUSED
-}
-
-enum WebinarMode {
-  EVERGREEN
-  LIVE
-  REPLAY
-}
-
-enum NicheType {
-  REAL_ESTATE
-  COACH_CONSULTANT
-  TRAVEL
-  SAAS
-  LOCAL_SERVICES
-  OTHER
-}
-
-//////////////////////////////////////
-// CORE MODELS
-//////////////////////////////////////
-
-model User {
-  id        String   @id @default(cuid())
-  clerkId   String?  @unique
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  workspaces WorkspaceMember[]
-}
-
-model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-
-  members  WorkspaceMember[]
-  webinars Webinar[]
-}
-
-model WorkspaceMember {
-  id          String @id @default(cuid())
-  workspaceId String
-  userId      String
-  role        String @default("member")
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([workspaceId, userId])
-}
-
-//////////////////////////////////////
-// WEBINARS
-//////////////////////////////////////
-
-model Webinar {
-  id              String        @id @default(cuid())
-  workspaceId     String
-  title           String
-  subtitle        String?
-  status          WebinarStatus @default(DRAFT)
-  mode            WebinarMode   @default(EVERGREEN)
-  slug            String        @unique
-
-  registrations   Int           @default(0)
-  clicks          Int           @default(0)
-
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-}
-
-//////////////////////////////////////
-// ANALYTICS
-//////////////////////////////////////
-
-model AnalyticsEvent {
-  id          String   @id @default(cuid())
-  workspaceId String
-  webinarId   String?
-  event       String
-  createdAt   DateTime @default(now())
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
-  webinar   Webinar?  @relation(fields: [webinarId], references: [id])
-}
+16:07:00.138 Running build in Washington, D.C., USA (East) – iad1
+16:07:00.138 Build machine configuration: 2 cores, 8 GB
+16:07:00.262 Cloning github.com/moecov-creator/webinarforge-ai (Branch: main, Commit: e68ed57)
+16:07:00.612 Cloning completed: 350.000ms
+16:07:01.561 Restored build cache from previous deployment (Cnng5YtsPswiTPodg9bCsQEhwbh1)
+16:07:01.904 Running "vercel build"
+16:07:02.654 Vercel CLI 50.34.2
+16:07:03.030 Installing dependencies...
+16:07:11.125 
+16:07:11.126 up to date in 8s
+16:07:11.127 
+16:07:11.127 164 packages are looking for funding
+16:07:11.127   run `npm fund` for details
+16:07:11.159 Detected Next.js version: 15.3.6
+16:07:11.160 Running "npx prisma generate && next build"
+16:07:11.804 Prisma schema loaded from prisma/schema.prisma
+16:07:11.859 Error: Prisma schema validation - (get-dmmf wasm)
+16:07:11.861 Error code: P1012
+16:07:11.861 [1;91merror[0m: [1mError validating field `workspace` in model `AnalyticsEvent`: The relation field `workspace` on model `AnalyticsEvent` is missing an opposite relation field on the model `Workspace`. Either run `prisma format` or add it manually.[0m
+16:07:11.862   [1;94m-->[0m  [4mprisma/schema.prisma:116[0m
+16:07:11.862 [1;94m   | [0m
+16:07:11.862 [1;94m115 | [0m
+16:07:11.862 [1;94m116 | [0m  [1;91mworkspace Workspace @relation(fields: [workspaceId], references: [id])[0m
+16:07:11.862 [1;94m117 | [0m  webinar   Webinar?  @relation(fields: [webinarId], references: [id])
+16:07:11.862 [1;94m   | [0m
+16:07:11.862 [1;91merror[0m: [1mError validating field `webinar` in model `AnalyticsEvent`: The relation field `webinar` on model `AnalyticsEvent` is missing an opposite relation field on the model `Webinar`. Either run `prisma format` or add it manually.[0m
+16:07:11.862   [1;94m-->[0m  [4mprisma/schema.prisma:117[0m
+16:07:11.862 [1;94m   | [0m
+16:07:11.862 [1;94m116 | [0m  workspace Workspace @relation(fields: [workspaceId], references: [id])
+16:07:11.862 [1;94m117 | [0m  [1;91mwebinar   Webinar?  @relation(fields: [webinarId], references: [id])[0m
+16:07:11.863 [1;94m118 | [0m}
+16:07:11.863 [1;94m   | [0m
+16:07:11.863 
+16:07:11.863 Validation Error Count: 2
+16:07:11.863 [Context: getDmmf]
+16:07:11.863 
+16:07:11.863 Prisma CLI Version : 5.22.0
+16:07:11.885 Error: Command "npx prisma generate && next build" exited with 1
