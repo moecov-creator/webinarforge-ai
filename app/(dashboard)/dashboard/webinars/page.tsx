@@ -1,97 +1,109 @@
-import Link from "next/link"
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 
-const webinars = [
-  {
-    name: "3-Step AI Client Acquisition System",
-    status: "Live",
-    registrations: 128,
-    clicks: 19,
-  },
-  {
-    name: "Real Estate Lead Machine",
-    status: "Draft",
-    registrations: 0,
-    clicks: 0,
-  },
-]
+export default async function WebinarsPage() {
+  const webinars = await prisma.webinar.findMany({
+    where: {
+      workspaceId: "default-workspace",
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 
-export default function WebinarsPage() {
   return (
     <main className="min-h-screen bg-black text-white">
       <div className="mx-auto max-w-7xl px-6 py-10">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
+            <p className="text-sm text-purple-400">Dashboard / Webinars</p>
             <h1 className="text-3xl md:text-5xl font-bold">Your Webinars</h1>
-            <p className="text-gray-400 mt-2">
-              Manage and track all your webinar funnels.
+            <p className="mt-2 text-gray-400">
+              View, manage, and launch your AI webinar funnels.
             </p>
           </div>
 
           <Link href="/dashboard/webinars/new">
-            <button className="mt-4 md:mt-0 bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-xl font-semibold">
+            <button className="rounded-xl bg-purple-600 px-6 py-3 font-semibold hover:bg-purple-700">
               + Create Webinar
             </button>
           </Link>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <table className="w-full text-left">
-            <thead className="border-b border-white/10 text-gray-400 text-sm">
-              <tr>
-                <th className="pb-3">Webinar</th>
-                <th className="pb-3">Status</th>
-                <th className="pb-3">Registrations</th>
-                <th className="pb-3">CTA Clicks</th>
-                <th className="pb-3">Action</th>
-              </tr>
-            </thead>
+        {webinars.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
+            <h2 className="text-2xl font-semibold mb-3">No webinars yet</h2>
+            <p className="text-gray-400 mb-6">
+              Create your first webinar funnel to get started.
+            </p>
 
-            <tbody>
-              {webinars.map((webinar) => (
-                <tr key={webinar.name} className="border-b border-white/5">
-                  <td className="py-4 font-medium">{webinar.name}</td>
+            <Link href="/">
+              <button className="rounded-xl bg-purple-600 px-6 py-3 font-semibold hover:bg-purple-700">
+                Start My First Webinar →
+              </button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {webinars.map((webinar) => (
+              <div
+                key={webinar.id}
+                className="rounded-2xl border border-white/10 bg-white/5 p-6"
+              >
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-semibold">{webinar.title}</h2>
+                    <p className="mt-1 text-sm text-gray-400">
+                      {webinar.subtitle || "No subtitle yet"}
+                    </p>
+                  </div>
 
-                  <td className="py-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs ${
-                        webinar.status === "Live"
-                          ? "bg-green-500/20 text-green-400"
-                          : "bg-yellow-500/20 text-yellow-400"
-                      }`}
-                    >
-                      {webinar.status}
-                    </span>
-                  </td>
+                  <span className="rounded-full bg-purple-500/20 px-3 py-1 text-xs font-medium text-purple-300">
+                    {String(webinar.status)}
+                  </span>
+                </div>
 
-                  <td className="py-4 text-gray-300">
-                    {webinar.registrations}
-                  </td>
+                <div className="space-y-2 text-sm text-gray-300">
+                  <p>
+                    <span className="text-gray-500">Niche:</span>{" "}
+                    {String(webinar.niche)}
+                  </p>
+                  <p>
+                    <span className="text-gray-500">Mode:</span>{" "}
+                    {String(webinar.mode)}
+                  </p>
+                  <p>
+                    <span className="text-gray-500">Slug:</span>{" "}
+                    {webinar.slug}
+                  </p>
+                  <p>
+                    <span className="text-gray-500">Created:</span>{" "}
+                    {new Date(webinar.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
 
-                  <td className="py-4 text-gray-300">
-                    {webinar.clicks}
-                  </td>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link href={`/dashboard/webinars/${webinar.id}`}>
+                    <button className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium hover:bg-white/5">
+                      View
+                    </button>
+                  </Link>
 
-                  <td className="py-4">
-                    <Link href="/dashboard/webinars/new">
-                      <button className="text-purple-400 hover:underline text-sm">
-                        Edit
-                      </button>
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  <Link href={`/dashboard/evergreen/${webinar.slug}`}>
+                    <button className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium hover:bg-white/5">
+                      Preview
+                    </button>
+                  </Link>
 
-        <div className="mt-10 text-center">
-          <Link href="/dashboard/webinars/new">
-            <button className="bg-purple-600 px-8 py-4 rounded-xl font-semibold hover:bg-purple-700">
-              Create Your First Webinar →
-            </button>
-          </Link>
-        </div>
+                  <button className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium hover:bg-purple-700">
+                    Publish
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </main>
-  )
+  );
 }
