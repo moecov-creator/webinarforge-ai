@@ -1,6 +1,32 @@
-import Link from "next/link"
+"use client";
+
+import Link from "next/link";
 
 export default function MarketingPage() {
+
+  const handleGenerate = async () => {
+    try {
+      const res = await fetch("/api/webinars", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "AI Webinar Demo",
+          corePromise: "Generate more leads automatically",
+        }),
+      });
+
+      const data = await res.json();
+      console.log(data);
+
+      alert("Webinar Created 🚀");
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-black text-white">
       {/* HERO */}
@@ -20,11 +46,14 @@ export default function MarketingPage() {
         </p>
 
         <div className="flex flex-col md:flex-row gap-4 justify-center mb-6">
-          <Link href="/sign-up">
-            <button className="bg-purple-600 hover:bg-purple-700 px-8 py-4 rounded-xl font-semibold text-lg transition">
-              Start My AI Webinar Funnel →
-            </button>
-          </Link>
+          
+          {/* 🔥 UPDATED BUTTON */}
+          <button
+            onClick={handleGenerate}
+            className="bg-purple-600 hover:bg-purple-700 px-8 py-4 rounded-xl font-semibold text-lg transition"
+          >
+            Start My AI Webinar Funnel →
+          </button>
 
           <a href="#demo">
             <button className="border border-gray-500 hover:border-white px-8 py-4 rounded-xl font-semibold text-lg transition">
@@ -95,42 +124,6 @@ export default function MarketingPage() {
         <p className="text-2xl font-bold mt-2">Start Today For $0</p>
       </section>
 
-      {/* SOCIAL PROOF */}
-      <section className="py-20 px-6 bg-[#0a0a0a] text-center">
-        <div className="grid md:grid-cols-3 gap-10 max-w-5xl mx-auto">
-          <div className="p-6 rounded-2xl border border-white/10 bg-white/5">
-            <h3 className="text-3xl font-bold">10,000+</h3>
-            <p className="text-gray-400">Webinars Created</p>
-          </div>
-
-          <div className="p-6 rounded-2xl border border-white/10 bg-white/5">
-            <h3 className="text-3xl font-bold">94%</h3>
-            <p className="text-gray-400">User Satisfaction</p>
-          </div>
-
-          <div className="p-6 rounded-2xl border border-white/10 bg-white/5">
-            <h3 className="text-3xl font-bold">18–32%</h3>
-            <p className="text-gray-400">Conversion Rate</p>
-          </div>
-        </div>
-      </section>
-
-      {/* DEMO */}
-      <section id="demo" className="py-20 px-6 text-center max-w-5xl mx-auto">
-        <h2 className="text-3xl md:text-4xl font-bold mb-6">
-          See How WebinarForge AI Works
-        </h2>
-
-        <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-          Replace live webinar stress with an automated AI-powered system that
-          builds, presents, and helps convert for you.
-        </p>
-
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-gray-400">
-          Demo video goes here
-        </div>
-      </section>
-
       {/* FINAL CTA */}
       <section className="py-24 px-6 text-center max-w-5xl mx-auto">
         <h2 className="text-3xl md:text-5xl font-bold mb-6">
@@ -149,5 +142,5 @@ export default function MarketingPage() {
         </Link>
       </section>
     </main>
-  )
+  );
 }
