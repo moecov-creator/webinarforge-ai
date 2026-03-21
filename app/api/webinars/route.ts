@@ -73,3 +73,4 @@ error: "Failed to fetch webinars",
 { status: 500 }
 );
 }
+}
