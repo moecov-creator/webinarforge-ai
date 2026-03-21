@@ -1,57 +1,94 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+"use client";
 
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-    const title = body.title || "Untitled Webinar";
+export default function NewWebinarPage() {
+  const router = useRouter();
 
-    // ✅ Ensure workspace exists
-    let workspace = await prisma.workspace.findFirst();
+  const [title, setTitle] = useState("");
+  const [niche, setNiche] = useState("");
+  const [corePromise, setCorePromise] = useState("");
+  const [cta, setCta] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-    if (!workspace) {
-      workspace = await prisma.workspace.create({
-        data: {
-          name: "Default Workspace",
-          slug: "default-workspace",
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/webinars", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          title,
+          niche,
+          corePromise,
+          cta,
+        }),
       });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "Failed");
+      }
+
+      // ✅ SUCCESS → redirect
+      router.push("/dashboard/webinars");
+
+    } catch (err) {
+      console.error(err);
+      setError("Failed to save webinar");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // ✅ Create webinar WITHOUT extra required fields
-    const webinar = await prisma.webinar.create({
-      data: {
-        title,
-        workspaceId: workspace.id,
-      },
-    });
+  return (
+    <div className="p-10 max-w-2xl mx-auto text-white">
+      <h1 className="text-3xl font-bold mb-6">Create Webinar</h1>
 
-    return NextResponse.json({
-      success: true,
-      webinar,
-    });
-  } catch (error) {
-    console.error("🔥 WEBINAR ERROR:", error);
+      <input
+        placeholder="Title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        className="w-full mb-4 p-3 bg-black border border-gray-700 rounded"
+      />
 
-    return NextResponse.json(
-      { success: false, error: "Failed to save webinar" },
-      { status: 500 }
-    );
-  }
-}
+      <input
+        placeholder="Niche"
+        value={niche}
+        onChange={(e) => setNiche(e.target.value)}
+        className="w-full mb-4 p-3 bg-black border border-gray-700 rounded"
+      />
 
-export async function GET() {
-  try {
-    const webinars = await prisma.webinar.findMany({
-      orderBy: { createdAt: "desc" },
-    });
+      <input
+        placeholder="Core Promise"
+        value={corePromise}
+        onChange={(e) => setCorePromise(e.target.value)}
+        className="w-full mb-4 p-3 bg-black border border-gray-700 rounded"
+      />
 
-    return NextResponse.json({ success: true, webinars });
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch webinars" },
-      { status: 500 }
-    );
-  }
+      <input
+        placeholder="CTA"
+        value={cta}
+        onChange={(e) => setCta(e.target.value)}
+        className="w-full mb-4 p-3 bg-black border border-gray-700 rounded"
+      />
+
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+
+      <button
+        onClick={handleSubmit}
+        disabled={loading}
+        className="bg-purple-600 px-6 py-3 rounded-lg"
+      >
+        {loading ? "Creating..." : "Create Webinar"}
+      </button>
+    </div>
+  );
 }
