@@ -34,14 +34,16 @@ cta,
 
 const data = await res.json();
 
-if (!data.success) {
-throw new Error(data.error || "Failed");
+if (!res.ok || !data.success) {
+throw new Error(data.error || `Request failed with status ${res.status}`);
 }
 
 router.push("/dashboard/webinars");
 } catch (err) {
-console.error(err);
-setError("Failed to save webinar");
+const message =
+err instanceof Error ? err.message : "Failed to save webinar";
+console.error("Create webinar error:", message);
+setError(message);
 } finally {
 setLoading(false);
 }
@@ -117,12 +119,16 @@ className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-w
 />
 </div>
 
-{error && <p className="text-red-400 text-sm">{error}</p>}
+{error && (
+<div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+{error}
+</div>
+)}
 
 <button
 onClick={handleSubmit}
 disabled={loading}
-className="w-full bg-purple-600 hover:bg-purple-700 px-6 py-4 rounded-xl font-semibold"
+className="w-full bg-purple-600 hover:bg-purple-700 px-6 py-4 rounded-xl font-semibold disabled:opacity-60"
 >
 {loading ? "Creating..." : "Create Webinar →"}
 </button>
