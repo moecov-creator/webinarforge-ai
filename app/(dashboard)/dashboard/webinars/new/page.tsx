@@ -41,7 +41,11 @@ if (!res.ok || !data.success) {
 throw new Error(data.error || `Request failed with status ${res.status}`);
 }
 
-router.push("/dashboard/webinars");
+if (typeof window !== "undefined" && script && data.webinar?.id) {
+localStorage.setItem(`webinar-script:${data.webinar.id}`, script);
+}
+
+router.push(`/dashboard/webinars/${data.webinar.id}`);
 } catch (err) {
 const message =
 err instanceof Error ? err.message : "Failed to save webinar";
