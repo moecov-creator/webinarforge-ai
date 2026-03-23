@@ -42,25 +42,24 @@ export default async function WebinarsPage() {
             <p className="text-gray-400">No webinars yet</p>
           ) : (
             webinars.map((webinar: any) => (
-              <div
-                key={webinar.id}
-                className="grid grid-cols-4 items-center border-t border-white/5 pt-4"
-              >
-                <span className="font-medium">{webinar.title}</span>
+              <Link key={webinar.id} href={`/dashboard/webinars/${webinar.id}`}>
+                <div className="grid grid-cols-4 items-center border-t border-white/5 pt-4 cursor-pointer hover:bg-white/5 rounded-lg px-2 pb-2 transition">
+                  <span className="font-medium">{webinar.title}</span>
 
-                <span
-                  className={`text-xs px-2 py-1 rounded-full w-fit ${
-                    webinar.status === "PUBLISHED" || webinar.status === "LIVE"
-                      ? "bg-green-500/20 text-green-400"
-                      : "bg-yellow-500/20 text-yellow-400"
-                  }`}
-                >
-                  {webinar.status || "DRAFT"}
-                </span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full w-fit ${
+                      webinar.status === "PUBLISHED" || webinar.status === "LIVE"
+                        ? "bg-green-500/20 text-green-400"
+                        : "bg-yellow-500/20 text-yellow-400"
+                    }`}
+                  >
+                    {webinar.status || "DRAFT"}
+                  </span>
 
-                <span>—</span>
-                <span>—</span>
-              </div>
+                  <span>—</span>
+                  <span>—</span>
+                </div>
+              </Link>
             ))
           )}
         </div>
