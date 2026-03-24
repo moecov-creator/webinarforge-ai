@@ -1,3 +1,8 @@
+
+Maurice Covington <MauriceCovington@moechermarketing.com>
+7:14 PM (0 minutes ago)
+to Maurice
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -39,6 +44,7 @@ const id = String(params.id);
 const [sections, setSections] = useState<Record<string, string>>({});
 const [script, setScript] = useState("");
 
+// Load script
 useEffect(() => {
 const saved = localStorage.getItem(`webinar-script:${id}`);
 if (saved) {
@@ -47,22 +53,46 @@ setSections(parseScript(saved));
 }
 }, [id]);
 
+// Handle editing
+const handleChange = (key: string, value: string) => {
+const updated = { ...sections, [key]: value };
+setSections(updated);
+
+const rebuilt = Object.values(updated).join("\n\n");
+setScript(rebuilt);
+};
+
+// Save to localStorage
+const handleSave = () => {
+localStorage.setItem(`webinar-script:${id}`, script);
+alert("✅ Script Saved!");
+};
+
 return (
 <main className="min-h-screen bg-black text-white">
 <div className="mx-auto max-w-6xl p-10">
 <div className="flex items-center justify-between mb-8">
 <h1 className="text-3xl font-bold">Webinar Script Editor</h1>
 
+<div className="flex gap-3">
+<button
+onClick={handleSave}
+className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg"
+>
+Save
+</button>
+
 <Link href="/dashboard/webinars">
-<button className="rounded-xl border border-white/20 px-5 py-3 font-medium hover:border-white/50">
-← Back to Webinars
+<button className="border border-white/20 px-5 py-2 rounded-lg">
+← Back
 </button>
 </Link>
 </div>
+</div>
 
 {!script && (
-<div className="rounded-xl border border-white/10 bg-white/5 p-6 text-gray-400">
-No script found. Go back, generate a script, then create the webinar.
+<div className="border border-white/10 bg-white/5 p-6 rounded-xl text-gray-400">
+No script found. Generate one first.
 </div>
 )}
 
@@ -71,22 +101,26 @@ No script found. Go back, generate a script, then create the webinar.
 {Object.entries(sections).map(([key, value]) => (
 <div
 key={key}
-className="rounded-2xl border border-white/10 bg-white/5 p-6"
+className="border border-white/10 bg-white/5 p-6 rounded-xl"
 >
-<h2 className="text-lg font-semibold capitalize mb-3">{key}</h2>
+<h2 className="text-lg font-semibold capitalize mb-3">
+{key}
+</h2>
+
 <textarea
 value={value}
-readOnly
-className="w-full h-[140px] bg-black border border-white/10 p-4 rounded-xl text-white"
+onChange={(e) => handleChange(key, e.target.value)}
+className="w-full h-[160px] bg-black border border-white/10 p-4 rounded-xl text-white"
 />
 </div>
 ))}
 
-<div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+<div className="border border-white/10 bg-white/5 p-6 rounded-xl">
 <h2 className="text-lg font-semibold mb-3">Full Script</h2>
+
 <textarea
 value={script}
-readOnly
+onChange={(e) => setScript(e.target.value)}
 className="w-full h-[400px] bg-black border border-white/10 p-4 rounded-xl text-white"
 />
 </div>
