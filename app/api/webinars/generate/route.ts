@@ -1,8 +1,3 @@
-
-Maurice Covington <MauriceCovington@moechermarketing.com>
-9:30 PM (0 minutes ago)
-to Maurice
-
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
