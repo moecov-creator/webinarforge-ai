@@ -1,116 +1,68 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { nanoid } from "nanoid";
+import OpenAI from "openai";
 
-function slugify(value: string) {
-return value
-.toLowerCase()
-.trim()
-.replace(/[^a-z0-9\s-]/g, "")
-.replace(/\s+/g, "-")
-.replace(/-+/g, "-");
-}
+const openai = new OpenAI({
+apiKey: process.env.OPENAI_API_KEY!,
+});
 
 export async function POST(req: Request) {
 try {
 const body = await req.json();
 
-const title =
-typeof body.title === "string" && body.title.trim()
-? body.title.trim()
-: "Untitled Webinar";
+const { title, niche, promise, cta } = body;
 
-let workspace = await prisma.workspace.findFirst({
-orderBy: { createdAt: "asc" },
-select: {
-id: true,
-slug: true,
-name: true,
-createdAt: true,
+// 🔥 STEP 1: Generate AI Script
+const aiResponse = await openai.chat.completions.create({
+model: "gpt-4o-mini",
+messages: [
+{
+role: "system",
+content:
+"You are a Russell Brunson style webinar script expert.",
 },
+{
+role: "user",
+content: `
+Create a high-converting webinar script.
+
+Niche: ${niche}
+Promise: ${promise}
+CTA: ${cta}
+
+Structure:
+1. Hook
+2. Big Promise
+3. Problem Agitation
+4. Origin Story
+5. Teaching (Steps)
+6. Offer Transition
+7. CTA
+`,
+},
+],
 });
 
-if (!workspace) {
-workspace = await prisma.workspace.create({
+const script =
+aiResponse.choices[0]?.message?.content || "No script generated";
+
+// 🔥 STEP 2: Save EVERYTHING (including script)
+const webinar = await prisma.webinar.create({
 data: {
-name: "Default Workspace",
-slug: "default-workspace",
-},
-select: {
-id: true,
-slug: true,
-name: true,
-createdAt: true,
+title,
+niche,
+promise,
+cta,
+script, // ✅ THIS IS THE KEY FIX
+status: "DRAFT",
 },
 });
-}
 
-const slug = `${slugify(title)}-${nanoid(6)}`;
-
-const result = await prisma.$queryRaw<
-Array<{
-id: string;
-title: string;
-status: string | null;
-workspaceId: string;
-slug: string;
-createdAt: Date;
-}>
->`
-INSERT INTO "Webinar"
-("id", "workspaceId", "title", "niche", "status", "mode", "slug", "hasWatermark", "createdAt", "updatedAt")
-VALUES
-(gen_random_uuid()::text, ${workspace.id}, ${title}, 'OTHER', 'DRAFT', 'EVERGREEN', ${slug}, true, NOW(), NOW())
-RETURNING "id", "title", "status", "workspaceId", "slug", "createdAt"
-`;
-
-return NextResponse.json({
-success: true,
-webinar: result[0],
-});
-} catch (error) {
-console.error("POST /api/webinars error:", error);
-
+return NextResponse.json(webinar);
+} catch (error: any) {
+console.error(error);
 return NextResponse.json(
-{
-success: false,
-error: error instanceof Error ? error.message : "Failed to save webinar",
-},
-{ status: 500 }
-);
-}
-}
-
-export async function GET() {
-try {
-const webinars = await prisma.$queryRaw<
-Array<{
-id: string;
-title: string;
-status: string | null;
-workspaceId: string;
-slug: string | null;
-createdAt: Date;
-}>
->`
-SELECT "id", "title", "status", "workspaceId", "slug", "createdAt"
-FROM "Webinar"
-ORDER BY "createdAt" DESC
-`;
-
-return NextResponse.json({
-success: true,
-webinars,
-});
-} catch (error) {
-console.error("GET /api/webinars error:", error);
-
-return NextResponse.json(
-{
-success: false,
-error:
-error instanceof Error ? error.message : "Failed to fetch webinars",
-},
+{ error: "Failed to create webinar" },
 { status: 500 }
 );
 }
