@@ -7,41 +7,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum WebinarStatus {
-  DRAFT
-  PUBLISHED
-}
-
 model Workspace {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
+  slug      String          @unique
+  createdAt DateTime        @default(now())
 
-  webinars        Webinar[]
-  analyticsEvents AnalyticsEvent[]
+  webinars  Webinar[]
+  analytics AnalyticsEvent[]
 }
 
 model Webinar {
-  id            String        @id @default(cuid())
-  workspaceId   String
+  id            String      @id @default(cuid())
   title         String
-  status        WebinarStatus @default(DRAFT)
-  registrations Int           @default(0)
-  clicks        Int           @default(0)
-  createdAt     DateTime      @default(now())
+  status        String      @default("DRAFT")
 
-  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  analyticsEvents AnalyticsEvent[]
+  // ✅ FIXED FIELDS
+  registrations Int         @default(0)
+  clicks        Int         @default(0)
+
+  // ✅ NEW (AI SCRIPT STORAGE)
+  script        String?     @db.Text
+
+  // RELATION
+  workspaceId   String
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id])
+
+  createdAt     DateTime    @default(now())
 }
 
 model AnalyticsEvent {
-  id          String   @id @default(cuid())
-  workspaceId String
-  webinarId   String?
-  event       String
-  createdAt   DateTime @default(now())
+  id          String     @id @default(cuid())
+  type        String
+  createdAt   DateTime   @default(now())
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  webinar   Webinar?  @relation(fields: [webinarId], references: [id], onDelete: SetNull)
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id])
+
+  webinarId   String?
+  webinar     Webinar?   @relation(fields: [webinarId], references: [id])
 }
