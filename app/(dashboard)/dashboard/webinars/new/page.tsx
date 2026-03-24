@@ -41,8 +41,14 @@ if (!res.ok || !data.success) {
 throw new Error(data.error || `Request failed with status ${res.status}`);
 }
 
-if (typeof window !== "undefined" && script && data.webinar?.id) {
+if (typeof window !== "undefined" && data.webinar?.id) {
+if (script) {
 localStorage.setItem(`webinar-script:${data.webinar.id}`, script);
+}
+localStorage.setItem(`webinar-title:${data.webinar.id}`, title);
+localStorage.setItem(`webinar-niche:${data.webinar.id}`, niche);
+localStorage.setItem(`webinar-corePromise:${data.webinar.id}`, corePromise);
+localStorage.setItem(`webinar-cta:${data.webinar.id}`, cta);
 }
 
 router.push(`/dashboard/webinars/${data.webinar.id}`);
