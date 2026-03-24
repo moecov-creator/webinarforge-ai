@@ -1,49 +1,44 @@
 generator client {
-  provider = "prisma-client-js"
+provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+provider = "postgresql"
+url = env("DATABASE_URL")
 }
 
 model Workspace {
-  id        String          @id @default(cuid())
-  name      String
-  slug      String          @unique
-  createdAt DateTime        @default(now())
+id String @id @default(cuid())
+name String
+slug String @unique
+createdAt DateTime @default(now())
 
-  webinars  Webinar[]
-  analytics AnalyticsEvent[]
+webinars Webinar[]
+analytics AnalyticsEvent[]
 }
 
 model Webinar {
-  id            String      @id @default(cuid())
-  title         String
-  status        String      @default("DRAFT")
+id String @id @default(cuid())
+title String
+status String @default("DRAFT")
+registrations Int @default(0)
+clicks Int @default(0)
+script String? @db.Text
+workspaceId String
+workspace Workspace @relation(fields: [workspaceId], references: [id])
+createdAt DateTime @default(now())
 
-  // ✅ FIXED FIELDS
-  registrations Int         @default(0)
-  clicks        Int         @default(0)
-
-  // ✅ NEW (AI SCRIPT STORAGE)
-  script        String?     @db.Text
-
-  // RELATION
-  workspaceId   String
-  workspace     Workspace   @relation(fields: [workspaceId], references: [id])
-
-  createdAt     DateTime    @default(now())
+analyticsEvents AnalyticsEvent[]
 }
 
 model AnalyticsEvent {
-  id          String     @id @default(cuid())
-  type        String
-  createdAt   DateTime   @default(now())
+id String @id @default(cuid())
+type String
+createdAt DateTime @default(now())
 
-  workspaceId String
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id])
+workspaceId String
+workspace Workspace @relation(fields: [workspaceId], references: [id])
 
-  webinarId   String?
-  webinar     Webinar?   @relation(fields: [webinarId], references: [id])
+webinarId String?
+webinar Webinar? @relation(fields: [webinarId], references: [id])
 }
