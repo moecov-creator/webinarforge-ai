@@ -1,8 +1,3 @@
-
-Maurice Covington <MauriceCovington@moechermarketing.com>
-7:14 PM (0 minutes ago)
-to Maurice
-
 "use client";
 
 import { useEffect, useState } from "react";
