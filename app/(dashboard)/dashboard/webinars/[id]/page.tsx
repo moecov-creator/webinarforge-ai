@@ -1,81 +1,97 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 
-export const dynamic = "force-dynamic";
-
-type Webinar = {
-id: string;
-title: string;
-status?: string | null;
-slug?: string | null;
-createdAt?: string;
+function parseScript(script: string) {
+const sections = {
+hook: "",
+promise: "",
+problem: "",
+story: "",
+teaching: "",
+cta: "",
 };
 
-async function getWebinars(): Promise<Webinar[]> {
-const baseUrl =
-process.env.NEXT_PUBLIC_APP_URL || "https://www.webinarforge.ai";
+const split = script.split("###");
 
-const res = await fetch(`${baseUrl}/api/webinars`, {
-cache: "no-store",
+split.forEach((section) => {
+const lower = section.toLowerCase();
+
+if (lower.includes("hook")) sections.hook = `###${section}`.trim();
+else if (lower.includes("promise")) sections.promise = `###${section}`.trim();
+else if (lower.includes("problem")) sections.problem = `###${section}`.trim();
+else if (lower.includes("story")) sections.story = `###${section}`.trim();
+else if (lower.includes("teaching")) sections.teaching = `###${section}`.trim();
+else if (lower.includes("cta") || lower.includes("call to action")) {
+sections.cta = `###${section}`.trim();
+}
 });
 
-const data = await res.json();
-return data.webinars || [];
+return sections;
 }
 
-export default async function WebinarsPage() {
-const webinars = await getWebinars();
+export default function WebinarEditor() {
+const params = useParams();
+const id = String(params.id);
+
+const [sections, setSections] = useState<Record<string, string>>({});
+const [script, setScript] = useState("");
+
+useEffect(() => {
+const saved = localStorage.getItem(`webinar-script:${id}`);
+if (saved) {
+setScript(saved);
+setSections(parseScript(saved));
+}
+}, [id]);
 
 return (
-<main className="p-10 text-white">
+<main className="min-h-screen bg-black text-white">
+<div className="mx-auto max-w-6xl p-10">
 <div className="flex items-center justify-between mb-8">
-<h1 className="text-3xl font-bold">Your Webinars</h1>
+<h1 className="text-3xl font-bold">Webinar Script Editor</h1>
 
-<Link href="/dashboard/webinars/new">
-<button className="bg-purple-600 hover:bg-purple-700 px-5 py-3 rounded-lg font-semibold">
-+ Create Webinar
+<Link href="/dashboard/webinars">
+<button className="rounded-xl border border-white/20 px-5 py-3 font-medium hover:border-white/50">
+← Back to Webinars
 </button>
 </Link>
 </div>
 
-<div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-<div className="grid grid-cols-4 text-sm text-gray-400 mb-4">
-<span>Webinar</span>
-<span>Status</span>
-<span>Registrations</span>
-<span>CTA Clicks</span>
+{!script && (
+<div className="rounded-xl border border-white/10 bg-white/5 p-6 text-gray-400">
+No script found. Go back, generate a script, then create the webinar.
 </div>
-
-<div className="space-y-4">
-{webinars.length === 0 ? (
-<p className="text-gray-400">No webinars yet</p>
-) : (
-webinars.map((webinar) => (
-<Link
-key={webinar.id}
-href={`/dashboard/webinars/${webinar.id}`}
-className="block"
->
-<div className="grid grid-cols-4 items-center border-t border-white/5 pt-4 cursor-pointer hover:bg-white/5 rounded-lg px-2 pb-2 transition">
-<span className="font-medium">{webinar.title}</span>
-
-<span
-className={`text-xs px-2 py-1 rounded-full w-fit ${
-webinar.status === "PUBLISHED" ||
-webinar.status === "LIVE"
-? "bg-green-500/20 text-green-400"
-: "bg-yellow-500/20 text-yellow-400"
-}`}
->
-{webinar.status || "DRAFT"}
-</span>
-
-<span>—</span>
-<span>—</span>
-</div>
-</Link>
-))
 )}
+
+{script && (
+<div className="space-y-6">
+{Object.entries(sections).map(([key, value]) => (
+<div
+key={key}
+className="rounded-2xl border border-white/10 bg-white/5 p-6"
+>
+<h2 className="text-lg font-semibold capitalize mb-3">{key}</h2>
+<textarea
+value={value}
+readOnly
+className="w-full h-[140px] bg-black border border-white/10 p-4 rounded-xl text-white"
+/>
 </div>
+))}
+
+<div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+<h2 className="text-lg font-semibold mb-3">Full Script</h2>
+<textarea
+value={script}
+readOnly
+className="w-full h-[400px] bg-black border border-white/10 p-4 rounded-xl text-white"
+/>
+</div>
+</div>
+)}
 </div>
 </main>
 );
