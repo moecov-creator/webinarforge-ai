@@ -1,3 +1,8 @@
+
+Maurice Covington <MauriceCovington@moechermarketing.com>
+9:30 PM (0 minutes ago)
+to Maurice
+
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
@@ -33,6 +38,71 @@ const section =
 typeof body.section === "string" && body.section.trim()
 ? body.section.trim().toLowerCase()
 : "";
+
+const mode =
+typeof body.mode === "string" && body.mode.trim()
+? body.mode.trim().toLowerCase()
+: "script";
+
+if (mode === "funnel") {
+const funnelPrompt = `
+You are an elite direct-response funnel strategist.
+
+Create a simple high-converting webinar registration funnel page for this offer:
+
+Title: ${title}
+Audience/Niche: ${niche}
+Core Promise: ${corePromise}
+Main CTA: ${cta}
+
+Return the response in this exact structure:
+
+### HEADLINE
+<one strong headline>
+
+### SUBHEADLINE
+<one persuasive subheadline>
+
+### BULLETS
+- bullet 1
+- bullet 2
+- bullet 3
+- bullet 4
+- bullet 5
+
+### CTA
+<one short CTA line>
+
+### SUMMARY
+<a short persuasive webinar summary paragraph>
+
+Do not return JSON.
+`;
+
+const response = await openai.chat.completions.create({
+model: "gpt-4o-mini",
+temperature: 0.8,
+messages: [
+{
+role: "system",
+content:
+"You create high-converting webinar registration pages for coaches, real estate, consultants, SaaS, travel, and local business offers.",
+},
+{
+role: "user",
+content: funnelPrompt,
+},
+],
+});
+
+const funnel =
+response.choices[0]?.message?.content ?? "No funnel generated.";
+
+return NextResponse.json({
+success: true,
+funnel,
+});
+}
 
 if (section) {
 const currentText =
@@ -127,7 +197,8 @@ content: prompt,
 ],
 });
 
-const script = response.choices[0]?.message?.content ?? "No script generated.";
+const script =
+response.choices[0]?.message?.content ?? "No script generated.";
 
 return NextResponse.json({
 success: true,
@@ -146,6 +217,5 @@ error instanceof Error
 },
 { status: 500 }
 );
-}
 }
 }
