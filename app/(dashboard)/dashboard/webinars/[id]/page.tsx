@@ -38,8 +38,8 @@ const id = String(params.id);
 
 const [sections, setSections] = useState<Record<string, string>>({});
 const [script, setScript] = useState("");
+const [regenerating, setRegenerating] = useState<string | null>(null);
 
-// Load script
 useEffect(() => {
 const saved = localStorage.getItem(`webinar-script:${id}`);
 if (saved) {
@@ -48,19 +48,59 @@ setSections(parseScript(saved));
 }
 }, [id]);
 
-// Handle editing
 const handleChange = (key: string, value: string) => {
 const updated = { ...sections, [key]: value };
 setSections(updated);
 
-const rebuilt = Object.values(updated).join("\n\n");
+const rebuilt = Object.values(updated)
+.filter(Boolean)
+.join("\n\n");
 setScript(rebuilt);
 };
 
-// Save to localStorage
 const handleSave = () => {
 localStorage.setItem(`webinar-script:${id}`, script);
 alert("✅ Script Saved!");
+};
+
+const handleRegenerate = async (key: string) => {
+try {
+setRegenerating(key);
+
+const title = localStorage.getItem(`webinar-title:${id}`) || "Untitled Webinar";
+const niche = localStorage.getItem(`webinar-niche:${id}`) || "General Audience";
+const corePromise =
+localStorage.getItem(`webinar-corePromise:${id}`) ||
+"Help the audience get a better result";
+const cta = localStorage.getItem(`webinar-cta:${id}`) || "Book a call";
+
+const res = await fetch("/api/webinars/generate", {
+method: "POST",
+headers: {
+"Content-Type": "application/json",
+},
+body: JSON.stringify({
+title,
+niche,
+corePromise,
+cta,
+section: key,
+currentText: sections[key] || "",
+}),
+});
+
+const data = await res.json();
+
+if (!res.ok || !data.success) {
+throw new Error(data.error || "Failed to regenerate section");
+}
+
+handleChange(key, data.content || "");
+} catch (error) {
+alert(error instanceof Error ? error.message : "Failed to regenerate section");
+} finally {
+setRegenerating(null);
+}
 };
 
 return (
@@ -98,9 +138,17 @@ No script found. Generate one first.
 key={key}
 className="border border-white/10 bg-white/5 p-6 rounded-xl"
 >
-<h2 className="text-lg font-semibold capitalize mb-3">
-{key}
-</h2>
+<div className="flex items-center justify-between mb-3">
+<h2 className="text-lg font-semibold capitalize">{key}</h2>
+
+<button
+onClick={() => handleRegenerate(key)}
+disabled={regenerating === key}
+className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm disabled:opacity-60"
+>
+{regenerating === key ? "Regenerating..." : "Regenerate with AI"}
+</button>
+</div>
 
 <textarea
 value={value}
