@@ -1,31 +1,35 @@
-import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+// app/(dashboard)/dashboard/webinars/[id]/editor/page.tsx
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/db/prisma";
+import WebinarEditorClient from "./editor-client";
 
 export default async function WebinarEditorPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const webinar = await prisma.webinar.findUnique({
-    where: { id: params.id },
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const { id } = await params;
+
+  const webinar = await prisma.webinar.findFirst({
+    where: {
+      id,
+      workspace: { members: { some: { user: { clerkId: userId } } } },
+    },
+    include: {
+      sections: { orderBy: { position: "asc" } },
+      ctaSequences: { orderBy: { triggerTime: "asc" } },
+      timedComments: { orderBy: { timestamp: "asc" } },
+      offers: true,
+      bonuses: true,
+      objections: true,
+    },
   });
 
-  if (!webinar) return notFound();
+  if (!webinar) redirect("/dashboard/webinars");
 
-  return (
-    <div className="p-8 text-white">
-      <h1 className="text-2xl font-bold mb-6">Webinar Script Editor</h1>
-
-      {!webinar.script ? (
-        <div className="text-gray-400">
-          No script found. Generate one first.
-        </div>
-      ) : (
-        <textarea
-          defaultValue={webinar.script}
-          className="w-full h-[500px] bg-black border border-white/10 p-4 rounded-lg"
-        />
-      )}
-    </div>
-  );
+  return <WebinarEditorClient webinar={webinar} />;
 }
