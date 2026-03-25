@@ -45,7 +45,7 @@ const rawParts = script
 .filter(Boolean);
 
 const sections: Array<{
-type: any;
+type: string;
 title: string;
 content: string;
 order: number;
@@ -57,14 +57,14 @@ const heading = lines[0] || `Section ${index + 1}`;
 const content = lines.slice(1).join("\n").trim() || part;
 const lower = heading.toLowerCase();
 
-let type: any = "TEACHING";
-if (lower.includes("hook")) type = "HOOK";
-else if (lower.includes("promise")) type = "PROMISE";
-else if (lower.includes("problem")) type = "BELIEF_SHIFT";
-else if (lower.includes("origin") || lower.includes("story")) type = "CREDIBILITY";
-else if (lower.includes("cta") || lower.includes("call to action")) type = "CTA";
-else if (lower.includes("offer")) type = "OFFER_TRANSITION";
-else if (lower.includes("teaching") || lower.includes("belief")) type = "TEACHING";
+let type = "teaching";
+if (lower.includes("hook")) type = "hook";
+else if (lower.includes("promise")) type = "promise";
+else if (lower.includes("problem")) type = "belief_shift";
+else if (lower.includes("origin") || lower.includes("story")) type = "credibility";
+else if (lower.includes("cta") || lower.includes("call to action")) type = "cta";
+else if (lower.includes("offer")) type = "offer_transition";
+else if (lower.includes("teaching") || lower.includes("belief")) type = "teaching";
 
 sections.push({
 type,
@@ -76,7 +76,7 @@ order: index + 1,
 
 if (sections.length === 0 && script.trim()) {
 sections.push({
-type: "HOOK",
+type: "hook",
 title: "Opening Hook",
 content: script.trim(),
 order: 1,
@@ -127,7 +127,7 @@ let slug = baseSlug;
 let counter = 1;
 
 while (
-await prisma.webinar.findUnique({
+await prisma.webinar.findFirst({
 where: { slug },
 select: { id: true },
 })
@@ -147,6 +147,7 @@ status: WebinarStatus.DRAFT,
 mode: WebinarMode.EVERGREEN,
 slug,
 generatorInputs: {
+title,
 niche,
 corePromise,
 cta,
