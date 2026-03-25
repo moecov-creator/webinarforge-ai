@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import WebinarEditorClient from "./editor-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function WebinarEditorPage({
   params,
 }: {
@@ -14,11 +16,8 @@ export default async function WebinarEditorPage({
 
   const { id } = await params;
 
-  const webinar = await prisma.webinar.findFirst({
-    where: {
-      id,
-      workspace: { members: { some: { user: { clerkId: userId } } } },
-    },
+  const webinar = await prisma.webinar.findUnique({
+    where: { id },
     include: {
       sections: { orderBy: { position: "asc" } },
       ctaSequences: { orderBy: { triggerTime: "asc" } },
