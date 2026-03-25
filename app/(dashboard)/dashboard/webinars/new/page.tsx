@@ -17,57 +17,7 @@ const [generating, setGenerating] = useState(false);
 const [error, setError] = useState("");
 const [script, setScript] = useState("");
 
-const handleSubmit = async () => {
-setLoading(true);
-setError("");
-
-try {
-const res = await fetch("/api/webinars", {
-method: "POST",
-headers: {
-"Content-Type": "application/json",
-},
-body: JSON.stringify({
-title,
-niche,
-corePromise,
-cta,
-}),
-});
-
-const data = await res.json();
-
-if (!res.ok || !data.success) {
-throw new Error(data.error || `Request failed with status ${res.status}`);
-}
-
-if (typeof window !== "undefined" && data.webinar?.id) {
-if (script) {
-localStorage.setItem(`webinar-script:${data.webinar.id}`, script);
-}
-localStorage.setItem(`webinar-title:${data.webinar.id}`, title);
-localStorage.setItem(`webinar-niche:${data.webinar.id}`, niche);
-localStorage.setItem(`webinar-corePromise:${data.webinar.id}`, corePromise);
-localStorage.setItem(`webinar-cta:${data.webinar.id}`, cta);
-}
-
-router.push(`/dashboard/webinars/${data.webinar.id}`);
-} catch (err) {
-const message =
-err instanceof Error ? err.message : "Failed to save webinar";
-console.error("Create webinar error:", message);
-setError(message);
-} finally {
-setLoading(false);
-}
-};
-
-const handleGenerateScript = async () => {
-setGenerating(true);
-setError("");
-setScript("");
-
-try {
+const generateScript = async () => {
 const res = await fetch("/api/webinars/generate", {
 method: "POST",
 headers: {
@@ -84,19 +34,77 @@ cta,
 const data = await res.json();
 
 if (!res.ok || !data.success) {
-throw new Error(
-data.error || `Generate failed with status ${res.status}`
-);
+throw new Error(data.error || `Generate failed with status ${res.status}`);
 }
 
-setScript(data.script || "");
+return data.script || "";
+};
+
+const handleGenerateScript = async () => {
+try {
+setGenerating(true);
+setError("");
+
+const generatedScript = await generateScript();
+setScript(generatedScript);
 } catch (err) {
-const message =
-err instanceof Error ? err.message : "Failed to generate script";
-console.error("Generate script error:", message);
-setError(message);
+setError(err instanceof Error ? err.message : "Failed to generate script");
 } finally {
 setGenerating(false);
+}
+};
+
+const handleSubmit = async () => {
+try {
+setLoading(true);
+setError("");
+
+let finalScript = script;
+
+if (!finalScript.trim()) {
+finalScript = await generateScript();
+setScript(finalScript);
+}
+
+const res = await fetch("/api/webinars", {
+method: "POST",
+headers: {
+"Content-Type": "application/json",
+},
+body: JSON.stringify({
+title,
+niche,
+corePromise,
+cta,
+script: finalScript,
+}),
+});
+
+const data = await res.json();
+
+if (!res.ok || !data.success) {
+throw new Error(data.error || `Create failed with status ${res.status}`);
+}
+
+if (typeof window !== "undefined" && data.webinar?.id) {
+const webinarId = data.webinar.id;
+
+localStorage.setItem(`webinar-script:${webinarId}`, finalScript);
+localStorage.setItem(`webinar-title:${webinarId}`, title);
+localStorage.setItem(`webinar-niche:${webinarId}`, niche);
+localStorage.setItem(`webinar-corePromise:${webinarId}`, corePromise);
+localStorage.setItem(`webinar-cta:${webinarId}`, cta);
+}
+
+router.push(`/dashboard/webinars/${data.webinar.id}`);
+} catch (err) {
+setError(
+err instanceof Error
+? err.message
+: "Failed to create webinar"
+);
+} finally {
+setLoading(false);
 }
 };
 
@@ -180,7 +188,7 @@ className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-w
 <div className="grid gap-4 md:grid-cols-2">
 <button
 onClick={handleGenerateScript}
-disabled={generating}
+disabled={generating || loading}
 className="w-full bg-purple-600 hover:bg-purple-700 px-6 py-4 rounded-xl font-semibold disabled:opacity-60"
 >
 {generating ? "Generating..." : "Generate AI Script"}
@@ -188,10 +196,10 @@ className="w-full bg-purple-600 hover:bg-purple-700 px-6 py-4 rounded-xl font-se
 
 <button
 onClick={handleSubmit}
-disabled={loading}
+disabled={loading || generating}
 className="w-full border border-white/20 hover:border-white/40 px-6 py-4 rounded-xl font-semibold disabled:opacity-60"
 >
-{loading ? "Creating..." : "Create Webinar →"}
+{loading ? "Creating Webinar..." : "Create Webinar →"}
 </button>
 </div>
 </div>
@@ -204,7 +212,7 @@ className="w-full border border-white/20 hover:border-white/40 px-6 py-4 rounded
 <div className="min-h-[500px] whitespace-pre-wrap text-sm leading-7 text-gray-200">
 {script
 ? script
-: "Your generated webinar script will appear here after you click “Generate AI Script”."}
+: 'Your generated webinar script will appear here after you click "Generate AI Script".'}
 </div>
 </div>
 </div>
