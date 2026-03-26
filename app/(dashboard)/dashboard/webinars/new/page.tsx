@@ -4,216 +4,259 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+const NICHES = [
+  "REAL_ESTATE",
+  "COACH_CONSULTANT",
+  "TRAVEL",
+  "SAAS",
+  "LOCAL_SERVICES",
+  "OTHER",
+];
+
+const NICHE_LABELS: Record<string, string> = {
+  REAL_ESTATE: "Real Estate",
+  COACH_CONSULTANT: "Coaches & Consultants",
+  TRAVEL: "Travel",
+  SAAS: "SaaS",
+  LOCAL_SERVICES: "Local Services",
+  OTHER: "Other",
+};
+
 export default function NewWebinarPage() {
-const router = useRouter();
+  const router = useRouter();
 
-const [title, setTitle] = useState("");
-const [niche, setNiche] = useState("");
-const [corePromise, setCorePromise] = useState("");
-const [cta, setCta] = useState("");
+  const [title, setTitle] = useState("");
+  const [niche, setNiche] = useState("COACH_CONSULTANT");
+  const [audience, setAudience] = useState("");
+  const [corePromise, setCorePromise] = useState("");
+  const [cta, setCta] = useState("");
 
-const [loading, setLoading] = useState(false);
-const [generating, setGenerating] = useState(false);
-const [error, setError] = useState("");
-const [script, setScript] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
+  const [script, setScript] = useState("");
+  const [webinarId, setWebinarId] = useState("");
 
-const generateScript = async () => {
-const res = await fetch("/api/webinars/generate", {
-method: "POST",
-headers: {
-"Content-Type": "application/json",
-},
-body: JSON.stringify({
-title,
-niche,
-corePromise,
-cta,
-}),
-});
+  const buildPayload = () => ({
+    niche,
+    idealAudience: audience || `${NICHE_LABELS[niche]} professionals`,
+    painPoint: `Not getting enough leads or clients in the ${NICHE_LABELS[niche]} space`,
+    desiredOutcome: corePromise || "More leads and clients on autopilot",
+    offerName: title || "My Signature Program",
+    offerType: "COACHING",
+    pricePoint: 997,
+    tone: "conversational",
+    ctaGoal: cta || "Book a call",
+  });
 
-const data = await res.json();
+  const handleGenerateScript = async () => {
+    if (!title || !corePromise) {
+      setError("Please fill in Webinar Title and Core Promise first.");
+      return;
+    }
+    try {
+      setGenerating(true);
+      setError("");
+      setScript("");
+      setWebinarId("");
 
-if (!res.ok || !data.success) {
-throw new Error(data.error || `Generate failed with status ${res.status}`);
-}
+      const res = await fetch("/api/webinars/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload()),
+      });
 
-return data.script || "";
-};
+      const data = await res.json();
 
-const handleGenerateScript = async () => {
-try {
-setGenerating(true);
-setError("");
-const generatedScript = await generateScript();
-setScript(generatedScript);
-} catch (err) {
-setError(err instanceof Error ? err.message : "Failed to generate script");
-} finally {
-setGenerating(false);
-}
-};
+      if (!res.ok) {
+        throw new Error(data.error || `Generation failed (${res.status})`);
+      }
 
-const handleSubmit = async () => {
-try {
-setLoading(true);
-setError("");
+      setWebinarId(data.webinarId);
 
-let finalScript = script;
+      // Build readable script preview from sections
+      const preview = `Webinar: ${title}\n\n` +
+        `Audience: ${audience || NICHE_LABELS[niche]}\n` +
+        `Promise: ${corePromise}\n` +
+        `CTA: ${cta || "Book a call"}\n\n` +
+        `✅ Webinar created successfully!\n\n` +
+        `Your webinar has been generated with a full script, offer stack, CTAs, and timed comments.\n` +
+        `Click "Open Editor →" to view and edit your complete script.`;
 
-if (!finalScript.trim()) {
-finalScript = await generateScript();
-setScript(finalScript);
-}
+      setScript(preview);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
-const res = await fetch("/api/webinars", {
-method: "POST",
-headers: {
-"Content-Type": "application/json",
-},
-body: JSON.stringify({
-title,
-niche,
-corePromise,
-cta,
-script: finalScript,
-}),
-});
+  const handleOpenEditor = () => {
+    if (webinarId) {
+      router.push(`/dashboard/webinars/${webinarId}/editor`);
+    }
+  };
 
-const data = await res.json();
+  const handleGoToDashboard = () => {
+    router.push("/dashboard/webinars");
+  };
 
-if (!res.ok || !data.success || !data.webinar?.id) {
-throw new Error(data.error || "Create webinar failed");
-}
+  return (
+    <main className="min-h-screen bg-black text-white">
+      <div className="mx-auto max-w-7xl px-6 py-10">
 
-const webinarId = data.webinar.id;
+        {/* Header */}
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm text-purple-400">Webinars / New</p>
+            <h1 className="text-3xl md:text-5xl font-bold">Create New Webinar</h1>
+            <p className="mt-2 text-gray-400">
+              Build your next AI-powered evergreen webinar funnel in minutes.
+            </p>
+          </div>
+          <Link href="/dashboard">
+            <button className="rounded-xl border border-white/20 px-5 py-3 font-medium hover:border-white/50 transition-colors">
+              ← Back to Dashboard
+            </button>
+          </Link>
+        </div>
 
-if (typeof window !== "undefined") {
-localStorage.setItem(`webinar-script:${webinarId}`, finalScript);
-localStorage.setItem(`webinar-title:${webinarId}`, title);
-localStorage.setItem(`webinar-niche:${webinarId}`, niche);
-localStorage.setItem(`webinar-corePromise:${webinarId}`, corePromise);
-localStorage.setItem(`webinar-cta:${webinarId}`, cta);
-}
+        <div className="grid gap-8 lg:grid-cols-2">
 
-router.push(`/dashboard/webinars/${webinarId}`);
-} catch (err) {
-setError(
-err instanceof Error ? err.message : "Failed to create webinar"
-);
-} finally {
-setLoading(false);
-}
-};
+          {/* Left: Form */}
+          <div className="max-w-2xl space-y-5">
 
-return (
-<main className="min-h-screen bg-black text-white">
-<div className="mx-auto max-w-7xl px-6 py-10">
-<div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-<div>
-<p className="text-sm text-purple-400">Webinars / New</p>
-<h1 className="text-3xl md:text-5xl font-bold">
-Create New Webinar
-</h1>
-<p className="mt-2 text-gray-400">
-Build your next AI-powered evergreen webinar funnel in minutes.
-</p>
-</div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Webinar Title</label>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. The 3-Step System to Land High-Ticket Clients"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50"
+              />
+            </div>
 
-<Link href="/dashboard">
-<button className="rounded-xl border border-white/20 px-5 py-3 font-medium hover:border-white/50">
-← Back to Dashboard
-</button>
-</Link>
-</div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Niche / Industry</label>
+              <select
+                value={niche}
+                onChange={(e) => setNiche(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-[#111] px-4 py-3 text-white focus:outline-none focus:border-purple-500/50"
+              >
+                {NICHES.map((n) => (
+                  <option key={n} value={n}>{NICHE_LABELS[n]}</option>
+                ))}
+              </select>
+            </div>
 
-<div className="grid gap-8 lg:grid-cols-2">
-<div className="max-w-2xl space-y-6">
-<div>
-<label className="block text-sm text-gray-300 mb-2">
-Webinar Title
-</label>
-<input
-value={title}
-onChange={(e) => setTitle(e.target.value)}
-placeholder="e.g. AI Client Acquisition System"
-className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white"
-/>
-</div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">
+                Target Audience <span className="text-gray-500">(optional — be specific)</span>
+              </label>
+              <input
+                value={audience}
+                onChange={(e) => setAudience(e.target.value)}
+                placeholder="e.g. Coaches stuck under $10k/month wanting to scale"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50"
+              />
+            </div>
 
-<div>
-<label className="block text-sm text-gray-300 mb-2">
-Niche / Audience
-</label>
-<input
-value={niche}
-onChange={(e) => setNiche(e.target.value)}
-placeholder="e.g. Realtors, Coaches, SaaS"
-className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white"
-/>
-</div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Core Promise</label>
+              <input
+                value={corePromise}
+                onChange={(e) => setCorePromise(e.target.value)}
+                placeholder="e.g. Get more leads without cold outreach"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50"
+              />
+            </div>
 
-<div>
-<label className="block text-sm text-gray-300 mb-2">
-Core Promise
-</label>
-<input
-value={corePromise}
-onChange={(e) => setCorePromise(e.target.value)}
-placeholder="What result do they get?"
-className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white"
-/>
-</div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Main CTA</label>
+              <input
+                value={cta}
+                onChange={(e) => setCta(e.target.value)}
+                placeholder="e.g. Book a call / Start free trial"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50"
+              />
+            </div>
 
-<div>
-<label className="block text-sm text-gray-300 mb-2">
-Main CTA
-</label>
-<input
-value={cta}
-onChange={(e) => setCta(e.target.value)}
-placeholder="Book call / Start trial"
-className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white"
-/>
-</div>
+            {error && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {error}
+              </div>
+            )}
 
-{error && (
-<div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-{error}
-</div>
-)}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                onClick={handleGenerateScript}
+                disabled={generating || creating || !!webinarId}
+                className="w-full bg-purple-600 hover:bg-purple-700 px-6 py-4 rounded-xl font-semibold disabled:opacity-50 transition-colors"
+              >
+                {generating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    Generating...
+                  </span>
+                ) : webinarId ? "✓ Generated!" : "Generate AI Script"}
+              </button>
 
-<div className="grid gap-4 md:grid-cols-2">
-<button
-onClick={handleGenerateScript}
-disabled={generating || loading}
-className="w-full bg-purple-600 hover:bg-purple-700 px-6 py-4 rounded-xl font-semibold disabled:opacity-60"
->
-{generating ? "Generating..." : "Generate AI Script"}
-</button>
+              {webinarId ? (
+                <button
+                  onClick={handleOpenEditor}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 px-6 py-4 rounded-xl font-semibold transition-colors"
+                >
+                  Open Editor →
+                </button>
+              ) : (
+                <button
+                  onClick={handleGoToDashboard}
+                  disabled={generating}
+                  className="w-full border border-white/20 hover:border-white/40 px-6 py-4 rounded-xl font-semibold disabled:opacity-50 transition-colors"
+                >
+                  My Webinars →
+                </button>
+              )}
+            </div>
 
-<button
-onClick={handleSubmit}
-disabled={loading || generating}
-className="w-full border border-white/20 hover:border-white/40 px-6 py-4 rounded-xl font-semibold disabled:opacity-60"
->
-{loading ? "Creating Webinar..." : "Create Webinar →"}
-</button>
-</div>
-</div>
+            {webinarId && (
+              <p className="text-xs text-gray-500 text-center">
+                Webinar ID: <span className="font-mono text-gray-400">{webinarId}</span>
+              </p>
+            )}
+          </div>
 
-<div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-<div className="mb-4 flex items-center justify-between">
-<h2 className="text-xl font-semibold">AI Webinar Script Preview</h2>
-</div>
+          {/* Right: Preview */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+            <h2 className="text-xl font-semibold mb-4">AI Webinar Script Preview</h2>
+            <div className="min-h-[500px] whitespace-pre-wrap text-sm leading-7 text-gray-300">
+              {generating ? (
+                <div className="flex flex-col items-center justify-center h-64 gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-purple-600/20 flex items-center justify-center">
+                    <svg className="animate-spin h-6 w-6 text-purple-400" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                  </div>
+                  <p className="text-gray-400 text-sm">Generating your webinar with AI...</p>
+                  <p className="text-gray-600 text-xs">This takes about 15–30 seconds</p>
+                </div>
+              ) : script ? (
+                script
+              ) : (
+                <p className="text-gray-600">
+                  Fill in the form and click &ldquo;Generate AI Script&rdquo; to build your complete
+                  webinar — script, offer stack, CTAs, and timed comments.
+                </p>
+              )}
+            </div>
+          </div>
 
-<div className="min-h-[500px] whitespace-pre-wrap text-sm leading-7 text-gray-200">
-{script
-? script
-: 'Your generated webinar script will appear here after you click "Generate AI Script".'}
-</div>
-</div>
-</div>
-</div>
-</main>
-);
+        </div>
+      </div>
+    </main>
+  );
 }
