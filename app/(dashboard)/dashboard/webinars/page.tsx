@@ -1,281 +1,121 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-function parseScript(script: string) {
-const sections = {
-hook: "",
-promise: "",
-problem: "",
-story: "",
-teaching: "",
-cta: "",
+type Webinar = {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+  script?: string | null;
 };
 
-const split = script.split("###");
+export default function WebinarsPage() {
+  const router = useRouter();
+  const [webinars, setWebinars] = useState<Webinar[]>([]);
+  const [loading, setLoading] = useState(true);
 
-split.forEach((section) => {
-const lower = section.toLowerCase();
+  useEffect(() => {
+    async function fetchWebinars() {
+      try {
+        const res = await fetch("/api/webinars");
+        const data = await res.json();
+        if (data.success) setWebinars(data.webinars);
+      } catch (err) {
+        console.error("Failed to fetch webinars", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchWebinars();
+  }, []);
 
-if (lower.includes("hook")) sections.hook = `###${section}`.trim();
-else if (lower.includes("promise")) sections.promise = `###${section}`.trim();
-else if (lower.includes("problem")) sections.problem = `###${section}`.trim();
-else if (lower.includes("story") || lower.includes("origin")) {
-sections.story = `###${section}`.trim();
-} else if (lower.includes("teaching") || lower.includes("belief")) {
-sections.teaching = `${sections.teaching}\n\n###${section}`.trim();
-} else if (lower.includes("cta") || lower.includes("call to action")) {
-sections.cta = `###${section}`.trim();
-}
-});
+  return (
+    <main className="min-h-screen bg-black text-white">
+      <div className="mx-auto max-w-6xl px-6 py-10">
 
-return sections;
-}
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">My Webinars</h1>
+            <p className="text-gray-400 mt-1 text-sm">
+              Manage and edit your AI-generated webinar scripts.
+            </p>
+          </div>
+          <Link href="/dashboard/webinars/new">
+            <button className="bg-purple-600 hover:bg-purple-700 px-5 py-3 rounded-xl font-semibold transition-colors">
+              + New Webinar
+            </button>
+          </Link>
+        </div>
 
-export default function WebinarEditor() {
-const params = useParams();
-const id = String(params.id);
+        {/* List */}
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <svg className="animate-spin h-8 w-8 text-purple-400" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+          </div>
+        ) : webinars.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-500">
+            <div className="text-5xl">📭</div>
+            <p className="text-lg">No webinars yet.</p>
+            <Link href="/dashboard/webinars/new">
+              <button className="bg-purple-600 hover:bg-purple-700 px-5 py-3 rounded-xl font-semibold transition-colors text-white">
+                Create your first webinar
+              </button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {webinars.map((w) => (
+              <div
+                key={w.id}
+                className="border border-white/10 bg-white/[0.03] rounded-2xl p-6 flex flex-col gap-4 hover:border-white/20 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="font-semibold text-base leading-snug">{w.title}</h2>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full shrink-0 ${
+                      w.status === "PUBLISHED"
+                        ? "bg-green-500/15 text-green-400"
+                        : "bg-white/8 text-white/40"
+                    }`}
+                  >
+                    {w.status}
+                  </span>
+                </div>
 
-const [sections, setSections] = useState<Record<string, string>>({});
-const [script, setScript] = useState("");
-const [regenerating, setRegenerating] = useState<string | null>(null);
-const [audioUrl, setAudioUrl] = useState("");
-const [voiceLoading, setVoiceLoading] = useState(false);
-const [voiceId, setVoiceId] = useState("");
-const [videoNote, setVideoNote] = useState("");
+                <p className="text-xs text-gray-600">
+                  {new Date(w.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
 
-useEffect(() => {
-const saved = localStorage.getItem(`webinar-script:${id}`);
-const savedAudio = localStorage.getItem(`webinar-audio:${id}`);
-const savedVoiceId = localStorage.getItem(`webinar-voiceId:${id}`);
-
-if (saved) {
-setScript(saved);
-setSections(parseScript(saved));
-}
-
-if (savedAudio) {
-setAudioUrl(savedAudio);
-}
-
-if (savedVoiceId) {
-setVoiceId(savedVoiceId);
-}
-}, [id]);
-
-const handleChange = (key: string, value: string) => {
-const updated = { ...sections, [key]: value };
-setSections(updated);
-
-const rebuilt = Object.values(updated)
-.filter(Boolean)
-.join("\n\n");
-
-setScript(rebuilt);
-};
-
-const handleSave = () => {
-localStorage.setItem(`webinar-script:${id}`, script);
-localStorage.setItem(`webinar-voiceId:${id}`, voiceId);
-if (audioUrl) {
-localStorage.setItem(`webinar-audio:${id}`, audioUrl);
-}
-alert("✅ Script Saved!");
-};
-
-const handleRegenerate = async (key: string) => {
-try {
-setRegenerating(key);
-
-const title =
-localStorage.getItem(`webinar-title:${id}`) || "Untitled Webinar";
-const niche =
-localStorage.getItem(`webinar-niche:${id}`) || "General Audience";
-const corePromise =
-localStorage.getItem(`webinar-corePromise:${id}`) ||
-"Help the audience get a better result";
-const cta =
-localStorage.getItem(`webinar-cta:${id}`) || "Book a call";
-
-const res = await fetch("/api/webinars/generate", {
-method: "POST",
-headers: {
-"Content-Type": "application/json",
-},
-body: JSON.stringify({
-title,
-niche,
-corePromise,
-cta,
-section: key,
-currentText: sections[key] || "",
-}),
-});
-
-const data = await res.json();
-
-if (!res.ok || !data.success) {
-throw new Error(data.error || "Failed to regenerate section");
-}
-
-handleChange(key, data.content || "");
-} catch (error) {
-alert(error instanceof Error ? error.message : "Failed to regenerate");
-} finally {
-setRegenerating(null);
-}
-};
-
-const handleGenerateVoice = async () => {
-try {
-setVoiceLoading(true);
-setVideoNote("");
-
-if (!voiceId.trim()) {
-throw new Error("Enter your ElevenLabs voice ID first");
-}
-
-const res = await fetch(`/api/webinars/${id}/voice`, {
-method: "POST",
-headers: {
-"Content-Type": "application/json",
-},
-body: JSON.stringify({
-script,
-voiceId,
-}),
-});
-
-const data = await res.json();
-
-if (!res.ok || !data.success) {
-throw new Error(data.error || "Failed to generate voice");
-}
-
-setAudioUrl(data.audioUrl || "");
-localStorage.setItem(`webinar-audio:${id}`, data.audioUrl || "");
-localStorage.setItem(`webinar-voiceId:${id}`, voiceId);
-
-setVideoNote("✅ Voiceover generated. Next step: use this narration in HeyGen.");
-} catch (error) {
-alert(error instanceof Error ? error.message : "Failed to generate voice");
-} finally {
-setVoiceLoading(false);
-}
-};
-
-const heygenHint = useMemo(() => {
-return "HeyGen supports creating videos from scripts and audio. Use your generated narration with your HeyGen avatar workflow.";
-}, []);
-
-return (
-<main className="min-h-screen bg-black text-white">
-<div className="mx-auto max-w-6xl p-10">
-<div className="flex items-center justify-between mb-8">
-<h1 className="text-3xl font-bold">Webinar Script Editor</h1>
-
-<div className="flex gap-3">
-<button
-onClick={handleSave}
-className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg"
->
-Save
-</button>
-
-<Link href="/dashboard/webinars">
-<button className="border border-white/20 px-5 py-2 rounded-lg">
-← Back
-</button>
-</Link>
-</div>
-</div>
-
-{!script && (
-<div className="border border-white/10 bg-white/5 p-6 rounded-xl text-gray-400">
-No script found. Generate one first.
-</div>
-)}
-
-{script && (
-<div className="space-y-6">
-<div className="border border-white/10 bg-white/5 p-6 rounded-xl">
-<h2 className="text-xl font-semibold mb-4">AI Video Generator</h2>
-
-<div className="grid gap-4 md:grid-cols-[1fr_auto]">
-<input
-value={voiceId}
-onChange={(e) => setVoiceId(e.target.value)}
-placeholder="Paste ElevenLabs Voice ID"
-className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white"
-/>
-
-<button
-onClick={handleGenerateVoice}
-disabled={voiceLoading}
-className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-xl font-semibold disabled:opacity-60"
->
-{voiceLoading ? "Generating Voice..." : "Generate Voiceover"}
-</button>
-</div>
-
-{audioUrl && (
-<div className="mt-4 space-y-4">
-<audio controls className="w-full">
-<source src={audioUrl} type="audio/mpeg" />
-</audio>
-
-<div className="rounded-xl border border-white/10 bg-black/40 p-4 text-sm text-white/80">
-{heygenHint}
-</div>
-</div>
-)}
-
-{videoNote && (
-<div className="mt-4 rounded-xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-300">
-{videoNote}
-</div>
-)}
-</div>
-
-{Object.entries(sections).map(([key, value]) => (
-<div
-key={key}
-className="border border-white/10 bg-white/5 p-6 rounded-xl"
->
-<div className="flex items-center justify-between mb-3">
-<h2 className="text-lg font-semibold capitalize">{key}</h2>
-
-<button
-onClick={() => handleRegenerate(key)}
-disabled={regenerating === key}
-className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm disabled:opacity-60"
->
-{regenerating === key ? "Regenerating..." : "Regenerate with AI"}
-</button>
-</div>
-
-<textarea
-value={value}
-onChange={(e) => handleChange(key, e.target.value)}
-className="w-full h-[160px] bg-black border border-white/10 p-4 rounded-xl text-white"
-/>
-</div>
-))}
-
-<div className="border border-white/10 bg-white/5 p-6 rounded-xl">
-<h2 className="text-lg font-semibold mb-3">Full Script</h2>
-
-<textarea
-value={script}
-onChange={(e) => setScript(e.target.value)}
-className="w-full h-[400px] bg-black border border-white/10 p-4 rounded-xl text-white"
-/>
-</div>
-</div>
-)}
-</div>
-</main>
-);
+                <div className="flex gap-2 mt-auto">
+                  <button
+                    onClick={() => router.push(`/dashboard/webinars/${w.id}/editor`)}
+                    className="flex-1 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {w.script ? "Edit Script" : "Open Editor"}
+                  </button>
+                  <button
+                    onClick={() => router.push(`/dashboard/webinars/${w.id}/funnel`)}
+                    className="flex-1 border border-white/15 hover:bg-white/5 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Funnel
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
+  );
 }
