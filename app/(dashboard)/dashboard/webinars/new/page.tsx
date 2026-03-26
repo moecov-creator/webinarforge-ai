@@ -1,262 +1,132 @@
-"use client";
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import OpenAI from "openai";
+import { prisma } from "@/lib/prisma";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-const NICHES = [
-  "REAL_ESTATE",
-  "COACH_CONSULTANT",
-  "TRAVEL",
-  "SAAS",
-  "LOCAL_SERVICES",
-  "OTHER",
-];
-
-const NICHE_LABELS: Record<string, string> = {
-  REAL_ESTATE: "Real Estate",
-  COACH_CONSULTANT: "Coaches & Consultants",
-  TRAVEL: "Travel",
-  SAAS: "SaaS",
-  LOCAL_SERVICES: "Local Services",
-  OTHER: "Other",
-};
-
-export default function NewWebinarPage() {
-  const router = useRouter();
-
-  const [title, setTitle] = useState("");
-  const [niche, setNiche] = useState("COACH_CONSULTANT");
-  const [audience, setAudience] = useState("");
-  const [corePromise, setCorePromise] = useState("");
-  const [cta, setCta] = useState("");
-
-  const [generating, setGenerating] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState("");
-  const [script, setScript] = useState("");
-  const [webinarId, setWebinarId] = useState("");
-
-  const buildPayload = () => ({
-    niche,
-    idealAudience: audience || `${NICHE_LABELS[niche]} professionals`,
-    painPoint: `Not getting enough leads or clients in the ${NICHE_LABELS[niche]} space`,
-    desiredOutcome: corePromise || "More leads and clients on autopilot",
-    offerName: title || "My Signature Program",
-    offerType: "COACHING",
-    pricePoint: 997,
-    tone: "conversational",
-    ctaGoal: cta || "Book a call",
-  });
-
-  const handleGenerateScript = async () => {
-    if (!title || !corePromise) {
-      setError("Please fill in Webinar Title and Core Promise first.");
-      return;
+export async function POST(req: Request) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
+
+    const body = await req.json();
+
+    const title =
+      typeof body.offerName === "string" && body.offerName.trim()
+        ? body.offerName.trim()
+        : "Untitled Webinar";
+
+    const niche =
+      typeof body.niche === "string" && body.niche.trim()
+        ? body.niche.trim()
+        : "General Audience";
+
+    const corePromise =
+      typeof body.desiredOutcome === "string" && body.desiredOutcome.trim()
+        ? body.desiredOutcome.trim()
+        : "Help the audience get a better result";
+
+    const cta =
+      typeof body.ctaGoal === "string" && body.ctaGoal.trim()
+        ? body.ctaGoal.trim()
+        : "Book a call";
+
+    const audience =
+      typeof body.idealAudience === "string" && body.idealAudience.trim()
+        ? body.idealAudience.trim()
+        : niche;
+
+    // Generate the full script from OpenAI
+    const prompt = `
+You are an elite direct-response webinar strategist inspired by Russell Brunson's Perfect Webinar framework.
+
+Create a high-converting webinar script for this offer:
+
+Title: ${title}
+Audience/Niche: ${audience}
+Core Promise: ${corePromise}
+Main CTA: ${cta}
+
+Return the response in this EXACT JSON structure with no extra text, no markdown, no code fences:
+{
+  "hook": "...",
+  "promise": "...",
+  "problem": "...",
+  "origin": "...",
+  "teaching1": "...",
+  "teaching2": "...",
+  "transition": "...",
+  "cta": "..."
+}
+
+Each field should be 2-5 sentences, persuasive, and written for spoken delivery.
+`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.8,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You write persuasive webinar scripts. Always respond with valid JSON only, no markdown or code fences.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+    });
+
+    const raw = response.choices[0]?.message?.content ?? "{}";
+
+    // Safely parse the JSON — strip any accidental code fences
+    let sections: Record<string, string> = {};
     try {
-      setGenerating(true);
-      setError("");
-      setScript("");
-      setWebinarId("");
-
-      const res = await fetch("/api/webinars/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || `Generation failed (${res.status})`);
-      }
-
-      setWebinarId(data.webinarId);
-
-      // Build readable script preview from sections
-      const preview = `Webinar: ${title}\n\n` +
-        `Audience: ${audience || NICHE_LABELS[niche]}\n` +
-        `Promise: ${corePromise}\n` +
-        `CTA: ${cta || "Book a call"}\n\n` +
-        `✅ Webinar created successfully!\n\n` +
-        `Your webinar has been generated with a full script, offer stack, CTAs, and timed comments.\n` +
-        `Click "Open Editor →" to view and edit your complete script.`;
-
-      setScript(preview);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-    } finally {
-      setGenerating(false);
+      const cleaned = raw.replace(/```json|```/g, "").trim();
+      sections = JSON.parse(cleaned);
+    } catch {
+      // If parsing fails, leave fields empty — the editor can still be used
+      console.error("Failed to parse OpenAI script JSON:", raw);
     }
-  };
 
-  const handleOpenEditor = () => {
-    if (webinarId) {
-      router.push(`/dashboard/webinars/${webinarId}/editor`);
-    }
-  };
+    // Save the webinar + script to the database
+    const webinar = await prisma.webinar.create({
+      data: {
+        userId,
+        title,
+        niche,
+        scriptHook:       sections.hook       ?? "",
+        scriptPromise:    sections.promise     ?? "",
+        scriptProblem:    sections.problem     ?? "",
+        scriptOrigin:     sections.origin      ?? "",
+        scriptTeaching1:  sections.teaching1   ?? "",
+        scriptTeaching2:  sections.teaching2   ?? "",
+        scriptTransition: sections.transition  ?? "",
+        scriptCTA:        sections.cta         ?? "",
+      },
+    });
 
-  const handleGoToDashboard = () => {
-    router.push("/dashboard/webinars");
-  };
-
-  return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="mx-auto max-w-7xl px-6 py-10">
-
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm text-purple-400">Webinars / New</p>
-            <h1 className="text-3xl md:text-5xl font-bold">Create New Webinar</h1>
-            <p className="mt-2 text-gray-400">
-              Build your next AI-powered evergreen webinar funnel in minutes.
-            </p>
-          </div>
-          <Link href="/dashboard">
-            <button className="rounded-xl border border-white/20 px-5 py-3 font-medium hover:border-white/50 transition-colors">
-              ← Back to Dashboard
-            </button>
-          </Link>
-        </div>
-
-        <div className="grid gap-8 lg:grid-cols-2">
-
-          {/* Left: Form */}
-          <div className="max-w-2xl space-y-5">
-
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">Webinar Title</label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. The 3-Step System to Land High-Ticket Clients"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">Niche / Industry</label>
-              <select
-                value={niche}
-                onChange={(e) => setNiche(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[#111] px-4 py-3 text-white focus:outline-none focus:border-purple-500/50"
-              >
-                {NICHES.map((n) => (
-                  <option key={n} value={n}>{NICHE_LABELS[n]}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">
-                Target Audience <span className="text-gray-500">(optional — be specific)</span>
-              </label>
-              <input
-                value={audience}
-                onChange={(e) => setAudience(e.target.value)}
-                placeholder="e.g. Coaches stuck under $10k/month wanting to scale"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">Core Promise</label>
-              <input
-                value={corePromise}
-                onChange={(e) => setCorePromise(e.target.value)}
-                placeholder="e.g. Get more leads without cold outreach"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">Main CTA</label>
-              <input
-                value={cta}
-                onChange={(e) => setCta(e.target.value)}
-                placeholder="e.g. Book a call / Start free trial"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50"
-              />
-            </div>
-
-            {error && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                {error}
-              </div>
-            )}
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                onClick={handleGenerateScript}
-                disabled={generating || creating || !!webinarId}
-                className="w-full bg-purple-600 hover:bg-purple-700 px-6 py-4 rounded-xl font-semibold disabled:opacity-50 transition-colors"
-              >
-                {generating ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                    </svg>
-                    Generating...
-                  </span>
-                ) : webinarId ? "✓ Generated!" : "Generate AI Script"}
-              </button>
-
-              {webinarId ? (
-                <button
-                  onClick={handleOpenEditor}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 px-6 py-4 rounded-xl font-semibold transition-colors"
-                >
-                  Open Editor →
-                </button>
-              ) : (
-                <button
-                  onClick={handleGoToDashboard}
-                  disabled={generating}
-                  className="w-full border border-white/20 hover:border-white/40 px-6 py-4 rounded-xl font-semibold disabled:opacity-50 transition-colors"
-                >
-                  My Webinars →
-                </button>
-              )}
-            </div>
-
-            {webinarId && (
-              <p className="text-xs text-gray-500 text-center">
-                Webinar ID: <span className="font-mono text-gray-400">{webinarId}</span>
-              </p>
-            )}
-          </div>
-
-          {/* Right: Preview */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <h2 className="text-xl font-semibold mb-4">AI Webinar Script Preview</h2>
-            <div className="min-h-[500px] whitespace-pre-wrap text-sm leading-7 text-gray-300">
-              {generating ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-purple-600/20 flex items-center justify-center">
-                    <svg className="animate-spin h-6 w-6 text-purple-400" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                    </svg>
-                  </div>
-                  <p className="text-gray-400 text-sm">Generating your webinar with AI...</p>
-                  <p className="text-gray-600 text-xs">This takes about 15–30 seconds</p>
-                </div>
-              ) : script ? (
-                script
-              ) : (
-                <p className="text-gray-600">
-                  Fill in the form and click &ldquo;Generate AI Script&rdquo; to build your complete
-                  webinar — script, offer stack, CTAs, and timed comments.
-                </p>
-              )}
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </main>
-  );
+    return NextResponse.json({
+      success: true,
+      webinarId: webinar.id,
+    });
+  } catch (error) {
+    console.error("POST /api/webinars/generate error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to generate webinar script",
+      },
+      { status: 500 }
+    );
+  }
 }
