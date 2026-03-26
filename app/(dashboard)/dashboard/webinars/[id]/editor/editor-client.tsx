@@ -3,19 +3,18 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 
-// Types inferred from the prisma include in page.tsx
-type Section = {
-  id: string
-  title: string
-  content: string | null
-  position: number
-}
-
 type Webinar = {
   id: string
   title: string
-  script?: string | null
-  sections: Section[]
+  scriptHook?: string | null
+  scriptPromise?: string | null
+  scriptProblem?: string | null
+  scriptOrigin?: string | null
+  scriptTeaching1?: string | null
+  scriptTeaching2?: string | null
+  scriptTransition?: string | null
+  scriptCTA?: string | null
+  sections: { id: string; title: string; position: number }[]
   ctaSequences: { id: string; triggerTime: number }[]
   timedComments: { id: string; timestamp: number }[]
   offers: { id: string }[]
@@ -23,28 +22,63 @@ type Webinar = {
   objections: { id: string }[]
 }
 
+const SECTIONS = [
+  { key: 'hook',       label: 'Hook',         color: '#3ddc84', placeholder: 'Open with a bold statement or question that grabs attention...' },
+  { key: 'promise',    label: 'Promise',      color: '#60a5fa', placeholder: 'Tell viewers exactly what they will learn or gain today...' },
+  { key: 'problem',    label: 'Problem',      color: '#f59e0b', placeholder: 'Describe the core pain point your audience is experiencing...' },
+  { key: 'origin',     label: 'Origin Story', color: '#f472b6', placeholder: 'Share how you discovered the solution to this problem...' },
+  { key: 'teaching1',  label: 'Teaching 1',   color: '#a78bfa', placeholder: 'First key teaching point or framework...' },
+  { key: 'teaching2',  label: 'Teaching 2',   color: '#34d399', placeholder: 'Second key teaching point or framework...' },
+  { key: 'transition', label: 'Transition',   color: '#fb923c', placeholder: 'Bridge from teaching into your offer naturally...' },
+  { key: 'cta',        label: 'Call to Action', color: '#e879f9', placeholder: 'Clear, compelling call to action with urgency...' },
+] as const
+
+type ScriptKey = typeof SECTIONS[number]['key']
+type ScriptFields = Record<ScriptKey, string>
+
 export default function WebinarEditorClient({ webinar }: { webinar: Webinar }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-
-  // Use existing script content if available, otherwise empty
-  const [script, setScript] = useState<string>(webinar.script ?? '')
-  const [saved, setSaved] = useState(false)
+  const [activeSection, setActiveSection] = useState<ScriptKey>('hook')
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
-  const wordCount = script.trim() ? script.trim().split(/\s+/).length : 0
-  const estimatedMinutes = Math.ceil(wordCount / 130)
+  const [fields, setFields] = useState<ScriptFields>({
+    hook:       webinar.scriptHook       ?? '',
+    promise:    webinar.scriptPromise    ?? '',
+    problem:    webinar.scriptProblem    ?? '',
+    origin:     webinar.scriptOrigin     ?? '',
+    teaching1:  webinar.scriptTeaching1  ?? '',
+    teaching2:  webinar.scriptTeaching2  ?? '',
+    transition: webinar.scriptTransition ?? '',
+    cta:        webinar.scriptCTA        ?? '',
+  })
+
+  const totalWords = Object.values(fields).join(' ').trim().split(/\s+/).filter(Boolean).length
+  const estimatedMinutes = Math.ceil(totalWords / 130)
+  const filledSections = SECTIONS.filter(s => fields[s.key].trim().length > 0).length
 
   async function handleSave() {
     setSaving(true)
     try {
-      await fetch(`/api/webinars/${webinar.id}/script`, {
-        method: 'PATCH',
+      const res = await fetch(`/api/webinars/${webinar.id}/script`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script }),
+        body: JSON.stringify({
+          hook:       fields.hook,
+          promise:    fields.promise,
+          problem:    fields.problem,
+          origin:     fields.origin,
+          teaching1:  fields.teaching1,
+          teaching2:  fields.teaching2,
+          transition: fields.transition,
+          cta:        fields.cta,
+        }),
       })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
+      if (res.ok) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      }
     } catch (err) {
       console.error('Failed to save script', err)
     } finally {
@@ -58,16 +92,19 @@ export default function WebinarEditorClient({ webinar }: { webinar: Webinar }) {
     })
   }
 
+  const activeConfig = SECTIONS.find(s => s.key === activeSection)!
+
   return (
     <div className="flex flex-col h-full min-h-screen bg-[#0d0f0e] text-white">
       {/* Header */}
       <div className="flex items-center justify-between px-10 py-5 border-b border-white/5">
-        <h1 className="text-2xl font-semibold tracking-tight">Webinar Script Editor</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Webinar Script Editor</h1>
+          <p className="text-xs text-white/30 mt-0.5">{webinar.title}</p>
+        </div>
         <div className="flex items-center gap-3">
           {saved && (
-            <span className="text-green-400 text-sm font-medium animate-pulse">
-              ✓ Saved
-            </span>
+            <span className="text-green-400 text-sm font-medium">✓ Saved</span>
           )}
           <button
             onClick={handleSave}
@@ -87,99 +124,127 @@ export default function WebinarEditorClient({ webinar }: { webinar: Webinar }) {
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 overflow-hidden px-10 py-6 gap-6">
-        {/* Editor */}
-        <div className="flex-1 flex flex-col gap-4">
-          {/* Stats bar */}
-          {script.length > 0 && (
-            <div className="flex items-center gap-4 text-xs text-white/30 font-mono">
-              <span>{wordCount} words</span>
-              <span>·</span>
-              <span>~{estimatedMinutes} min read</span>
-              <span>·</span>
-              <span>{script.split('\n').length} lines</span>
-            </div>
-          )}
+      <div className="flex flex-1 overflow-hidden">
 
-          {/* Textarea or empty state */}
-          {script === '' ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-5 border border-white/8 rounded-xl bg-white/[0.02] text-white/40">
-              <div className="text-4xl">✦</div>
-              <p className="text-sm">No script found. Generate one first.</p>
+        {/* Section nav */}
+        <div className="w-52 shrink-0 border-r border-white/5 flex flex-col py-4 gap-1 px-3">
+          <p className="text-xs text-white/25 uppercase tracking-widest font-medium px-2 mb-2">
+            Script Sections
+          </p>
+          {SECTIONS.map(s => {
+            const filled = fields[s.key].trim().length > 0
+            const isActive = activeSection === s.key
+            return (
               <button
-                onClick={() =>
-                  setScript(
-                    `# ${webinar.title}\n\n## Introduction\n\nWelcome everyone...\n\n## Main Content\n\nToday we'll cover...\n\n## Call to Action\n\nHere's how to get started...\n`
-                  )
-                }
-                className="border border-white/15 hover:bg-white/5 text-white/60 hover:text-white px-4 py-2 rounded-lg transition-all text-sm"
+                key={s.key}
+                onClick={() => setActiveSection(s.key)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-all ${
+                  isActive
+                    ? 'bg-white/8 text-white'
+                    : 'text-white/40 hover:text-white/70 hover:bg-white/4'
+                }`}
               >
-                + Start from scratch
+                <div
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ background: filled ? s.color : 'rgba(255,255,255,0.15)' }}
+                />
+                <span>{s.label}</span>
+                {filled && (
+                  <span className="ml-auto text-[10px] text-white/20 font-mono">
+                    {fields[s.key].trim().split(/\s+/).length}w
+                  </span>
+                )}
               </button>
+            )
+          })}
+
+          {/* Stats */}
+          <div className="mt-auto pt-4 border-t border-white/5 px-2 flex flex-col gap-2">
+            <div className="flex justify-between text-xs text-white/25">
+              <span>Total words</span>
+              <span className="font-mono text-white/40">{totalWords}</span>
             </div>
-          ) : (
-            <textarea
-              className="flex-1 bg-white/[0.03] border border-white/8 rounded-xl p-6 text-sm font-mono text-white/80 resize-none outline-none focus:border-green-500/40 transition-colors leading-relaxed"
-              value={script}
-              onChange={(e) => {
-                setScript(e.target.value)
-                setSaved(false)
-              }}
-              placeholder="Start writing your script…"
-              spellCheck
-            />
-          )}
+            <div className="flex justify-between text-xs text-white/25">
+              <span>Est. duration</span>
+              <span className="font-mono text-white/40">{estimatedMinutes} min</span>
+            </div>
+            <div className="flex justify-between text-xs text-white/25">
+              <span>Sections done</span>
+              <span className="font-mono text-white/40">{filledSections}/{SECTIONS.length}</span>
+            </div>
+          </div>
         </div>
 
-        {/* Right panel — webinar info */}
-        <div className="w-56 flex flex-col gap-4 shrink-0">
-          <div className="bg-white/[0.03] border border-white/8 rounded-xl p-4 flex flex-col gap-3">
-            <p className="text-xs text-white/30 uppercase tracking-widest font-medium">Webinar</p>
-            <p className="text-sm text-white/80 font-medium leading-snug">{webinar.title}</p>
+        {/* Editor pane */}
+        <div className="flex-1 flex flex-col p-8 gap-4">
+          {/* Section header */}
+          <div className="flex items-center gap-3">
+            <div
+              className="w-3 h-3 rounded-full"
+              style={{ background: activeConfig.color }}
+            />
+            <h2 className="text-lg font-semibold">{activeConfig.label}</h2>
+            <span className="text-xs text-white/25 font-mono ml-auto">
+              {fields[activeSection].trim()
+                ? `${fields[activeSection].trim().split(/\s+/).length} words`
+                : 'Empty'}
+            </span>
           </div>
 
-          <div className="bg-white/[0.03] border border-white/8 rounded-xl p-4 flex flex-col gap-3">
-            <p className="text-xs text-white/30 uppercase tracking-widest font-medium">Assets</p>
-            <div className="flex flex-col gap-2 text-xs text-white/50">
-              <div className="flex justify-between">
-                <span>Sections</span>
-                <span className="text-white/70 font-mono">{webinar.sections.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>CTAs</span>
-                <span className="text-white/70 font-mono">{webinar.ctaSequences.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Comments</span>
-                <span className="text-white/70 font-mono">{webinar.timedComments.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Offers</span>
-                <span className="text-white/70 font-mono">{webinar.offers.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Objections</span>
-                <span className="text-white/70 font-mono">{webinar.objections.length}</span>
-              </div>
-            </div>
-          </div>
+          {/* Textarea */}
+          <textarea
+            key={activeSection}
+            className="flex-1 bg-white/[0.03] border border-white/8 rounded-xl p-6 text-sm font-mono text-white/80 resize-none outline-none transition-colors leading-relaxed"
+            value={fields[activeSection]}
+            onChange={e => {
+              setFields(prev => ({ ...prev, [activeSection]: e.target.value }))
+              setSaved(false)
+            }}
+            placeholder={activeConfig.placeholder}
+            spellCheck
+            onFocus={e => { e.target.style.borderColor = activeConfig.color + '40' }}
+            onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.08)' }}
+          />
 
-          {webinar.sections.length > 0 && (
-            <div className="bg-white/[0.03] border border-white/8 rounded-xl p-4 flex flex-col gap-3">
-              <p className="text-xs text-white/30 uppercase tracking-widest font-medium">Sections</p>
-              <div className="flex flex-col gap-2">
-                {webinar.sections.map((s, i) => (
-                  <div key={s.id} className="flex items-center gap-2 text-xs text-white/50">
-                    <div
-                      className="w-1.5 h-1.5 rounded-full shrink-0"
-                      style={{ background: ['#3ddc84','#60a5fa','#f59e0b','#f472b6','#a78bfa'][i % 5] }}
-                    />
-                    <span className="truncate">{s.title}</span>
-                  </div>
-                ))}
-              </div>
+          {/* Prev / Next navigation */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => {
+                const idx = SECTIONS.findIndex(s => s.key === activeSection)
+                if (idx > 0) setActiveSection(SECTIONS[idx - 1].key)
+              }}
+              disabled={activeSection === SECTIONS[0].key}
+              className="text-sm text-white/30 hover:text-white/60 disabled:opacity-20 transition-all"
+            >
+              ← Previous
+            </button>
+            <div className="flex gap-1.5">
+              {SECTIONS.map(s => (
+                <div
+                  key={s.key}
+                  onClick={() => setActiveSection(s.key)}
+                  className="w-1.5 h-1.5 rounded-full cursor-pointer transition-all"
+                  style={{
+                    background: activeSection === s.key
+                      ? activeConfig.color
+                      : fields[s.key].trim()
+                      ? 'rgba(255,255,255,0.3)'
+                      : 'rgba(255,255,255,0.1)'
+                  }}
+                />
+              ))}
             </div>
-          )}
+            <button
+              onClick={() => {
+                const idx = SECTIONS.findIndex(s => s.key === activeSection)
+                if (idx < SECTIONS.length - 1) setActiveSection(SECTIONS[idx + 1].key)
+              }}
+              disabled={activeSection === SECTIONS[SECTIONS.length - 1].key}
+              className="text-sm text-white/30 hover:text-white/60 disabled:opacity-20 transition-all"
+            >
+              Next →
+            </button>
+          </div>
         </div>
       </div>
     </div>
