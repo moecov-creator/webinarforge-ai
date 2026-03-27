@@ -22,7 +22,6 @@ export async function POST(req: Request) {
     const script =
       typeof body.script === "string" ? body.script.trim() : "";
 
-    // Get or create the default workspace
     let workspace = await prisma.workspace.findFirst({
       orderBy: { createdAt: "asc" },
       select: { id: true },
@@ -30,15 +29,11 @@ export async function POST(req: Request) {
 
     if (!workspace) {
       workspace = await prisma.workspace.create({
-        data: {
-          name: "Default Workspace",
-          slug: "default-workspace",
-        },
+        data: { name: "Default Workspace", slug: "default-workspace" },
         select: { id: true },
       });
     }
 
-    // Generate a unique slug
     const baseSlug = slugify(title);
     let slug = baseSlug;
     let counter = 1;
@@ -62,17 +57,11 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      webinar,
-    });
+    return NextResponse.json({ success: true, webinar });
   } catch (error) {
     console.error("POST /api/webinars error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to create webinar",
-      },
+      { success: false, error: error instanceof Error ? error.message : "Failed to create webinar" },
       { status: 500 }
     );
   }
@@ -83,18 +72,10 @@ export async function GET() {
     const webinars = await prisma.webinar.findMany({
       orderBy: { createdAt: "desc" },
     });
-
-    return NextResponse.json({
-      success: true,
-      webinars,
-    });
+    return NextResponse.json({ success: true, webinars });
   } catch (error) {
-    console.error("GET /api/webinars error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to fetch webinars",
-      },
+      { success: false, error: error instanceof Error ? error.message : "Failed to fetch webinars" },
       { status: 500 }
     );
   }
