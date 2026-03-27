@@ -18,17 +18,19 @@ analytics AnalyticsEvent[]
 }
 
 model Webinar {
-id String @id @default(cuid())
-title String
-status String @default("DRAFT")
-registrations Int @default(0)
-clicks Int @default(0)
-script String? @db.Text
-workspaceId String
-workspace Workspace @relation(fields: [workspaceId], references: [id])
-createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  title          String
+  slug           String   @unique
+  status         String   @default("DRAFT")
+  registrations  Int      @default(0)
+  clicks         Int      @default(0)
+  script         String?  @db.Text
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt      DateTime @default(now())
 
-analyticsEvents AnalyticsEvent[]
+  analyticsEvents AnalyticsEvent[]
+}
 }
 
 model AnalyticsEvent {
