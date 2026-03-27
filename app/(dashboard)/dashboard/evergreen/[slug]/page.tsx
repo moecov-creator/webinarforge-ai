@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Users, Volume2, VolumeX, Maximize2, SkipForward,
   Play, Pause, PlayCircle, Settings2, BarChart2,
-  ClipboardList, Globe, Plus, Video, MessageSquare,
+  ClipboardList, Globe, Video, MessageSquare,
   Gift, FileText, BarChart, Tag, Code,
 } from "lucide-react";
 import type { TimedCommentDTO, CTASequenceDTO } from "@/types/webinar";
@@ -37,6 +37,13 @@ const MOCK_CTA_SEQUENCES: CTASequenceDTO[] = [
   { id: "4", type: "URGENCY", triggerAt: 4500, headline: "⚡ 3 spots remaining", body: "We limit cohort size for quality. Once these are gone, they're gone.", buttonText: "Secure Your Spot →", buttonUrl: "#checkout", isActive: true, order: 4 },
 ];
 
+// ── Shared types ───────────────────────────────────────────────────
+interface VideoSource {
+  type: "upload" | "youtube" | "vimeo" | "mp4";
+  url: string;       // object URL for upload, external URL for others
+  name: string;      // filename or URL display string
+}
+
 // ── Helpers ────────────────────────────────────────────────────────
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -65,8 +72,48 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   );
 }
 
+// ── Convert YouTube/Vimeo URL to embeddable URL ────────────────────
+function toEmbedUrl(source: VideoSource): string {
+  if (source.type === "youtube") {
+    const match = source.url.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (match) return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0`;
+  }
+  if (source.type === "vimeo") {
+    const match = source.url.match(/vimeo\.com\/(\d+)/);
+    if (match) return `https://player.vimeo.com/video/${match[1]}`;
+  }
+  return source.url;
+}
+
+// ── Video Player component ─────────────────────────────────────────
+function VideoPlayer({ source }: { source: VideoSource | null }) {
+  if (!source) return null;
+
+  if (source.type === "upload" || source.type === "mp4") {
+    return (
+      <video
+        key={source.url}
+        src={source.url}
+        controls
+        className="absolute inset-0 w-full h-full object-contain bg-black"
+      />
+    );
+  }
+
+  // YouTube or Vimeo — use iframe
+  return (
+    <iframe
+      key={source.url}
+      src={toEmbedUrl(source)}
+      className="absolute inset-0 w-full h-full"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowFullScreen
+    />
+  );
+}
+
 // ── Tab: Watch Room ────────────────────────────────────────────────
-function WatchRoomTab() {
+function WatchRoomTab({ videoSource }: { videoSource: VideoSource | null }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -107,26 +154,36 @@ function WatchRoomTab() {
   return (
     <div className="flex-1 flex overflow-hidden">
       <div className="flex-1 flex flex-col">
+        {/* Video area */}
         <div className="flex-1 bg-black relative">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-full gradient-brand flex items-center justify-center mx-auto mb-3 opacity-60">
-                <span className="font-display text-2xl font-bold text-white">JB</span>
+          {videoSource ? (
+            <VideoPlayer source={videoSource} />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-20 h-20 rounded-full gradient-brand flex items-center justify-center mx-auto mb-3 opacity-60">
+                  <span className="font-display text-2xl font-bold text-white">JB</span>
+                </div>
+                <p className="text-white/20 text-sm">Video presentation</p>
+                <p className="text-white/10 text-xs mt-1">Add a video source in Settings → Video</p>
               </div>
-              <p className="text-white/20 text-sm">Video presentation</p>
-              <p className="text-white/10 text-xs mt-1">Connect your video source or use AI narration</p>
             </div>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 p-6">
-            <div className="max-w-2xl mx-auto bg-black/60 backdrop-blur-sm rounded-xl p-5 border border-white/10">
-              <p className="text-xs text-white/40 mb-1 uppercase tracking-wider">Current Section</p>
-              <p className="text-base font-semibold text-white">
-                {currentTime < 300 ? "Opening Hook" : currentTime < 900 ? "The Promise" : currentTime < 1800 ? "Belief Shift 1" : currentTime < 2700 ? "Teaching Point 1" : currentTime < 3600 ? "Offer Stack" : "Call to Action"}
-              </p>
+          )}
+
+          {/* Section overlay — only show when no video */}
+          {!videoSource && (
+            <div className="absolute bottom-0 left-0 right-0 p-6">
+              <div className="max-w-2xl mx-auto bg-black/60 backdrop-blur-sm rounded-xl p-5 border border-white/10">
+                <p className="text-xs text-white/40 mb-1 uppercase tracking-wider">Current Section</p>
+                <p className="text-base font-semibold text-white">
+                  {currentTime < 300 ? "Opening Hook" : currentTime < 900 ? "The Promise" : currentTime < 1800 ? "Belief Shift 1" : currentTime < 2700 ? "Teaching Point 1" : currentTime < 3600 ? "Offer Stack" : "Call to Action"}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
+        {/* CTA popup */}
         {activeCTA && (
           <div className="mx-6 my-3 p-4 rounded-xl bg-gradient-to-r from-purple-500/15 to-blue-500/15 border border-purple-500/25 flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
@@ -141,34 +198,38 @@ function WatchRoomTab() {
           </div>
         )}
 
-        <div className="px-6 py-4 border-t border-white/5 bg-black/20 flex-shrink-0">
-          <div
-            className="h-1 bg-white/10 rounded-full mb-3 cursor-pointer"
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              setCurrentTime(Math.round(((e.clientX - rect.left) / rect.width) * duration));
-            }}
-          >
-            <div className="h-full gradient-brand rounded-full transition-all" style={{ width: `${progress}%` }} />
+        {/* Controls — only for upload/mp4, not iframe embeds */}
+        {(!videoSource || videoSource.type === "upload" || videoSource.type === "mp4") && (
+          <div className="px-6 py-4 border-t border-white/5 bg-black/20 flex-shrink-0">
+            <div
+              className="h-1 bg-white/10 rounded-full mb-3 cursor-pointer"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setCurrentTime(Math.round(((e.clientX - rect.left) / rect.width) * duration));
+              }}
+            >
+              <div className="h-full gradient-brand rounded-full transition-all" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="flex items-center gap-4">
+              <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0" onClick={() => setIsPlaying((p) => !p)}>
+                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              </Button>
+              <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0" onClick={() => setCurrentTime((t) => Math.min(duration, t + 30))}>
+                <SkipForward className="w-4 h-4" />
+              </Button>
+              <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0" onClick={() => setIsMuted((m) => !m)}>
+                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </Button>
+              <span className="text-xs text-white/30 font-mono ml-2">{formatTime(currentTime)} / {formatTime(duration)}</span>
+              <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0 ml-auto">
+                <Maximize2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0" onClick={() => setIsPlaying((p) => !p)}>
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            </Button>
-            <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0" onClick={() => setCurrentTime((t) => Math.min(duration, t + 30))}>
-              <SkipForward className="w-4 h-4" />
-            </Button>
-            <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0" onClick={() => setIsMuted((m) => !m)}>
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </Button>
-            <span className="text-xs text-white/30 font-mono ml-2">{formatTime(currentTime)} / {formatTime(duration)}</span>
-            <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0 ml-auto">
-              <Maximize2 className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
 
+      {/* Chat panel */}
       <div className="w-72 border-l border-white/5 flex flex-col bg-black/20 flex-shrink-0">
         <div className="px-4 py-3 border-b border-white/5">
           <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Live Comments</p>
@@ -198,7 +259,13 @@ function WatchRoomTab() {
 }
 
 // ── Tab: Settings ──────────────────────────────────────────────────
-function SettingsTab() {
+function SettingsTab({
+  videoSource,
+  onVideoSourceChange,
+}: {
+  videoSource: VideoSource | null;
+  onVideoSourceChange: (source: VideoSource | null) => void;
+}) {
   const [activeSection, setActiveSection] = useState("general");
   const [liveChat, setLiveChat] = useState(true);
   const [showBrandLogo, setShowBrandLogo] = useState(true);
@@ -206,17 +273,16 @@ function SettingsTab() {
   const [redirectAfter, setRedirectAfter] = useState(false);
   const [redirectLink, setRedirectLink] = useState("");
   const [chatVisibility, setChatVisibility] = useState("Public");
+  const [sourceType, setSourceType] = useState<"upload" | "youtube" | "vimeo" | "mp4">("upload");
+  const [externalUrl, setExternalUrl] = useState("");
   const [offers, setOffers] = useState<{ id: string; name: string; showAt: number; url: string }[]>([]);
   const [newOffer, setNewOffer] = useState({ name: "", showAt: 2700, url: "" });
   const [chatMessages, setChatMessages] = useState<{ id: string; name: string; message: string; showAt: number }[]>([]);
   const [generatingChat, setGeneratingChat] = useState(false);
-  const [uploadedVideo, setUploadedVideo] = useState<string | null>(null);
-  const [videoSourceType, setVideoSourceType] = useState("Use uploaded video");
-  const [externalUrl, setExternalUrl] = useState("");
 
   const sections = [
     { key: "general", label: "General", icon: Settings2 },
-    { key: "video", label: "Video", icon: Video, badge: uploadedVideo ? "1 VIDEO" : undefined },
+    { key: "video", label: "Video", icon: Video, badge: videoSource ? "1 VIDEO" : undefined },
     { key: "offers", label: "Offers", icon: Gift, badge: offers.length ? `${offers.length} OFFER${offers.length > 1 ? "S" : ""}` : undefined },
     { key: "handouts", label: "Handouts", icon: FileText },
     { key: "polls", label: "Polls", icon: BarChart },
@@ -231,20 +297,14 @@ function SettingsTab() {
     setGeneratingChat(true);
     setTimeout(() => {
       const names = ["Sarah M.", "Marcus T.", "Jennifer K.", "David R.", "Lisa P.", "Kevin W.", "Amanda S.", "Brian L.", "Tiffany N.", "Carlos M."];
-      const locations = ["Orlando, FL", "New York, NY", "Austin, TX", "Chicago, IL", "Miami, FL", "Dallas, TX", "Atlanta, GA", "Seattle, WA"];
       const messages = [
-        "This is exactly what I needed! 🙌",
-        "Taking notes on everything here!",
-        "Wow, this completely changes how I think about this",
-        "Can you say more about that last point?",
-        "This is gold. Pure gold.",
-        "I've been struggling with this for months",
-        "Already seeing how I can apply this",
-        "Question: does this work for beginners too?",
-        "The results speak for themselves 🔥",
-        "Sharing this with my whole team",
-        "This is why I signed up. Amazing content.",
-        `Hello from ${locations[Math.floor(Math.random() * locations.length)]}! So glad I'm here`,
+        "This is exactly what I needed! 🙌", "Taking notes on everything here!",
+        "Wow, this completely changes how I think about this", "Can you say more about that?",
+        "This is gold. Pure gold.", "I've been struggling with this for months",
+        "Already seeing how I can apply this", "Does this work for beginners too?",
+        "The results speak for themselves 🔥", "Sharing this with my whole team",
+        "This is why I signed up!", "Hello from Austin, TX! So excited to be here",
+        "Question: how long does this take to implement?", "Mind blown 🤯",
       ];
       const generated = Array.from({ length: 14 }, (_, i) => ({
         id: String(i),
@@ -255,6 +315,20 @@ function SettingsTab() {
       setChatMessages(generated);
       setGeneratingChat(false);
     }, 1800);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Revoke previous object URL to avoid memory leaks
+    if (videoSource?.type === "upload") URL.revokeObjectURL(videoSource.url);
+    const objectUrl = URL.createObjectURL(file);
+    onVideoSourceChange({ type: "upload", url: objectUrl, name: file.name });
+  };
+
+  const handleExternalUrlSave = () => {
+    if (!externalUrl.trim()) return;
+    onVideoSourceChange({ type: sourceType, url: externalUrl.trim(), name: externalUrl.trim() });
   };
 
   return (
@@ -282,7 +356,7 @@ function SettingsTab() {
         ))}
       </div>
 
-      {/* Content panel */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
 
         {/* ── General ── */}
@@ -326,31 +400,52 @@ function SettingsTab() {
           <div className="max-w-lg space-y-5">
             <h3 className="text-base font-semibold text-white">Video Source</h3>
 
-            <div>
-              <label className="text-xs text-white/40 mb-1 block">Video source type</label>
-              <select
-                value={videoSourceType}
-                onChange={e => setVideoSourceType(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+            {/* Source type selector — two clear options */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setSourceType("upload")}
+                className={`p-4 rounded-xl border-2 transition-all text-left ${
+                  sourceType === "upload"
+                    ? "border-purple-500 bg-purple-500/10"
+                    : "border-white/10 hover:border-white/20 bg-white/3"
+                }`}
               >
-                <option>Use uploaded video</option>
-                <option>YouTube URL</option>
-                <option>Vimeo URL</option>
-                <option>Direct MP4 URL</option>
-              </select>
+                <div className="flex items-center gap-2 mb-1">
+                  <Video className={`w-4 h-4 ${sourceType === "upload" ? "text-purple-400" : "text-white/30"}`} />
+                  <span className={`text-sm font-medium ${sourceType === "upload" ? "text-white" : "text-white/50"}`}>Upload file</span>
+                </div>
+                <p className="text-xs text-white/25 leading-snug">Upload MP4, MOV or WebM directly</p>
+              </button>
+
+              <button
+                onClick={() => setSourceType(sourceType === "upload" ? "youtube" : sourceType)}
+                className={`p-4 rounded-xl border-2 transition-all text-left ${
+                  sourceType !== "upload"
+                    ? "border-purple-500 bg-purple-500/10"
+                    : "border-white/10 hover:border-white/20 bg-white/3"
+                }`}
+                // clicking the URL card defaults to youtube if coming from upload
+                onClickCapture={() => { if (sourceType === "upload") setSourceType("youtube"); }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Globe className={`w-4 h-4 ${sourceType !== "upload" ? "text-purple-400" : "text-white/30"}`} />
+                  <span className={`text-sm font-medium ${sourceType !== "upload" ? "text-white" : "text-white/50"}`}>Use URL</span>
+                </div>
+                <p className="text-xs text-white/25 leading-snug">YouTube, Vimeo, or direct MP4 link</p>
+              </button>
             </div>
 
-            {videoSourceType === "Use uploaded video" ? (
-              <div>
-                <label className="text-xs text-white/40 mb-2 block">Upload video file</label>
+            {/* Upload option */}
+            {sourceType === "upload" && (
+              <div className="space-y-3">
                 <label
                   htmlFor="video-file-input"
                   className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-8 text-center hover:border-purple-500/50 hover:bg-purple-500/5 transition-all cursor-pointer group"
                 >
                   <Video className="w-8 h-8 text-white/20 group-hover:text-purple-400 mx-auto mb-2 transition-colors" />
-                  {uploadedVideo ? (
+                  {videoSource?.type === "upload" ? (
                     <>
-                      <p className="text-sm text-green-400 font-medium">{uploadedVideo}</p>
+                      <p className="text-sm text-green-400 font-medium">{videoSource.name}</p>
                       <p className="text-xs text-white/30 mt-1">Click to change file</p>
                     </>
                   ) : (
@@ -367,40 +462,83 @@ function SettingsTab() {
                   type="file"
                   accept="video/*"
                   className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setUploadedVideo(file.name);
-                  }}
+                  onChange={handleFileUpload}
                 />
 
-                {uploadedVideo && (
-                  <div className="flex items-center gap-3 mt-3 p-3 bg-white/3 border border-white/8 rounded-xl">
+                {videoSource?.type === "upload" && (
+                  <div className="flex items-center gap-3 p-3 bg-white/3 border border-white/8 rounded-xl">
                     <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
                       <Video className="w-4 h-4 text-purple-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{uploadedVideo}</p>
-                      <p className="text-xs text-green-400 font-semibold mt-0.5">SELECTED</p>
+                      <p className="text-sm font-medium text-white truncate">{videoSource.name}</p>
+                      <p className="text-xs text-green-400 font-semibold mt-0.5">SELECTED — ready to play in Watch Room</p>
                     </div>
-                    <button onClick={() => setUploadedVideo(null)} className="text-white/20 hover:text-red-400 text-lg leading-none transition-colors">×</button>
+                    <button
+                      onClick={() => onVideoSourceChange(null)}
+                      className="text-white/20 hover:text-red-400 text-lg leading-none transition-colors"
+                    >×</button>
                   </div>
                 )}
-
-                <p className="text-xs text-blue-400/70 mt-2">
-                  Please note: You must select an uploaded video for it to be viewable. Recently uploaded videos may take several minutes to process.
+                <p className="text-xs text-blue-400/70">
+                  Once selected, switch to the Watch Room tab to preview your video.
                 </p>
               </div>
-            ) : (
-              <div>
-                <label className="text-xs text-white/40 mb-1 block">
-                  {videoSourceType === "YouTube URL" ? "YouTube URL" : videoSourceType === "Vimeo URL" ? "Vimeo URL" : "Direct video URL"}
-                </label>
-                <input
-                  value={externalUrl}
-                  onChange={e => setExternalUrl(e.target.value)}
-                  placeholder={videoSourceType === "YouTube URL" ? "https://youtube.com/watch?v=..." : videoSourceType === "Vimeo URL" ? "https://vimeo.com/..." : "https://example.com/video.mp4"}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500"
-                />
+            )}
+
+            {/* URL option */}
+            {sourceType !== "upload" && (
+              <div className="space-y-3">
+                {/* Sub-type tabs */}
+                <div className="flex gap-1 bg-white/5 rounded-lg p-1">
+                  {(["youtube", "vimeo", "mp4"] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setSourceType(t)}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        sourceType === t ? "bg-purple-600 text-white" : "text-white/30 hover:text-white/60"
+                      }`}
+                    >
+                      {t === "mp4" ? "Direct MP4" : t.charAt(0).toUpperCase() + t.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">
+                    {sourceType === "youtube" ? "YouTube video URL" : sourceType === "vimeo" ? "Vimeo video URL" : "Direct MP4 URL"}
+                  </label>
+                  <input
+                    value={externalUrl}
+                    onChange={e => setExternalUrl(e.target.value)}
+                    placeholder={
+                      sourceType === "youtube" ? "https://youtube.com/watch?v=..."
+                      : sourceType === "vimeo" ? "https://vimeo.com/123456789"
+                      : "https://example.com/video.mp4"
+                    }
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <button
+                  onClick={handleExternalUrlSave}
+                  disabled={!externalUrl.trim()}
+                  className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  Use this video →
+                </button>
+
+                {videoSource && videoSource.type !== "upload" && (
+                  <div className="flex items-center gap-3 p-3 bg-white/3 border border-green-500/20 rounded-xl">
+                    <Globe className="w-4 h-4 text-green-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-white/60 truncate">{videoSource.name}</p>
+                      <p className="text-xs text-green-400 font-semibold mt-0.5">ACTIVE — playing in Watch Room</p>
+                    </div>
+                    <button onClick={() => { onVideoSourceChange(null); setExternalUrl(""); }} className="text-white/20 hover:text-red-400 text-lg leading-none transition-colors">×</button>
+                  </div>
+                )}
+                <p className="text-xs text-blue-400/70">Switch to the Watch Room tab to preview your video.</p>
               </div>
             )}
 
@@ -414,15 +552,11 @@ function SettingsTab() {
         {/* ── Offers ── */}
         {activeSection === "offers" && (
           <div className="max-w-lg space-y-5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-white">Timed Offers</h3>
-            </div>
-
-            {/* Add offer form */}
+            <h3 className="text-base font-semibold text-white">Timed Offers</h3>
             <div className="p-4 bg-white/3 border border-white/8 rounded-xl space-y-3">
               <p className="text-xs text-purple-400 font-medium">+ New offer</p>
               <input value={newOffer.name} onChange={e => setNewOffer(p => ({ ...p, name: e.target.value }))}
-                placeholder="Offer name (e.g. Business Mastermind)"
+                placeholder="Offer name"
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500" />
               <div className="flex gap-2">
                 <div className="flex-1">
@@ -438,39 +572,24 @@ function SettingsTab() {
                 </div>
               </div>
               <button
-                onClick={() => {
-                  if (!newOffer.name) return;
-                  setOffers(prev => [...prev, { ...newOffer, id: Date.now().toString() }]);
-                  setNewOffer({ name: "", showAt: 2700, url: "" });
-                }}
+                onClick={() => { if (!newOffer.name) return; setOffers(p => [...p, { ...newOffer, id: Date.now().toString() }]); setNewOffer({ name: "", showAt: 2700, url: "" }); }}
                 className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors"
-              >
-                Add Offer
-              </button>
+              >Add Offer</button>
             </div>
-
             {offers.length === 0 ? (
               <div className="text-center py-10 border border-dashed border-white/10 rounded-xl">
                 <Gift className="w-8 h-8 text-white/10 mx-auto mb-2" />
                 <p className="text-sm text-white/30">No offers yet</p>
-                <p className="text-xs text-white/20 mt-1">Add timed offers that appear during the webinar</p>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {offers.map(o => (
-                  <div key={o.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-xl">
-                    <div>
-                      <p className="text-sm font-medium text-white">{o.name}</p>
-                      <p className="text-xs text-white/30 mt-0.5">
-                        Shows at {Math.floor(o.showAt / 60)} min {o.showAt % 60}s
-                        {o.url && <> · <span className="text-purple-400/60">{o.url.slice(0, 30)}…</span></>}
-                      </p>
-                    </div>
-                    <button onClick={() => setOffers(p => p.filter(x => x.id !== o.id))} className="text-white/20 hover:text-red-400 text-lg leading-none transition-colors ml-3">×</button>
-                  </div>
-                ))}
+            ) : offers.map(o => (
+              <div key={o.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium text-white">{o.name}</p>
+                  <p className="text-xs text-white/30 mt-0.5">Shows at {Math.floor(o.showAt / 60)}m {o.showAt % 60}s</p>
+                </div>
+                <button onClick={() => setOffers(p => p.filter(x => x.id !== o.id))} className="text-white/20 hover:text-red-400 text-lg leading-none transition-colors ml-3">×</button>
               </div>
-            )}
+            ))}
           </div>
         )}
 
@@ -481,10 +600,8 @@ function SettingsTab() {
             <div className="text-center py-14 border border-dashed border-white/10 rounded-xl">
               <FileText className="w-8 h-8 text-white/10 mx-auto mb-2" />
               <p className="text-sm text-white/30 mb-1">No handouts yet</p>
-              <p className="text-xs text-white/20 mb-4">Add PDFs or resources for attendees to download during the webinar</p>
-              <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors">
-                + Add new handout
-              </button>
+              <p className="text-xs text-white/20 mb-4">Add PDFs or resources for attendees to download</p>
+              <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors">+ Add new handout</button>
             </div>
           </div>
         )}
@@ -497,9 +614,7 @@ function SettingsTab() {
               <BarChart className="w-8 h-8 text-white/10 mx-auto mb-2" />
               <p className="text-sm text-white/30 mb-1">No polls yet</p>
               <p className="text-xs text-white/20 mb-4">Engage attendees with timed poll questions</p>
-              <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors">
-                + Add new poll
-              </button>
+              <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors">+ Add new poll</button>
             </div>
           </div>
         )}
@@ -544,9 +659,7 @@ function SettingsTab() {
               <h3 className="text-base font-semibold text-white">Chat Simulator</h3>
               <div className="flex items-center gap-2">
                 {chatMessages.length > 0 && (
-                  <button onClick={() => setChatMessages([])} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">
-                    Remove all
-                  </button>
+                  <button onClick={() => setChatMessages([])} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remove all</button>
                 )}
                 <button
                   onClick={generateChatMessages}
@@ -559,19 +672,13 @@ function SettingsTab() {
                 </button>
               </div>
             </div>
-
             {chatMessages.length === 0 ? (
               <div className="text-center py-12 border border-dashed border-white/10 rounded-xl">
                 <MessageSquare className="w-8 h-8 text-white/10 mx-auto mb-3" />
                 <p className="text-sm text-white/30 mb-1">No chat messages yet</p>
-                <p className="text-xs text-white/20 mb-4 max-w-xs mx-auto leading-relaxed">
-                  Generate AI chat messages based on your webinar script. They'll appear at key moments during the presentation to simulate live engagement.
-                </p>
-                <button
-                  onClick={generateChatMessages}
-                  disabled={generatingChat}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
-                >
+                <p className="text-xs text-white/20 mb-4 max-w-xs mx-auto leading-relaxed">Generate AI messages based on your script — they appear at key moments to simulate live engagement.</p>
+                <button onClick={generateChatMessages} disabled={generatingChat}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors">
                   {generatingChat ? "Generating..." : "✦ Generate AI Chat Messages"}
                 </button>
               </div>
@@ -580,22 +687,13 @@ function SettingsTab() {
                 {chatMessages.map((m, i) => (
                   <div key={m.id} className="flex items-center justify-between p-3 bg-white/3 border border-white/8 rounded-xl hover:border-white/15 transition-colors group">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-xs font-semibold text-purple-400 shrink-0">
-                        {m.name.charAt(0)}
-                      </div>
+                      <div className="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-xs font-semibold text-purple-400 shrink-0">{m.name.charAt(0)}</div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-white/70 truncate">
-                          {m.name} <span className="text-white/30 font-normal">· {m.message}</span>
-                        </p>
-                        <p className="text-[10px] text-white/25 mt-0.5">
-                          Shows at {Math.floor(m.showAt / 60)}:{String(m.showAt % 60).padStart(2, "0")}
-                        </p>
+                        <p className="text-xs font-medium text-white/70 truncate">{m.name} <span className="text-white/30 font-normal">· {m.message}</span></p>
+                        <p className="text-[10px] text-white/25 mt-0.5">Shows at {Math.floor(m.showAt / 60)}:{String(m.showAt % 60).padStart(2, "0")}</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setChatMessages(p => p.filter((_, j) => j !== i))}
-                      className="text-white/20 hover:text-red-400 text-lg leading-none ml-2 opacity-0 group-hover:opacity-100 transition-all"
-                    >×</button>
+                    <button onClick={() => setChatMessages(p => p.filter((_, j) => j !== i))} className="text-white/20 hover:text-red-400 text-lg leading-none ml-2 opacity-0 group-hover:opacity-100 transition-all">×</button>
                   </div>
                 ))}
               </div>
@@ -623,17 +721,10 @@ function SettingsTab() {
         {activeSection === "labels" && (
           <div className="max-w-lg space-y-5">
             <h3 className="text-base font-semibold text-white">Custom Labels</h3>
-            {[
-              ["Register button text", "REGISTER NOW"],
-              ["Viewer count label", "watching"],
-              ["Chat input placeholder", "Type your message..."],
-              ["Live badge text", "LIVE"],
-              ["CTA button default text", "Get Started →"],
-            ].map(([label, def]) => (
+            {[["Register button text", "REGISTER NOW"], ["Viewer count label", "watching"], ["Chat input placeholder", "Type your message..."], ["Live badge text", "LIVE"], ["CTA button default text", "Get Started →"]].map(([label, def]) => (
               <div key={label}>
                 <label className="text-xs text-white/40 mb-1 block">{label}</label>
-                <input defaultValue={def}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500" />
+                <input defaultValue={def} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500" />
               </div>
             ))}
           </div>
@@ -645,22 +736,16 @@ function SettingsTab() {
             <h3 className="text-base font-semibold text-white">Embed Instructions</h3>
             <div>
               <p className="text-sm text-white/60 mb-2">Step 1: Add this snippet where you want the watch room to appear.</p>
-              <textarea readOnly
-                className="w-full h-24 bg-white/3 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/50 resize-none focus:outline-none"
-                value={`<div id="wf-room"></div>\n<script src="https://webinarforge.ai/embed.js"\n  data-slug="[YOUR_SLUG]">\n</script>`}
-              />
+              <textarea readOnly className="w-full h-24 bg-white/3 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/50 resize-none focus:outline-none"
+                value={`<div id="wf-room"></div>\n<script src="https://webinarforge.ai/embed.js"\n  data-slug="[YOUR_SLUG]">\n</script>`} />
             </div>
             <div>
               <p className="text-sm text-white/60 mb-2">Step 2: Add this once to your page head.</p>
-              <textarea readOnly
-                className="w-full h-14 bg-white/3 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/50 resize-none focus:outline-none"
-                value={`<link rel="stylesheet" href="https://webinarforge.ai/css/room.css">`}
-              />
+              <textarea readOnly className="w-full h-14 bg-white/3 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/50 resize-none focus:outline-none"
+                value={`<link rel="stylesheet" href="https://webinarforge.ai/css/room.css">`} />
             </div>
-            <button
-              onClick={() => navigator.clipboard.writeText('<div id="wf-room"></div>')}
-              className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white/50 hover:bg-white/8 transition-colors"
-            >
+            <button onClick={() => navigator.clipboard.writeText('<div id="wf-room"></div>')}
+              className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white/50 hover:bg-white/8 transition-colors">
               Copy embed code
             </button>
           </div>
@@ -680,7 +765,6 @@ function AnalyticsTab() {
     { label: "CTA Clicks", value: "34", change: "+18%", up: true },
     { label: "Conversion Rate", value: "18%", change: "+3%", up: true },
   ];
-
   const dropOffData = [
     { label: "Hook (0:00)", pct: 100 },
     { label: "Promise (5:00)", pct: 87 },
@@ -690,7 +774,6 @@ function AnalyticsTab() {
     { label: "Offer (45:00)", pct: 43 },
     { label: "CTA (55:00)", pct: 38 },
   ];
-
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -703,7 +786,6 @@ function AnalyticsTab() {
             </div>
           ))}
         </div>
-
         <div className="p-5 rounded-xl bg-white/3 border border-white/8">
           <h3 className="text-sm font-semibold text-white mb-4">Audience Retention</h3>
           <div className="space-y-2.5">
@@ -711,17 +793,13 @@ function AnalyticsTab() {
               <div key={d.label} className="flex items-center gap-3">
                 <span className="text-xs text-white/30 w-32 shrink-0">{d.label}</span>
                 <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{
-                    width: `${d.pct}%`,
-                    background: d.pct > 60 ? "#7C3AED" : d.pct > 40 ? "#9333EA" : "#C026D3"
-                  }} />
+                  <div className="h-full rounded-full transition-all" style={{ width: `${d.pct}%`, background: d.pct > 60 ? "#7C3AED" : d.pct > 40 ? "#9333EA" : "#C026D3" }} />
                 </div>
                 <span className="text-xs text-white/50 w-10 text-right">{d.pct}%</span>
               </div>
             ))}
           </div>
         </div>
-
         <div className="p-5 rounded-xl bg-white/3 border border-white/8">
           <h3 className="text-sm font-semibold text-white mb-4">Recent Registrations</h3>
           <div className="space-y-2">
@@ -733,18 +811,14 @@ function AnalyticsTab() {
             ].map(r => (
               <div key={r.email} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-xs font-semibold text-purple-400">
-                    {r.name.charAt(0)}
-                  </div>
+                  <div className="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-xs font-semibold text-purple-400">{r.name.charAt(0)}</div>
                   <div>
                     <p className="text-xs font-medium text-white/70">{r.name}</p>
                     <p className="text-[10px] text-white/30">{r.email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${r.completed ? "bg-green-500/15 text-green-400" : "bg-white/5 text-white/30"}`}>
-                    {r.completed ? "Completed" : "Watching"}
-                  </span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${r.completed ? "bg-green-500/15 text-green-400" : "bg-white/5 text-white/30"}`}>{r.completed ? "Completed" : "Watching"}</span>
                   <span className="text-[10px] text-white/25">{r.time}</span>
                 </div>
               </div>
@@ -760,56 +834,44 @@ function AnalyticsTab() {
 function RegistrationTab() {
   const [regMode, setRegMode] = useState<"platform" | "embed">("platform");
   const [tyMode, setTyMode] = useState<"platform" | "embed">("platform");
-
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="rounded-xl bg-white/3 border border-white/8 overflow-hidden">
-          <div className="px-6 py-5 border-b border-white/5">
-            <h3 className="text-base font-semibold text-white text-center">Registration page</h3>
-            <div className="flex items-center justify-center gap-4 mt-3">
-              <span className={`text-xs transition-colors ${regMode === "platform" ? "text-white" : "text-white/30"}`}>Build on our platform</span>
-              <Toggle value={regMode === "embed"} onChange={v => setRegMode(v ? "embed" : "platform")} />
-              <span className={`text-xs transition-colors ${regMode === "embed" ? "text-white" : "text-white/30"}`}>Embed on your site</span>
+        {[
+          { title: "Registration page", mode: regMode, setMode: setRegMode },
+          { title: "Thank you page", mode: tyMode, setMode: setTyMode },
+        ].map(({ title, mode, setMode }) => (
+          <div key={title} className="rounded-xl bg-white/3 border border-white/8 overflow-hidden">
+            <div className="px-6 py-5 border-b border-white/5">
+              <h3 className="text-base font-semibold text-white text-center">{title}</h3>
+              <div className="flex items-center justify-center gap-4 mt-3">
+                <span className={`text-xs transition-colors ${mode === "platform" ? "text-white" : "text-white/30"}`}>Build on our platform</span>
+                <Toggle value={mode === "embed"} onChange={v => setMode(v ? "embed" : "platform")} />
+                <span className={`text-xs transition-colors ${mode === "embed" ? "text-white" : "text-white/30"}`}>Embed on your site</span>
+              </div>
             </div>
+            {mode === "embed" ? (
+              <div className="p-8 flex flex-col items-center justify-center min-h-40 cursor-pointer" style={{ background: "linear-gradient(135deg, #4F6EF7, #3451D1)" }}>
+                <h4 className="text-lg font-bold text-white text-center">Embed a widget on your site or funnel</h4>
+                <p className="text-white/60 text-sm mt-2">Click to open embed builder</p>
+                <div className="mt-4 bg-white/10 rounded-lg px-5 py-2 text-white text-sm font-medium hover:bg-white/20 transition-colors">Open embed builder →</div>
+              </div>
+            ) : (
+              <div className="p-8 flex flex-col items-center justify-center min-h-40 cursor-pointer" style={{ background: "linear-gradient(135deg, #059669, #047857)" }}>
+                <h4 className="text-lg font-bold text-white text-center">Build and host your {title.toLowerCase()} on our platform</h4>
+                <p className="text-white/60 text-sm mt-2">Click to open page builder</p>
+                <button className="mt-4 bg-white text-green-700 font-semibold text-sm px-5 py-2 rounded-lg hover:bg-white/90 transition-colors">Open page builder →</button>
+              </div>
+            )}
           </div>
-          {regMode === "embed" ? (
-            <div className="p-8 flex flex-col items-center justify-center min-h-40 cursor-pointer" style={{ background: "linear-gradient(135deg, #4F6EF7, #3451D1)" }}>
-              <h4 className="text-lg font-bold text-white text-center">Embed a registration widget on your site or funnel</h4>
-              <p className="text-white/60 text-sm mt-2">Click to open embed builder</p>
-              <div className="mt-4 bg-white/10 rounded-lg px-5 py-2 text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-pointer">Open embed builder →</div>
-            </div>
-          ) : (
-            <div className="p-8 flex flex-col items-center justify-center min-h-40 cursor-pointer" style={{ background: "linear-gradient(135deg, #059669, #047857)" }}>
-              <h4 className="text-lg font-bold text-white text-center">Build and host your registration page on our platform</h4>
-              <p className="text-white/60 text-sm mt-2">Click to open page builder</p>
-              <button className="mt-4 bg-white text-green-700 font-semibold text-sm px-5 py-2 rounded-lg hover:bg-white/90 transition-colors">Open page builder →</button>
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-xl bg-white/3 border border-white/8 overflow-hidden">
-          <div className="px-6 py-5 border-b border-white/5">
-            <h3 className="text-base font-semibold text-white text-center">Thank you page</h3>
-            <div className="flex items-center justify-center gap-4 mt-3">
-              <span className={`text-xs transition-colors ${tyMode === "platform" ? "text-white" : "text-white/30"}`}>Build on our platform</span>
-              <Toggle value={tyMode === "embed"} onChange={v => setTyMode(v ? "embed" : "platform")} />
-              <span className={`text-xs transition-colors ${tyMode === "embed" ? "text-white" : "text-white/30"}`}>Embed on your site</span>
-            </div>
-          </div>
-          <div className="p-8 flex flex-col items-center justify-center min-h-40 cursor-pointer" style={{ background: "linear-gradient(135deg, #059669, #047857)" }}>
-            <h4 className="text-lg font-bold text-white text-center">Build and host your thank you page on our platform</h4>
-            <p className="text-white/60 text-sm mt-2">Click to open page builder</p>
-            <button className="mt-4 bg-white text-green-700 font-semibold text-sm px-5 py-2 rounded-lg hover:bg-white/90 transition-colors">Open page builder →</button>
-          </div>
-        </div>
+        ))}
 
         <div className="rounded-xl bg-white/3 border border-white/8 p-6">
           <h3 className="text-sm font-semibold text-white mb-4">Registration form preview</h3>
           <div className="bg-white rounded-xl p-6 max-w-sm mx-auto shadow-xl">
             <p className="text-xs text-gray-500 text-center mb-1">Next session in:</p>
             <div className="flex justify-center gap-4 mb-4">
-              {[["0", "days"], ["0", "hours"], ["13", "minutes"], ["57", "seconds"]].map(([n, l]) => (
+              {[["0","days"],["0","hours"],["13","minutes"],["57","seconds"]].map(([n,l]) => (
                 <div key={l} className="text-center">
                   <p className="text-2xl font-bold text-gray-900">{n}</p>
                   <p className="text-xs text-gray-400">{l}</p>
@@ -839,6 +901,9 @@ export default function EvergreenRoomPage() {
   const [viewerCount, setViewerCount] = useState(MOCK_WEBINAR.viewerCountMin);
   const [saved, setSaved] = useState(false);
 
+  // ── Lifted video state — shared between Watch Room and Settings ──
+  const [videoSource, setVideoSource] = useState<VideoSource | null>(null);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setViewerCount(prev => {
@@ -848,6 +913,13 @@ export default function EvergreenRoomPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Clean up object URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (videoSource?.type === "upload") URL.revokeObjectURL(videoSource.url);
+    };
+  }, [videoSource]);
 
   return (
     <div className="h-screen bg-[#06060f] flex flex-col overflow-hidden">
@@ -885,7 +957,7 @@ export default function EvergreenRoomPage() {
           </button>
         ))}
         <div className="ml-auto flex items-center gap-2 py-2">
-          {saved && <span className="text-green-400 text-xs font-medium">✓ Saved</span>}
+          {saved && <span className="text-green-400 text-xs font-medium animate-in fade-in">✓ Saved</span>}
           <button
             onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 3000); }}
             className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition-colors"
@@ -902,8 +974,13 @@ export default function EvergreenRoomPage() {
 
       {/* Tab content */}
       <div className="flex-1 flex overflow-hidden">
-        {activeTab === "watch" && <WatchRoomTab />}
-        {activeTab === "settings" && <SettingsTab />}
+        {activeTab === "watch" && <WatchRoomTab videoSource={videoSource} />}
+        {activeTab === "settings" && (
+          <SettingsTab
+            videoSource={videoSource}
+            onVideoSourceChange={setVideoSource}
+          />
+        )}
         {activeTab === "analytics" && <AnalyticsTab />}
         {activeTab === "registration" && <RegistrationTab />}
       </div>
