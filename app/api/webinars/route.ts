@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-") || "untitled-webinar";
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -29,10 +38,26 @@ export async function POST(req: Request) {
       });
     }
 
+    // Generate a unique slug
+    const baseSlug = slugify(title);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+      const existing = await prisma.webinar.findFirst({
+        where: { slug },
+        select: { id: true },
+      });
+      if (!existing) break;
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
     const webinar = await prisma.webinar.create({
       data: {
         workspaceId: workspace.id,
         title,
+        slug,
         script,
       },
     });
