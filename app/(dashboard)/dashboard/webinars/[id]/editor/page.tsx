@@ -18,14 +18,6 @@ export default async function WebinarEditorPage({
 
   const webinar = await prisma.webinar.findUnique({
     where: { id },
-    include: {
-      sections: { orderBy: { position: "asc" } },
-      ctaSequences: { orderBy: { triggerTime: "asc" } },
-      timedComments: { orderBy: { timestamp: "asc" } },
-      offers: true,
-      bonuses: true,
-      objections: true,
-    },
   });
 
   if (!webinar) redirect("/dashboard/webinars");
