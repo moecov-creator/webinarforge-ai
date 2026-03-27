@@ -23,18 +23,19 @@ const MOCK_WEBINAR = {
 };
 
 const MOCK_TIMED_COMMENTS: TimedCommentDTO[] = [
-  { id: "1", type: "SOCIAL_PROOF", authorName: "Sarah M.", authorAvatar: null, content: "This is exactly what I needed! Taking notes 📝", triggerAt: 30, isActive: true, order: 1 },
-  { id: "2", type: "FAQ", authorName: "Marcus T.", authorAvatar: null, content: "Question: Does this work if you're just starting out?", triggerAt: 120, isActive: true, order: 2 },
-  { id: "3", type: "MODERATOR", authorName: "Jordan Blake", authorAvatar: null, content: "Great question Marcus — yes, we cover this in step 2!", triggerAt: 135, isActive: true, order: 3 },
-  { id: "4", type: "TESTIMONIAL", authorName: "Jennifer K.", authorAvatar: null, content: "I applied this and went from $3k to $22k months. Life changing.", triggerAt: 240, isActive: true, order: 4 },
-  { id: "5", type: "URGENCY", authorName: "System", authorAvatar: null, content: "🔥 67 people are watching right now", triggerAt: 360, isActive: true, order: 5 },
-  { id: "6", type: "CTA_REMINDER", authorName: "Jordan Blake", authorAvatar: null, content: "Enrollment is open! The link is below 👇", triggerAt: 600, isActive: true, order: 6 },
+  { id: "1", type: "SOCIAL_PROOF",  authorName: "Sarah M.",     authorAvatar: null, content: "This is exactly what I needed! Taking notes 📝",                          triggerAt: 0.07, isActive: true, order: 1 },
+  { id: "2", type: "FAQ",           authorName: "Marcus T.",    authorAvatar: null, content: "Question: Does this work if you're just starting out?",                   triggerAt: 0.20, isActive: true, order: 2 },
+  { id: "3", type: "MODERATOR",     authorName: "Jordan Blake", authorAvatar: null, content: "Great question Marcus — yes, we cover this in step 2!",                   triggerAt: 0.22, isActive: true, order: 3 },
+  { id: "4", type: "TESTIMONIAL",   authorName: "Jennifer K.",  authorAvatar: null, content: "I applied this and went from $3k to $22k months. Life changing.",         triggerAt: 0.40, isActive: true, order: 4 },
+  { id: "5", type: "URGENCY",       authorName: "System",       authorAvatar: null, content: "🔥 67 people are watching right now",                                     triggerAt: 0.55, isActive: true, order: 5 },
+  { id: "6", type: "CTA_REMINDER",  authorName: "Jordan Blake", authorAvatar: null, content: "Enrollment is open! The link is below 👇",                               triggerAt: 0.88, isActive: true, order: 6 },
 ];
+// triggerAt is a 0–1 fraction of video duration — resolved at runtime
 
 const MOCK_CTA_SEQUENCES: CTASequenceDTO[] = [
-  { id: "1", type: "SOFT", triggerAt: 90, headline: "Stay with me...", body: "The most important part is coming up.", buttonText: "Keep watching", buttonUrl: null, isActive: true, order: 1 },
-  { id: "2", type: "MID", triggerAt: 300, headline: "Ready to implement this?", body: "The Business Acceleration Mastermind gives you everything you need.", buttonText: "Tell me more →", buttonUrl: "#checkout", isActive: true, order: 2 },
-  { id: "3", type: "FINAL", triggerAt: 540, headline: "This is your moment.", body: "Everything we covered today is waiting for you.", buttonText: "Claim Your Spot →", buttonUrl: "#checkout", isActive: true, order: 3 },
+  { id: "1", type: "SOFT",    triggerAt: 0.15, headline: "Stay with me...",          body: "The most important part is coming up.",                                     buttonText: "Keep watching",      buttonUrl: null,       isActive: true, order: 1 },
+  { id: "2", type: "MID",     triggerAt: 0.50, headline: "Ready to implement this?", body: "The Business Acceleration Mastermind gives you everything you need.",      buttonText: "Tell me more →",     buttonUrl: "#checkout", isActive: true, order: 2 },
+  { id: "3", type: "FINAL",   triggerAt: 0.85, headline: "This is your moment.",     body: "Everything we covered today is waiting for you.",                          buttonText: "Claim Your Spot →",  buttonUrl: "#checkout", isActive: true, order: 3 },
 ];
 
 // ── Chat simulator data ────────────────────────────────────────────
@@ -50,8 +51,8 @@ const FIRST_NAMES = [
   "Trevor","Evan","Sean","Aaron","Adam","Nathan","Justin","Bryan","Jeremy","Eric",
   "Monica","Tiffany","Jasmine","Keisha","Latoya","Brianna","Destiny","Crystal","Alexis","Shaniqua",
 ];
-const LAST_NAMES_SHORT = ["M.","K.","T.","R.","B.","W.","J.","H.","C.","D.","L.","P.","S.","N.","F.","G."];
-const LAST_NAMES_FULL = [
+const LAST_SHORT = ["M.","K.","T.","R.","B.","W.","J.","H.","C.","D.","L.","P.","S.","N.","F.","G."];
+const LAST_FULL  = [
   "Johnson","Williams","Brown","Jones","Garcia","Miller","Davis","Wilson","Anderson","Taylor",
   "Thomas","Jackson","White","Harris","Martin","Thompson","Robinson","Clark","Lewis","Walker",
   "Howard","Young","Allen","King","Wright","Scott","Green","Baker","Adams","Nelson",
@@ -78,13 +79,13 @@ const CITIES = [
 type CueType = "type1"|"dropCity"|"react"|"question"|"testimonial"|"general"|"joining";
 
 const CUE_RESPONSES: Record<CueType,(city:string)=>string[]> = {
-  type1: (city) => ["1","1️⃣","1 ✅","1 👍","1!","1 — makes total sense",`1 from ${city}`,"1 🙌","1 absolutely","1 yes!!","1 — been waiting for this","1 👊","YES 1","Definitely 1","1 no doubt","typing 1 rn","1 — mind blown","1 💯"],
-  dropCity: (city) => [city,`${city} 👋`,`Joining from ${city}!`,`Hello from ${city}`,`${city} in the house!`,`Watching from ${city} 🙌`,`${city} represent!`,`Live from ${city}`,`${city} here!`,`Greetings from ${city} 👏`,`${city} checking in!`,`Hey from ${city}`,`${city} 🌍`],
-  react: (_) => ["🔥🔥🔥","This is insane!","Mind blown 🤯","Taking notes!","This changes everything","WOW","🙌🙌🙌","Gold right here 💰","Incredible value!","This is exactly what I needed","YESSS","👏👏👏","Screenshotting this!","This is the missing piece","💯💯💯","🚀🚀","Pausing to take notes 📝"],
-  question: (_) => ["Does this work for beginners?","How long does this take?","Can I use this for B2B?","What's the fastest way to start?","Is there a template?","How do you handle objections?","What software do you recommend?","How many hours per week?","What's the investment?","Is there a community?","Can I do this part-time?","How soon can I see results?","Do you offer coaching?","Is this recorded?","Where do we sign up?"],
-  testimonial: (_) => ["I tried this last month and got 3 new clients! 🎉","This method got me to $10k/month in 60 days","Applied this and closed a $5k deal same week","Went from 0 to 4 clients using exactly this","This is how I replaced my 9-5. Life changing.","$22k in revenue last month using this exact system","Finally broke 6 figures following these steps 🙏","This is the real deal. I'm living proof.","Best investment I ever made was learning this"],
-  general: (city) => ["So glad I showed up today!","This is better than I expected","Taking tons of notes 📓","Sharing this with my team",`Watching from ${city} — loving every minute`,"This should cost way more","Been struggling with this for months. Finally clarity.","I needed to hear this today 🙏","Pure value 💎","Telling everyone I know about this","This is the most practical advice I've heard all year"],
-  joining: (city) => [`Just joined from ${city}!`,`Hello everyone from ${city} 👋`,`Jumping in late from ${city}`,`${city} just arrived!`,`Made it! Joining from ${city}`,`Hey everyone! ${city} here`,`Just got in — watching from ${city}`,`${city} checking in 🙋`,`${city} is in the building!`,`Finally here from ${city}`],
+  type1:       (city) => ["1","1️⃣","1 ✅","1 👍","1!","1 — makes total sense",`1 from ${city}`,"1 🙌","1 absolutely","1 yes!!","1 — been waiting for this","1 👊","YES 1","Definitely 1","1 no doubt","typing 1 rn","1 — mind blown","1 💯"],
+  dropCity:    (city) => [city,`${city} 👋`,`Joining from ${city}!`,`Hello from ${city}`,`${city} in the house!`,`Watching from ${city} 🙌`,`${city} represent!`,`Live from ${city}`,`${city} here!`,`Greetings from ${city} 👏`,`${city} checking in!`,`Hey from ${city}`,`${city} 🌍`],
+  react:       (_)    => ["🔥🔥🔥","This is insane!","Mind blown 🤯","Taking notes!","This changes everything","WOW","🙌🙌🙌","Gold right here 💰","Incredible value!","This is exactly what I needed","YESSS","👏👏👏","Screenshotting this!","This is the missing piece","💯💯💯","🚀🚀","Pausing to take notes 📝"],
+  question:    (_)    => ["Does this work for beginners?","How long does this take?","Can I use this for B2B?","What's the fastest way to start?","Is there a template?","How do you handle objections?","What software do you recommend?","How many hours per week?","What's the investment?","Is there a community?","Can I do this part-time?","How soon can I see results?","Do you offer coaching?","Is this recorded?","Where do we sign up?"],
+  testimonial: (_)    => ["I tried this last month and got 3 new clients! 🎉","This method got me to $10k/month in 60 days","Applied this and closed a $5k deal same week","Went from 0 to 4 clients using exactly this","This is how I replaced my 9-5. Life changing.","$22k in revenue last month using this exact system","Finally broke 6 figures following these steps 🙏","This is the real deal. I'm living proof.","Best investment I ever made was learning this"],
+  general:     (city) => ["So glad I showed up today!","This is better than I expected","Taking tons of notes 📓","Sharing this with my team",`Watching from ${city} — loving every minute`,"This should cost way more","Been struggling with this for months. Finally clarity.","I needed to hear this today 🙏","Pure value 💎","Telling everyone I know about this","This is the most practical advice I've heard all year"],
+  joining:     (city) => [`Just joined from ${city}!`,`Hello everyone from ${city} 👋`,`Jumping in late from ${city}`,`${city} just arrived!`,`Made it! Joining from ${city}`,`Hey everyone! ${city} here`,`Just got in — watching from ${city}`,`${city} checking in 🙋`,`${city} is in the building!`,`Finally here from ${city}`],
 };
 
 interface SimChat {
@@ -92,52 +93,78 @@ interface SimChat {
   name: string;
   city: string;
   message: string;
-  showAt: number;
+  showAt: number;   // absolute seconds — set when generated with real duration
+  showAtFrac: number; // 0–1 fraction of total duration
   cueType: CueType;
 }
 
 function randomName(seed: number): string {
   const first = FIRST_NAMES[seed % FIRST_NAMES.length];
   const fmt = seed % 5;
-  if (fmt===0) return `${first} ${LAST_NAMES_SHORT[seed%LAST_NAMES_SHORT.length]}`;
-  if (fmt===1) return `${first} ${LAST_NAMES_FULL[seed%LAST_NAMES_FULL.length]}`;
-  if (fmt===2) return `${first}${LAST_NAMES_FULL[seed%LAST_NAMES_FULL.length].charAt(0)}`;
-  if (fmt===3) return `${first.slice(0,3)}${LAST_NAMES_FULL[(seed+3)%LAST_NAMES_FULL.length].slice(0,3)}`;
-  return `${first} ${LAST_NAMES_SHORT[(seed+7)%LAST_NAMES_SHORT.length]}`;
+  if (fmt===0) return `${first} ${LAST_SHORT[seed%LAST_SHORT.length]}`;
+  if (fmt===1) return `${first} ${LAST_FULL[seed%LAST_FULL.length]}`;
+  if (fmt===2) return `${first}${LAST_FULL[seed%LAST_FULL.length].charAt(0)}`;
+  if (fmt===3) return `${first.slice(0,3)}${LAST_FULL[(seed+3)%LAST_FULL.length].slice(0,3)}`;
+  return `${first} ${LAST_SHORT[(seed+7)%LAST_SHORT.length]}`;
 }
 
-function generateSimChats(): SimChat[] {
-  // Cues scaled to first 750 seconds (12.5 min) so chat fires quickly for testing
-  const cues: {time:number;type:CueType;burst:number;spread:number}[] = [
-    {time:5,   type:"joining",    burst:12, spread:25},
-    {time:40,  type:"dropCity",   burst:16, spread:60},
-    {time:80,  type:"react",      burst:8,  spread:30},
-    {time:100, type:"type1",      burst:20, spread:45},
-    {time:160, type:"question",   burst:6,  spread:40},
-    {time:200, type:"react",      burst:9,  spread:30},
-    {time:230, type:"type1",      burst:18, spread:45},
-    {time:280, type:"testimonial",burst:5,  spread:60},
-    {time:320, type:"react",      burst:8,  spread:30},
-    {time:370, type:"general",    burst:6,  spread:50},
-    {time:400, type:"type1",      burst:16, spread:45},
-    {time:450, type:"question",   burst:5,  spread:40},
-    {time:490, type:"react",      burst:9,  spread:30},
-    {time:530, type:"type1",      burst:14, spread:45},
-    {time:580, type:"testimonial",burst:5,  spread:60},
-    {time:620, type:"general",    burst:7,  spread:50},
-  ];
+// Cue positions as fractions 0–1 of total duration
+const CUE_TEMPLATES: {frac:number;type:CueType;burst:number;spread:number}[] = [
+  {frac:0.01, type:"joining",     burst:14, spread:0.015},
+  {frac:0.06, type:"dropCity",    burst:16, spread:0.025},
+  {frac:0.12, type:"react",       burst:8,  spread:0.015},
+  {frac:0.16, type:"type1",       burst:20, spread:0.020},
+  {frac:0.24, type:"question",    burst:6,  spread:0.018},
+  {frac:0.30, type:"react",       burst:9,  spread:0.015},
+  {frac:0.36, type:"type1",       burst:18, spread:0.020},
+  {frac:0.42, type:"testimonial", burst:5,  spread:0.025},
+  {frac:0.48, type:"react",       burst:8,  spread:0.015},
+  {frac:0.54, type:"general",     burst:6,  spread:0.020},
+  {frac:0.60, type:"type1",       burst:16, spread:0.020},
+  {frac:0.66, type:"question",    burst:5,  spread:0.018},
+  {frac:0.72, type:"react",       burst:9,  spread:0.015},
+  {frac:0.78, type:"type1",       burst:14, spread:0.020},
+  {frac:0.84, type:"testimonial", burst:5,  spread:0.025},
+  {frac:0.90, type:"general",     burst:7,  spread:0.020},
+];
+
+function generateSimChats(durationSeconds: number): SimChat[] {
   const chats: SimChat[] = [];
   let id = 0;
-  cues.forEach(cue => {
-    for (let i=0;i<cue.burst;i++) {
-      const seed = id*7+i*13;
-      const city = CITIES[seed%CITIES.length];
+  CUE_TEMPLATES.forEach(cue => {
+    const baseTime = cue.frac * durationSeconds;
+    const spreadSecs = cue.spread * durationSeconds;
+    for (let i=0; i<cue.burst; i++) {
+      const seed = id*7 + i*13;
+      const city = CITIES[seed % CITIES.length];
       const responses = CUE_RESPONSES[cue.type](city);
-      const jitter = Math.floor((i/cue.burst)*cue.spread)+Math.floor(Math.random()*8);
-      chats.push({id:String(id++),name:randomName(seed),city,message:responses[(seed+i)%responses.length],showAt:cue.time+jitter,cueType:cue.type});
+      const jitterFrac = (i / cue.burst);
+      const jitterRand = Math.random() * 0.3;
+      const showAt = Math.min(
+        baseTime + (jitterFrac + jitterRand) * spreadSecs,
+        durationSeconds - 10
+      );
+      const showAtFrac = showAt / durationSeconds;
+      chats.push({
+        id: String(id++),
+        name: randomName(seed),
+        city,
+        message: responses[(seed+i) % responses.length],
+        showAt: Math.round(showAt),
+        showAtFrac,
+        cueType: cue.type,
+      });
     }
   });
-  return chats.sort((a,b)=>a.showAt-b.showAt);
+  return chats.sort((a,b) => a.showAt - b.showAt);
+}
+
+// Rescale existing chats to a new duration (when duration changes)
+function rescaleSimChats(chats: SimChat[], newDuration: number): SimChat[] {
+  return chats.map(c => ({
+    ...c,
+    showAt: Math.round(c.showAtFrac * newDuration),
+  })).sort((a,b) => a.showAt - b.showAt);
 }
 
 // ── Shared types ───────────────────────────────────────────────────
@@ -149,8 +176,11 @@ interface VideoSource {
 
 // ── Helpers ────────────────────────────────────────────────────────
 function formatTime(s: number): string {
-  const m = Math.floor(s/60);
-  return `${m}:${(s%60).toString().padStart(2,"0")}`;
+  const h = Math.floor(s/3600);
+  const m = Math.floor((s%3600)/60);
+  const sec = s%60;
+  if (h>0) return `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+  return `${m}:${String(sec).padStart(2,"0")}`;
 }
 function getCommentColor(type: string) {
   switch(type){case "TESTIMONIAL":return "text-yellow-400";case "URGENCY":return "text-red-400";case "CTA_REMINDER":return "text-purple-400";case "MODERATOR":return "text-blue-400";default:return "text-white/70";}
@@ -161,7 +191,7 @@ function getCueColor(cue: CueType) {
 function Toggle({value,onChange}:{value:boolean;onChange:(v:boolean)=>void}) {
   return (
     <button onClick={()=>onChange(!value)} className={`relative w-10 h-5 rounded-full transition-colors ${value?"bg-blue-600":"bg-white/10"}`}>
-      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${value?"translate-x-5":""}`} />
+      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${value?"translate-x-5":""}`}/>
     </button>
   );
 }
@@ -170,51 +200,53 @@ function toEmbedUrl(src: VideoSource): string {
   if(src.type==="vimeo"){const m=src.url.match(/vimeo\.com\/(\d+)/);if(m)return `https://player.vimeo.com/video/${m[1]}`;}
   return src.url;
 }
-
-// ── Storage helpers ────────────────────────────────────────────────
-function saveVideoSource(slug: string, src: VideoSource|null) {
-  if (!src || src.type==="upload") {
-    localStorage.removeItem(`wf-video-${slug}`);
-  } else {
-    localStorage.setItem(`wf-video-${slug}`, JSON.stringify(src));
-  }
-}
-function loadVideoSource(slug: string): VideoSource|null {
-  try {
-    const raw = localStorage.getItem(`wf-video-${slug}`);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-function saveSimChats(slug: string, chats: SimChat[]) {
-  try { localStorage.setItem(`wf-chats-${slug}`, JSON.stringify(chats)); } catch {}
-}
-function loadSimChats(slug: string): SimChat[] {
-  try { const raw=localStorage.getItem(`wf-chats-${slug}`);return raw?JSON.parse(raw):[]; } catch { return []; }
-}
+function saveLS(key:string,val:unknown){try{localStorage.setItem(key,JSON.stringify(val));}catch{}}
+function loadLS<T>(key:string,fallback:T):T{try{const r=localStorage.getItem(key);return r?JSON.parse(r):fallback;}catch{return fallback;}}
 
 // ── Video Player ───────────────────────────────────────────────────
-function VideoPlayer({source,videoRef}:{source:VideoSource|null;videoRef?:React.RefObject<HTMLVideoElement>}) {
+function VideoPlayer({source,videoRef,onDuration}:{source:VideoSource|null;videoRef?:React.RefObject<HTMLVideoElement>;onDuration?:(d:number)=>void}) {
   if(!source) return null;
   if(source.type==="upload"||source.type==="mp4") {
-    return <video ref={videoRef} key={source.url} src={source.url} controls className="absolute inset-0 w-full h-full object-contain bg-black" />;
+    return (
+      <video
+        ref={videoRef}
+        key={source.url}
+        src={source.url}
+        controls
+        className="absolute inset-0 w-full h-full object-contain bg-black"
+        onLoadedMetadata={e=>{
+          const d=Math.floor((e.target as HTMLVideoElement).duration);
+          if(d>0) onDuration?.(d);
+        }}
+      />
+    );
   }
-  return <iframe key={source.url} src={toEmbedUrl(source)} className="absolute inset-0 w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />;
+  return (
+    <iframe key={source.url} src={toEmbedUrl(source)} className="absolute inset-0 w-full h-full"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen/>
+  );
 }
 
 // ── Watch Room Tab ────────────────────────────────────────────────
-function WatchRoomTab({videoSource,simChats}:{videoSource:VideoSource|null;simChats:SimChat[]}) {
-  const [currentTime,setCurrentTime]=useState(0);
-  const [isPlaying,setIsPlaying]=useState(false);
-  const [isMuted,setIsMuted]=useState(false);
-  const [visibleComments,setVisibleComments]=useState<TimedCommentDTO[]>([]);
-  const [visibleSim,setVisibleSim]=useState<SimChat[]>([]);
-  const [activeCTA,setActiveCTA]=useState<CTASequenceDTO|null>(null);
-  const chatEndRef=useRef<HTMLDivElement>(null);
-  const videoRef=useRef<HTMLVideoElement>(null);
-  const timerRef=useRef<NodeJS.Timeout>();
-  const duration=MOCK_WEBINAR.durationSeconds;
+function WatchRoomTab({
+  videoSource, simChats, videoDuration, onVideoDuration,
+}:{
+  videoSource:VideoSource|null;
+  simChats:SimChat[];
+  videoDuration:number;
+  onVideoDuration:(d:number)=>void;
+}) {
+  const [currentTime,setCurrentTime] = useState(0);
+  const [isPlaying,setIsPlaying]     = useState(false);
+  const [isMuted,setIsMuted]         = useState(false);
+  const [visibleComments,setVisibleComments] = useState<TimedCommentDTO[]>([]);
+  const [visibleSim,setVisibleSim]           = useState<SimChat[]>([]);
+  const [activeCTA,setActiveCTA]             = useState<CTASequenceDTO|null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const videoRef   = useRef<HTMLVideoElement>(null);
+  const timerRef   = useRef<NodeJS.Timeout>();
 
-  // Sync time from real video
+  // Sync time from real video element
   useEffect(()=>{
     const tick=setInterval(()=>{
       if(videoRef.current&&!videoRef.current.paused) {
@@ -224,35 +256,42 @@ function WatchRoomTab({videoSource,simChats}:{videoSource:VideoSource|null;simCh
     return ()=>clearInterval(tick);
   },[]);
 
-  // Mock timer (when no video uploaded)
+  // Mock timer when no video
   useEffect(()=>{
     if(videoSource) return;
-    if(isPlaying) {
+    if(isPlaying){
       timerRef.current=setInterval(()=>{
-        setCurrentTime(t=>{if(t+1>=duration){setIsPlaying(false);return duration;}return t+1;});
+        setCurrentTime(t=>{if(t+1>=videoDuration){setIsPlaying(false);return videoDuration;}return t+1;});
       },1000);
     } else { clearInterval(timerRef.current); }
     return ()=>clearInterval(timerRef.current);
-  },[isPlaying,duration,videoSource]);
+  },[isPlaying,videoDuration,videoSource]);
 
-  // Fire comments
+  // Resolve fractional triggerAt for mock comments
+  const resolvedComments = MOCK_TIMED_COMMENTS.map(c=>({
+    ...c, triggerAt: Math.round(c.triggerAt * videoDuration)
+  }));
+
+  // Resolve fractional triggerAt for CTAs
+  const resolvedCTAs = MOCK_CTA_SEQUENCES.map(c=>({
+    ...c, triggerAt: Math.round(c.triggerAt * videoDuration)
+  }));
+
   useEffect(()=>{
-    const triggered=MOCK_TIMED_COMMENTS.filter(c=>c.isActive&&c.triggerAt<=currentTime&&!visibleComments.find(v=>v.id===c.id));
+    const triggered=resolvedComments.filter(c=>c.isActive&&c.triggerAt<=currentTime&&!visibleComments.find(v=>v.id===c.id));
     if(triggered.length>0) setVisibleComments(p=>[...p,...triggered]);
-  },[currentTime]);
+  },[currentTime,videoDuration]);
 
-  // Fire sim chats
   useEffect(()=>{
     if(!simChats.length) return;
     const triggered=simChats.filter(c=>c.showAt<=currentTime&&!visibleSim.find(v=>v.id===c.id));
     if(triggered.length>0) setVisibleSim(p=>[...p,...triggered]);
   },[currentTime,simChats]);
 
-  // CTAs
   useEffect(()=>{
-    const t=[...MOCK_CTA_SEQUENCES].reverse().find(c=>c.isActive&&c.triggerAt<=currentTime);
+    const t=[...resolvedCTAs].reverse().find(c=>c.isActive&&c.triggerAt<=currentTime);
     setActiveCTA(t??null);
-  },[currentTime]);
+  },[currentTime,videoDuration]);
 
   useEffect(()=>{chatEndRef.current?.scrollIntoView({behavior:"smooth"});},[visibleComments,visibleSim]);
 
@@ -261,15 +300,14 @@ function WatchRoomTab({videoSource,simChats}:{videoSource:VideoSource|null;simCh
     ...visibleSim.map(c=>({id:`sc-${c.id}`,time:c.showAt,type:"sim" as const,data:c})),
   ].sort((a,b)=>a.time-b.time);
 
-  const progress=(currentTime/duration)*100;
+  const progress = videoDuration>0 ? (currentTime/videoDuration)*100 : 0;
 
   return (
     <div className="flex-1 flex overflow-hidden">
       <div className="flex-1 flex flex-col">
-        {/* Video */}
         <div className="flex-1 bg-black relative">
           {videoSource ? (
-            <VideoPlayer source={videoSource} videoRef={videoRef} />
+            <VideoPlayer source={videoSource} videoRef={videoRef} onDuration={onVideoDuration}/>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
@@ -277,24 +315,23 @@ function WatchRoomTab({videoSource,simChats}:{videoSource:VideoSource|null;simCh
                   <span className="font-display text-2xl font-bold text-white">JB</span>
                 </div>
                 <p className="text-white/20 text-sm">Video presentation</p>
-                <p className="text-white/10 text-xs mt-1">Add a video source in Settings → Video</p>
+                <p className="text-white/10 text-xs mt-1">Add a video in Settings → Video</p>
               </div>
             </div>
           )}
-          {!videoSource && (
+          {!videoSource&&(
             <div className="absolute bottom-0 left-0 right-0 p-6">
               <div className="max-w-2xl mx-auto bg-black/60 backdrop-blur-sm rounded-xl p-5 border border-white/10">
                 <p className="text-xs text-white/40 mb-1 uppercase tracking-wider">Current Section</p>
                 <p className="text-base font-semibold text-white">
-                  {currentTime<90?"Opening Hook":currentTime<200?"The Promise":currentTime<350?"Belief Shift":currentTime<450?"Teaching Point":currentTime<550?"Offer Stack":"Call to Action"}
+                  {progress<15?"Opening Hook":progress<30?"The Promise":progress<50?"Belief Shift":progress<65?"Teaching Point":progress<80?"Offer Stack":"Call to Action"}
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* CTA */}
-        {activeCTA && (
+        {activeCTA&&(
           <div className="mx-6 my-3 p-4 rounded-xl bg-gradient-to-r from-purple-500/15 to-blue-500/15 border border-purple-500/25 flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white">{activeCTA.headline}</p>
@@ -304,33 +341,35 @@ function WatchRoomTab({videoSource,simChats}:{videoSource:VideoSource|null;simCh
           </div>
         )}
 
-        {/* Controls — always show for testing */}
         <div className="px-6 py-4 border-t border-white/5 bg-black/20 flex-shrink-0">
-          {!videoSource && (
+          {!videoSource ? (
             <>
               <div className="h-1 bg-white/10 rounded-full mb-3 cursor-pointer"
-                onClick={e=>{const r=e.currentTarget.getBoundingClientRect();setCurrentTime(Math.round(((e.clientX-r.left)/r.width)*duration));}}>
-                <div className="h-full gradient-brand rounded-full transition-all" style={{width:`${progress}%`}} />
+                onClick={e=>{const r=e.currentTarget.getBoundingClientRect();setCurrentTime(Math.round(((e.clientX-r.left)/r.width)*videoDuration));}}>
+                <div className="h-full gradient-brand rounded-full transition-all" style={{width:`${progress}%`}}/>
               </div>
               <div className="flex items-center gap-4">
                 <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0" onClick={()=>setIsPlaying(p=>!p)}>
                   {isPlaying?<Pause className="w-4 h-4"/>:<Play className="w-4 h-4"/>}
                 </Button>
-                <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0" onClick={()=>setCurrentTime(t=>Math.min(duration,t+30))}>
+                <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0" onClick={()=>setCurrentTime(t=>Math.min(videoDuration,t+60))}>
                   <SkipForward className="w-4 h-4"/>
                 </Button>
                 <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0" onClick={()=>setIsMuted(m=>!m)}>
                   {isMuted?<VolumeX className="w-4 h-4"/>:<Volume2 className="w-4 h-4"/>}
                 </Button>
-                <span className="text-xs text-white/30 font-mono ml-2">{formatTime(currentTime)} / {formatTime(duration)}</span>
+                <span className="text-xs text-white/30 font-mono ml-2">{formatTime(currentTime)} / {formatTime(videoDuration)}</span>
                 <Button size="sm" variant="ghost" className="text-white/60 hover:text-white h-8 w-8 p-0 ml-auto"><Maximize2 className="w-4 h-4"/></Button>
               </div>
             </>
-          )}
-          {videoSource && (
+          ) : (
             <div className="flex items-center gap-2 text-xs text-white/30">
               <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"/>
-              <span>Video synced · {formatTime(currentTime)} elapsed · {simChats.length} chat messages loaded</span>
+              <span>
+                Video synced · {formatTime(currentTime)} elapsed
+                {videoDuration>0&&` / ${formatTime(videoDuration)}`}
+                {simChats.length>0&&` · ${simChats.length} chat messages loaded`}
+              </span>
             </div>
           )}
         </div>
@@ -346,10 +385,10 @@ function WatchRoomTab({videoSource,simChats}:{videoSource:VideoSource|null;simCh
           {allMessages.length===0&&(
             <div className="text-center pt-8 px-4 space-y-2">
               {simChats.length>0 ? (
-                <p className="text-xs text-white/20 leading-relaxed">▶ Press play to see {simChats.length} chat messages fire in real-time</p>
+                <p className="text-xs text-white/20 leading-relaxed">▶ Press play to see {simChats.length} messages fire across the full video</p>
               ) : (
                 <>
-                  <p className="text-xs text-white/20 leading-relaxed">Generate chat in</p>
+                  <p className="text-xs text-white/20">Generate chat in</p>
                   <p className="text-xs text-purple-400/60">Settings → Chat Simulator</p>
                   <p className="text-xs text-white/15">then press play</p>
                 </>
@@ -389,7 +428,7 @@ function WatchRoomTab({videoSource,simChats}:{videoSource:VideoSource|null;simCh
         <div className="px-3 py-2 border-t border-white/5">
           <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
             <input placeholder="Type a message..." className="flex-1 bg-transparent text-xs text-white/40 placeholder:text-white/20 outline-none"/>
-            <button className="text-white/20 hover:text-white/50 text-xs transition-colors">Send</button>
+            <button className="text-white/20 hover:text-white/50 text-xs">Send</button>
           </div>
         </div>
       </div>
@@ -399,31 +438,42 @@ function WatchRoomTab({videoSource,simChats}:{videoSource:VideoSource|null;simCh
 
 // ── Settings Tab ───────────────────────────────────────────────────
 function SettingsTab({
-  slug,videoSource,onVideoSourceChange,simChats,onSimChatsChange,
-}:{slug:string;videoSource:VideoSource|null;onVideoSourceChange:(s:VideoSource|null)=>void;simChats:SimChat[];onSimChatsChange:(c:SimChat[])=>void;}) {
+  slug,videoSource,onVideoSourceChange,simChats,onSimChatsChange,videoDuration,onVideoDuration,
+}:{
+  slug:string;
+  videoSource:VideoSource|null;
+  onVideoSourceChange:(s:VideoSource|null)=>void;
+  simChats:SimChat[];
+  onSimChatsChange:(c:SimChat[])=>void;
+  videoDuration:number;
+  onVideoDuration:(d:number)=>void;
+}) {
   const [activeSection,setActiveSection]=useState("general");
   const [liveChat,setLiveChat]=useState(true);
   const [showBrandLogo,setShowBrandLogo]=useState(true);
   const [allowFullscreen,setAllowFullscreen]=useState(true);
   const [redirectAfter,setRedirectAfter]=useState(false);
   const [redirectLink,setRedirectLink]=useState("");
-  const [sourceType,setSourceType]=useState<"upload"|"youtube"|"vimeo"|"mp4">("upload");
+  const [sourceType,setSourceType]=useState<"upload"|"youtube"|"vimeo"|"mp4">(
+    videoSource&&videoSource.type!=="upload"?videoSource.type:"upload"
+  );
   const [externalUrl,setExternalUrl]=useState(videoSource&&videoSource.type!=="upload"?videoSource.url:"");
   const [offers,setOffers]=useState<{id:string;name:string;showAt:number;url:string}[]>([]);
-  const [newOffer,setNewOffer]=useState({name:"",showAt:2700,url:""});
+  const [newOffer,setNewOffer]=useState({name:"",showAt:0,url:""});
   const [generatingChat,setGeneratingChat]=useState(false);
+  const [manualDuration,setManualDuration]=useState(videoDuration>0?String(Math.round(videoDuration/60)):"");
 
   const sections=[
-    {key:"general",label:"General",icon:Settings2},
-    {key:"video",label:"Video",icon:Video,badge:videoSource?"1 VIDEO":undefined},
-    {key:"offers",label:"Offers",icon:Gift,badge:offers.length?`${offers.length} OFFER${offers.length>1?"S":""}`:undefined},
-    {key:"handouts",label:"Handouts",icon:FileText},
-    {key:"polls",label:"Polls",icon:BarChart},
-    {key:"chat",label:"Chat",icon:MessageSquare},
-    {key:"chatsim",label:"Chat Simulator",icon:MessageSquare,badge:simChats.length?`${simChats.length} MESSAGES`:undefined},
-    {key:"colors",label:"Colors",icon:Tag},
-    {key:"labels",label:"Labels",icon:Tag},
-    {key:"embed",label:"Embed",icon:Code},
+    {key:"general",  label:"General",        icon:Settings2},
+    {key:"video",    label:"Video",           icon:Video,        badge:videoSource?"1 VIDEO":undefined},
+    {key:"offers",   label:"Offers",          icon:Gift,         badge:offers.length?`${offers.length} OFFER${offers.length>1?"S":""}`:undefined},
+    {key:"handouts", label:"Handouts",        icon:FileText},
+    {key:"polls",    label:"Polls",           icon:BarChart},
+    {key:"chat",     label:"Chat",            icon:MessageSquare},
+    {key:"chatsim",  label:"Chat Simulator",  icon:MessageSquare,badge:simChats.length?`${simChats.length} MESSAGES`:undefined},
+    {key:"colors",   label:"Colors",          icon:Tag},
+    {key:"labels",   label:"Labels",          icon:Tag},
+    {key:"embed",    label:"Embed",           icon:Code},
   ];
 
   const handleFileUpload=(e:React.ChangeEvent<HTMLInputElement>)=>{
@@ -432,24 +482,40 @@ function SettingsTab({
     if(videoSource?.type==="upload") URL.revokeObjectURL(videoSource.url);
     const src:VideoSource={type:"upload",url:URL.createObjectURL(file),name:file.name};
     onVideoSourceChange(src);
-    // Note: object URLs can't be persisted across sessions — user must re-select after refresh
   };
 
   const handleExternalUrlSave=()=>{
     if(!externalUrl.trim()) return;
     const src:VideoSource={type:sourceType,url:externalUrl.trim(),name:externalUrl.trim()};
     onVideoSourceChange(src);
-    saveVideoSource(slug,src);
+    saveLS(`wf-video-${slug}`,src);
   };
 
   const handleGenerateChats=()=>{
+    const dur = videoDuration>0 ? videoDuration : (parseInt(manualDuration)||60)*60;
     setGeneratingChat(true);
     setTimeout(()=>{
-      const chats=generateSimChats();
+      const chats=generateSimChats(dur);
       onSimChatsChange(chats);
-      saveSimChats(slug,chats);
+      saveLS(`wf-chats-${slug}`,chats);
       setGeneratingChat(false);
     },1500);
+  };
+
+  const handleManualDurationChange=(val:string)=>{
+    setManualDuration(val);
+    const mins=parseInt(val);
+    if(mins>0) {
+      const newDur=mins*60;
+      onVideoDuration(newDur);
+      saveLS(`wf-duration-${slug}`,newDur);
+      // Rescale existing chats if any
+      if(simChats.length>0) {
+        const rescaled=rescaleSimChats(simChats,newDur);
+        onSimChatsChange(rescaled);
+        saveLS(`wf-chats-${slug}`,rescaled);
+      }
+    }
   };
 
   return (
@@ -489,11 +555,15 @@ function SettingsTab({
           <div className="max-w-lg space-y-5">
             <h3 className="text-base font-semibold text-white">Video Source</h3>
 
-            {/* Important notice about upload persistence */}
+            {videoDuration>0&&(
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-400 shrink-0"/>
+                <p className="text-xs text-green-400">Video duration detected: <strong>{formatTime(videoDuration)}</strong> — chat messages are synced to this length</p>
+              </div>
+            )}
+
             <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-              <p className="text-xs text-yellow-400/80 leading-relaxed">
-                <strong>Note:</strong> Uploaded files are available this session only. For permanent video, use a YouTube, Vimeo, or direct MP4 URL — those are saved automatically.
-              </p>
+              <p className="text-xs text-yellow-400/80 leading-relaxed"><strong>Tip:</strong> Use YouTube, Vimeo, or a direct MP4 URL for permanent video that saves across sessions. Uploaded files reset on refresh.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -503,7 +573,7 @@ function SettingsTab({
               </button>
               <button onClick={()=>{if(sourceType==="upload")setSourceType("youtube");}} className={`p-4 rounded-xl border-2 transition-all text-left ${sourceType!=="upload"?"border-purple-500 bg-purple-500/10":"border-white/10 hover:border-white/20 bg-white/3"}`}>
                 <div className="flex items-center gap-2 mb-1"><Globe className={`w-4 h-4 ${sourceType!=="upload"?"text-purple-400":"text-white/30"}`}/><span className={`text-sm font-medium ${sourceType!=="upload"?"text-white":"text-white/50"}`}>Use URL</span></div>
-                <p className="text-xs text-white/25">YouTube, Vimeo, or MP4 link (saved)</p>
+                <p className="text-xs text-white/25">YouTube, Vimeo, MP4 link (saved)</p>
               </button>
             </div>
 
@@ -521,8 +591,8 @@ function SettingsTab({
                 {videoSource?.type==="upload"&&(
                   <div className="flex items-center gap-3 p-3 bg-white/3 border border-white/8 rounded-xl">
                     <Video className="w-4 h-4 text-purple-400 shrink-0"/>
-                    <div className="flex-1 min-w-0"><p className="text-sm text-white truncate">{videoSource.name}</p><p className="text-xs text-green-400 font-semibold mt-0.5">SELECTED — switch to Watch Room to preview</p></div>
-                    <button onClick={()=>{onVideoSourceChange(null);saveVideoSource(slug,null);}} className="text-white/20 hover:text-red-400 text-lg leading-none">×</button>
+                    <div className="flex-1 min-w-0"><p className="text-sm text-white truncate">{videoSource.name}</p><p className="text-xs text-green-400 font-semibold mt-0.5">{videoDuration>0?`Duration detected: ${formatTime(videoDuration)}`:"Switch to Watch Room — duration auto-detects on play"}</p></div>
+                    <button onClick={()=>{onVideoSourceChange(null);saveLS(`wf-video-${slug}`,null);}} className="text-white/20 hover:text-red-400 text-lg leading-none">×</button>
                   </div>
                 )}
               </div>
@@ -538,14 +608,29 @@ function SettingsTab({
                 <input value={externalUrl} onChange={e=>setExternalUrl(e.target.value)}
                   placeholder={sourceType==="youtube"?"https://youtube.com/watch?v=...":sourceType==="vimeo"?"https://vimeo.com/123456789":"https://example.com/video.mp4"}
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500"/>
-                <button onClick={handleExternalUrlSave} disabled={!externalUrl.trim()} className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors">
+
+                {/* Manual duration for iframe embeds (can't auto-detect) */}
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">Video duration (minutes) — needed for chat sync</label>
+                  <div className="flex gap-2">
+                    <input value={manualDuration} onChange={e=>handleManualDurationChange(e.target.value)}
+                      type="number" min="1" placeholder="e.g. 106"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500"/>
+                    <div className="flex items-center px-3 py-2 bg-white/3 border border-white/8 rounded-lg">
+                      <span className="text-xs text-white/30">{manualDuration?`= ${formatTime(parseInt(manualDuration||"0")*60)}`:"hh:mm:ss"}</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-white/20 mt-1">For YouTube/Vimeo, enter your video length so chat messages spread across the full video</p>
+                </div>
+
+                <button onClick={handleExternalUrlSave} disabled={!externalUrl.trim()} className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg">
                   Save & use this video →
                 </button>
                 {videoSource&&videoSource.type!=="upload"&&(
                   <div className="flex items-center gap-3 p-3 bg-white/3 border border-green-500/20 rounded-xl">
                     <Globe className="w-4 h-4 text-green-400 shrink-0"/>
-                    <div className="flex-1 min-w-0"><p className="text-xs text-white/60 truncate">{videoSource.name}</p><p className="text-xs text-green-400 font-semibold mt-0.5">SAVED — persists across sessions ✓</p></div>
-                    <button onClick={()=>{onVideoSourceChange(null);saveVideoSource(slug,null);setExternalUrl("");}} className="text-white/20 hover:text-red-400 text-lg leading-none">×</button>
+                    <div className="flex-1 min-w-0"><p className="text-xs text-white/60 truncate">{videoSource.name}</p><p className="text-xs text-green-400 font-semibold mt-0.5">SAVED · {videoDuration>0?`Duration: ${formatTime(videoDuration)}`:"Enter duration above for chat sync"}</p></div>
+                    <button onClick={()=>{onVideoSourceChange(null);saveLS(`wf-video-${slug}`,null);setExternalUrl("");}} className="text-white/20 hover:text-red-400 text-lg leading-none">×</button>
                   </div>
                 )}
               </div>
@@ -563,15 +648,15 @@ function SettingsTab({
                 <input type="number" value={newOffer.showAt} onChange={e=>setNewOffer(p=>({...p,showAt:Number(e.target.value)}))} placeholder="Show at (s)" className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"/>
                 <input value={newOffer.url} onChange={e=>setNewOffer(p=>({...p,url:e.target.value}))} placeholder="CTA URL" className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500"/>
               </div>
-              <button onClick={()=>{if(!newOffer.name)return;setOffers(p=>[...p,{...newOffer,id:Date.now().toString()}]);setNewOffer({name:"",showAt:2700,url:""});}} className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg">Add Offer</button>
+              <button onClick={()=>{if(!newOffer.name)return;setOffers(p=>[...p,{...newOffer,id:Date.now().toString()}]);setNewOffer({name:"",showAt:0,url:""}); }} className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg">Add Offer</button>
             </div>
             {offers.length===0?(<div className="text-center py-10 border border-dashed border-white/10 rounded-xl"><Gift className="w-8 h-8 text-white/10 mx-auto mb-2"/><p className="text-sm text-white/30">No offers yet</p></div>)
-            :offers.map(o=>(<div key={o.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-xl"><div><p className="text-sm font-medium text-white">{o.name}</p><p className="text-xs text-white/30 mt-0.5">Shows at {Math.floor(o.showAt/60)}m {o.showAt%60}s</p></div><button onClick={()=>setOffers(p=>p.filter(x=>x.id!==o.id))} className="text-white/20 hover:text-red-400 text-lg leading-none ml-3">×</button></div>))}
+            :offers.map(o=>(<div key={o.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-xl"><div><p className="text-sm font-medium text-white">{o.name}</p><p className="text-xs text-white/30 mt-0.5">Shows at {formatTime(o.showAt)}</p></div><button onClick={()=>setOffers(p=>p.filter(x=>x.id!==o.id))} className="text-white/20 hover:text-red-400 text-lg leading-none ml-3">×</button></div>))}
           </div>
         )}
 
-        {activeSection==="handouts"&&(<div className="max-w-lg space-y-5"><h3 className="text-base font-semibold text-white">Handouts</h3><div className="text-center py-14 border border-dashed border-white/10 rounded-xl"><FileText className="w-8 h-8 text-white/10 mx-auto mb-2"/><p className="text-sm text-white/30 mb-4">No handouts yet</p><button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg">+ Add new handout</button></div></div>)}
-        {activeSection==="polls"&&(<div className="max-w-lg space-y-5"><h3 className="text-base font-semibold text-white">Polls</h3><div className="text-center py-14 border border-dashed border-white/10 rounded-xl"><BarChart className="w-8 h-8 text-white/10 mx-auto mb-2"/><p className="text-sm text-white/30 mb-4">No polls yet</p><button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg">+ Add new poll</button></div></div>)}
+        {activeSection==="handouts"&&(<div className="max-w-lg"><h3 className="text-base font-semibold text-white mb-5">Handouts</h3><div className="text-center py-14 border border-dashed border-white/10 rounded-xl"><FileText className="w-8 h-8 text-white/10 mx-auto mb-2"/><p className="text-sm text-white/30 mb-4">No handouts yet</p><button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg">+ Add new handout</button></div></div>)}
+        {activeSection==="polls"&&(<div className="max-w-lg"><h3 className="text-base font-semibold text-white mb-5">Polls</h3><div className="text-center py-14 border border-dashed border-white/10 rounded-xl"><BarChart className="w-8 h-8 text-white/10 mx-auto mb-2"/><p className="text-sm text-white/30 mb-4">No polls yet</p><button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg">+ Add new poll</button></div></div>)}
 
         {activeSection==="chat"&&(
           <div className="max-w-lg space-y-5">
@@ -585,19 +670,42 @@ function SettingsTab({
         {activeSection==="chatsim"&&(
           <div className="max-w-2xl space-y-5">
             <div className="flex items-center justify-between">
-              <div><h3 className="text-base font-semibold text-white">Chat Simulator</h3><p className="text-xs text-white/30 mt-0.5">~160 attendees · US & European cities · syncs to video time</p></div>
+              <div>
+                <h3 className="text-base font-semibold text-white">Chat Simulator</h3>
+                <p className="text-xs text-white/30 mt-0.5">
+                  ~160 attendees · US & European cities
+                  {videoDuration>0?` · synced to ${formatTime(videoDuration)} video`:` · set video duration to sync`}
+                </p>
+              </div>
               <div className="flex items-center gap-2">
-                {simChats.length>0&&<button onClick={()=>{onSimChatsChange([]);saveSimChats(slug,[]);}} className="text-xs text-red-400/60 hover:text-red-400">Remove all</button>}
+                {simChats.length>0&&<button onClick={()=>{onSimChatsChange([]);saveLS(`wf-chats-${slug}`,[]);}} className="text-xs text-red-400/60 hover:text-red-400">Remove all</button>}
                 <button onClick={handleGenerateChats} disabled={generatingChat} className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50">
                   {generatingChat?(<><svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Generating...</>):simChats.length>0?"↺ Regenerate":"✦ Generate Chat"}
                 </button>
               </div>
             </div>
 
+            {videoDuration===0&&(
+              <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
+                <p className="text-xs text-orange-400 leading-relaxed font-medium mb-1">⚠ Video duration not yet detected</p>
+                <p className="text-xs text-orange-400/70 leading-relaxed">
+                  For uploaded videos: go to Watch Room and press play — duration auto-detects.<br/>
+                  For YouTube/Vimeo: go to Settings → Video and enter the duration in minutes.
+                </p>
+              </div>
+            )}
+
             <div className="p-4 bg-white/3 border border-white/8 rounded-xl">
-              <p className="text-xs text-white/40 font-medium mb-3 uppercase tracking-wider">Chat cue types — fires at key moments</p>
+              <p className="text-xs text-white/40 font-medium mb-3 uppercase tracking-wider">Chat cue types — spread proportionally across full video</p>
               <div className="grid grid-cols-2 gap-2">
-                {([["type1","🔢 Type a 1","When presenter asks viewers to type 1"],["dropCity","📍 Drop your city","When presenter asks where people are from"],["react","🔥 Reactions","At value bombs and key teaching moments"],["testimonial","💰 Testimonials","Social proof from past attendees"],["question","❓ Questions","Curiosity during Q&A moments"],["joining","👋 Joining","People arriving at the start"]] as [CueType,string,string][]).map(([cue,label,desc])=>(
+                {([
+                  ["type1","🔢 Type a 1","When presenter asks viewers to type 1"],
+                  ["dropCity","📍 Drop your city","When presenter asks where people are from"],
+                  ["react","🔥 Reactions","At value bombs and key teaching moments"],
+                  ["testimonial","💰 Testimonials","Social proof from past attendees"],
+                  ["question","❓ Questions","Curiosity during Q&A moments"],
+                  ["joining","👋 Joining","People arriving at the very start"],
+                ] as [CueType,string,string][]).map(([cue,label,desc])=>(
                   <div key={cue} className="flex items-start gap-2 p-2 rounded-lg bg-white/3">
                     <div className={`text-xs font-bold mt-0.5 ${getCueColor(cue)}`}>●</div>
                     <div><p className={`text-xs font-medium ${getCueColor(cue)}`}>{label}</p><p className="text-[10px] text-white/25 leading-snug mt-0.5">{desc}</p></div>
@@ -610,7 +718,11 @@ function SettingsTab({
               <div className="text-center py-12 border border-dashed border-white/10 rounded-xl">
                 <MessageSquare className="w-10 h-10 text-white/10 mx-auto mb-3"/>
                 <p className="text-sm text-white/40 mb-1 font-medium">No chat messages yet</p>
-                <p className="text-xs text-white/20 mb-3 max-w-sm mx-auto leading-relaxed">Generate ~160 realistic attendees from 70+ US cities and 30+ European cities. Saved automatically — persists across sessions.</p>
+                <p className="text-xs text-white/20 mb-3 max-w-sm mx-auto leading-relaxed">
+                  {videoDuration>0
+                    ?`Will generate ~160 messages spread across your ${formatTime(videoDuration)} video`
+                    :"Set your video duration first for best sync — or generate now and rescale later"}
+                </p>
                 <div className="flex flex-wrap justify-center gap-1 mb-4 px-6">
                   {["Jason C. · Dallas, TX","Sarah M. · London, UK","Marcus Johnson · Atlanta, GA","Priya K. · Paris, France"].map(ex=>(
                     <span key={ex} className="text-[10px] px-2 py-0.5 bg-white/5 rounded-full text-white/30">{ex}</span>
@@ -622,7 +734,10 @@ function SettingsTab({
               </div>
             ):(
               <div>
-                <p className="text-xs text-white/30 mb-2">{simChats.length} messages saved · fires automatically as video plays</p>
+                <p className="text-xs text-white/30 mb-2">
+                  {simChats.length} messages · first at {formatTime(simChats[0]?.showAt||0)} · last at {formatTime(simChats[simChats.length-1]?.showAt||0)}
+                  {videoDuration>0?` · across ${formatTime(videoDuration)} video`:""}
+                </p>
                 <div className="space-y-1 max-h-96 overflow-y-auto pr-1">
                   {simChats.map(m=>(
                     <div key={m.id} className="flex items-center gap-3 p-2.5 bg-white/3 border border-white/5 rounded-lg hover:border-white/10 transition-colors">
@@ -632,7 +747,7 @@ function SettingsTab({
                         <span className="text-[10px] text-white/25 mx-1.5">·</span>
                         <span className="text-[10px] text-white/25">{m.city}</span>
                         <span className="text-[10px] text-white/15 mx-1.5">·</span>
-                        <span className="text-[10px] text-white/20">{Math.floor(m.showAt/60)}:{String(m.showAt%60).padStart(2,"0")}</span>
+                        <span className="text-[10px] text-white/20">{formatTime(m.showAt)}</span>
                       </div>
                       <span className="text-xs text-white/40 truncate max-w-[140px]">{m.message}</span>
                     </div>
@@ -645,7 +760,7 @@ function SettingsTab({
 
         {activeSection==="colors"&&(<div className="max-w-lg space-y-5"><h3 className="text-base font-semibold text-white">Room Colors</h3>{[["Primary","#7C3AED"],["Button","#7C3AED"],["Background","#06060F"],["Text","#FFFFFF"],["Accent","#A855F7"]].map(([l,d])=>(<div key={l} className="flex items-center justify-between py-3 border-b border-white/5"><span className="text-sm text-white/70">{l} color</span><div className="flex items-center gap-3"><div className="w-6 h-6 rounded-lg border border-white/10" style={{background:d}}/><input type="color" defaultValue={d} className="w-8 h-8 border-0 bg-transparent cursor-pointer rounded"/></div></div>))}</div>)}
         {activeSection==="labels"&&(<div className="max-w-lg space-y-5"><h3 className="text-base font-semibold text-white">Custom Labels</h3>{[["Register button","REGISTER NOW"],["Viewer count label","watching"],["Chat placeholder","Type your message..."],["Live badge","LIVE"]].map(([l,d])=>(<div key={l}><label className="text-xs text-white/40 mb-1 block">{l}</label><input defaultValue={d} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"/></div>))}</div>)}
-        {activeSection==="embed"&&(<div className="max-w-lg space-y-5"><h3 className="text-base font-semibold text-white">Embed Instructions</h3><div><p className="text-sm text-white/60 mb-2">Step 1: Add where you want the watch room.</p><textarea readOnly className="w-full h-20 bg-white/3 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/50 resize-none" value={`<div id="wf-room"></div>\n<script src="https://webinarforge.ai/embed.js" data-slug="[YOUR_SLUG]"></script>`}/></div><div><p className="text-sm text-white/60 mb-2">Step 2: Add to your page head.</p><textarea readOnly className="w-full h-12 bg-white/3 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/50 resize-none" value={`<link rel="stylesheet" href="https://webinarforge.ai/css/room.css">`}/></div><button onClick={()=>navigator.clipboard.writeText('<div id="wf-room"></div>')} className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white/50 hover:bg-white/8">Copy embed code</button></div>)}
+        {activeSection==="embed"&&(<div className="max-w-lg space-y-5"><h3 className="text-base font-semibold text-white">Embed Instructions</h3><div><p className="text-sm text-white/60 mb-2">Step 1:</p><textarea readOnly className="w-full h-20 bg-white/3 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/50 resize-none" value={`<div id="wf-room"></div>\n<script src="https://webinarforge.ai/embed.js" data-slug="[SLUG]"></script>`}/></div><div><p className="text-sm text-white/60 mb-2">Step 2:</p><textarea readOnly className="w-full h-12 bg-white/3 border border-white/10 rounded-xl p-3 text-xs font-mono text-white/50 resize-none" value={`<link rel="stylesheet" href="https://webinarforge.ai/css/room.css">`}/></div></div>)}
       </div>
     </div>
   );
@@ -654,27 +769,13 @@ function SettingsTab({
 // ── Analytics Tab ──────────────────────────────────────────────────
 function AnalyticsTab() {
   const stats=[{label:"Total Registrations",value:"189",change:"+12%",up:true},{label:"Completions",value:"81",change:"+8%",up:true},{label:"Completion Rate",value:"43%",change:"-2%",up:false},{label:"Avg. Watch Time",value:"38:14",change:"+5%",up:true},{label:"CTA Clicks",value:"34",change:"+18%",up:true},{label:"Conversion Rate",value:"18%",change:"+3%",up:true}];
-  const dropOff=[{label:"Hook (0:00)",pct:100},{label:"Promise (5:00)",pct:87},{label:"Problem (15:00)",pct:74},{label:"Teaching 1 (25:00)",pct:61},{label:"Teaching 2 (35:00)",pct:52},{label:"Offer (45:00)",pct:43},{label:"CTA (55:00)",pct:38}];
+  const dropOff=[{label:"Hook (0:00)",pct:100},{label:"Promise (15%)",pct:87},{label:"Problem (30%)",pct:74},{label:"Teaching 1 (45%)",pct:61},{label:"Teaching 2 (60%)",pct:52},{label:"Offer (75%)",pct:43},{label:"CTA (90%)",pct:38}];
   return (
-    <div className="flex-1 overflow-y-auto p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="grid grid-cols-3 gap-4">
-          {stats.map(s=>(<div key={s.label} className="p-4 rounded-xl bg-white/3 border border-white/8"><p className="text-xs text-white/30 mb-1">{s.label}</p><p className="text-2xl font-bold text-white">{s.value}</p><p className={`text-xs mt-1 font-medium ${s.up?"text-green-400":"text-red-400"}`}>{s.change} vs last month</p></div>))}
-        </div>
-        <div className="p-5 rounded-xl bg-white/3 border border-white/8">
-          <h3 className="text-sm font-semibold text-white mb-4">Audience Retention</h3>
-          <div className="space-y-2.5">
-            {dropOff.map(d=>(<div key={d.label} className="flex items-center gap-3"><span className="text-xs text-white/30 w-32 shrink-0">{d.label}</span><div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{width:`${d.pct}%`,background:d.pct>60?"#7C3AED":d.pct>40?"#9333EA":"#C026D3"}}/></div><span className="text-xs text-white/50 w-10 text-right">{d.pct}%</span></div>))}
-          </div>
-        </div>
-        <div className="p-5 rounded-xl bg-white/3 border border-white/8">
-          <h3 className="text-sm font-semibold text-white mb-4">Recent Registrations</h3>
-          <div className="space-y-2">
-            {[{name:"Sarah M.",email:"sarah@example.com",time:"2 hours ago",completed:true},{name:"Marcus T.",email:"marcus@example.com",time:"4 hours ago",completed:false},{name:"Jennifer K.",email:"jen@example.com",time:"6 hours ago",completed:true},{name:"David R.",email:"david@example.com",time:"8 hours ago",completed:true}].map(r=>(<div key={r.email} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><div className="flex items-center gap-3"><div className="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-xs font-semibold text-purple-400">{r.name.charAt(0)}</div><div><p className="text-xs font-medium text-white/70">{r.name}</p><p className="text-[10px] text-white/30">{r.email}</p></div></div><div className="flex items-center gap-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${r.completed?"bg-green-500/15 text-green-400":"bg-white/5 text-white/30"}`}>{r.completed?"Completed":"Watching"}</span><span className="text-[10px] text-white/25">{r.time}</span></div></div>))}
-          </div>
-        </div>
-      </div>
-    </div>
+    <div className="flex-1 overflow-y-auto p-6"><div className="max-w-4xl mx-auto space-y-6">
+      <div className="grid grid-cols-3 gap-4">{stats.map(s=>(<div key={s.label} className="p-4 rounded-xl bg-white/3 border border-white/8"><p className="text-xs text-white/30 mb-1">{s.label}</p><p className="text-2xl font-bold text-white">{s.value}</p><p className={`text-xs mt-1 font-medium ${s.up?"text-green-400":"text-red-400"}`}>{s.change} vs last month</p></div>))}</div>
+      <div className="p-5 rounded-xl bg-white/3 border border-white/8"><h3 className="text-sm font-semibold text-white mb-4">Audience Retention</h3><div className="space-y-2.5">{dropOff.map(d=>(<div key={d.label} className="flex items-center gap-3"><span className="text-xs text-white/30 w-36 shrink-0">{d.label}</span><div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{width:`${d.pct}%`,background:d.pct>60?"#7C3AED":d.pct>40?"#9333EA":"#C026D3"}}/></div><span className="text-xs text-white/50 w-10 text-right">{d.pct}%</span></div>))}</div></div>
+      <div className="p-5 rounded-xl bg-white/3 border border-white/8"><h3 className="text-sm font-semibold text-white mb-4">Recent Registrations</h3><div className="space-y-2">{[{name:"Sarah M.",email:"sarah@example.com",time:"2 hours ago",completed:true},{name:"Marcus T.",email:"marcus@example.com",time:"4 hours ago",completed:false},{name:"Jennifer K.",email:"jen@example.com",time:"6 hours ago",completed:true},{name:"David R.",email:"david@example.com",time:"8 hours ago",completed:true}].map(r=>(<div key={r.email} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><div className="flex items-center gap-3"><div className="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-xs font-semibold text-purple-400">{r.name.charAt(0)}</div><div><p className="text-xs font-medium text-white/70">{r.name}</p><p className="text-[10px] text-white/30">{r.email}</p></div></div><div className="flex items-center gap-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${r.completed?"bg-green-500/15 text-green-400":"bg-white/5 text-white/30"}`}>{r.completed?"Completed":"Watching"}</span><span className="text-[10px] text-white/25">{r.time}</span></div></div>))}</div></div>
+    </div></div>
   );
 }
 
@@ -683,33 +784,15 @@ function RegistrationTab() {
   const [regMode,setRegMode]=useState<"platform"|"embed">("platform");
   const [tyMode,setTyMode]=useState<"platform"|"embed">("platform");
   return (
-    <div className="flex-1 overflow-y-auto p-6">
-      <div className="max-w-3xl mx-auto space-y-6">
-        {[{title:"Registration page",mode:regMode,setMode:setRegMode},{title:"Thank you page",mode:tyMode,setMode:setTyMode}].map(({title,mode,setMode})=>(
-          <div key={title} className="rounded-xl bg-white/3 border border-white/8 overflow-hidden">
-            <div className="px-6 py-5 border-b border-white/5">
-              <h3 className="text-base font-semibold text-white text-center">{title}</h3>
-              <div className="flex items-center justify-center gap-4 mt-3">
-                <span className={`text-xs ${mode==="platform"?"text-white":"text-white/30"}`}>Build on our platform</span>
-                <Toggle value={mode==="embed"} onChange={v=>setMode(v?"embed":"platform")}/>
-                <span className={`text-xs ${mode==="embed"?"text-white":"text-white/30"}`}>Embed on your site</span>
-              </div>
-            </div>
-            {mode==="embed"?(<div className="p-8 flex flex-col items-center justify-center min-h-40 cursor-pointer" style={{background:"linear-gradient(135deg,#4F6EF7,#3451D1)"}}><h4 className="text-lg font-bold text-white text-center">Embed a widget on your site or funnel</h4><div className="mt-4 bg-white/10 rounded-lg px-5 py-2 text-white text-sm font-medium hover:bg-white/20 cursor-pointer">Open embed builder →</div></div>):(<div className="p-8 flex flex-col items-center justify-center min-h-40 cursor-pointer" style={{background:"linear-gradient(135deg,#059669,#047857)"}}><h4 className="text-lg font-bold text-white text-center">Build and host your {title.toLowerCase()} on our platform</h4><button className="mt-4 bg-white text-green-700 font-semibold text-sm px-5 py-2 rounded-lg hover:bg-white/90">Open page builder →</button></div>)}
-          </div>
-        ))}
-        <div className="rounded-xl bg-white/3 border border-white/8 p-6">
-          <h3 className="text-sm font-semibold text-white mb-4">Registration form preview</h3>
-          <div className="bg-white rounded-xl p-6 max-w-sm mx-auto shadow-xl">
-            <p className="text-xs text-gray-500 text-center mb-1">Next session in:</p>
-            <div className="flex justify-center gap-4 mb-4">{[["0","days"],["0","hours"],["13","minutes"],["57","seconds"]].map(([n,l])=>(<div key={l} className="text-center"><p className="text-2xl font-bold text-gray-900">{n}</p><p className="text-xs text-gray-400">{l}</p></div>))}</div>
-            <input placeholder="First Name" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-2 focus:outline-none focus:border-blue-500"/>
-            <input placeholder="Email" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-blue-500"/>
-            <button className="w-full bg-blue-600 text-white font-bold text-sm py-3 rounded-lg">REGISTER NOW</button>
-          </div>
+    <div className="flex-1 overflow-y-auto p-6"><div className="max-w-3xl mx-auto space-y-6">
+      {[{title:"Registration page",mode:regMode,setMode:setRegMode},{title:"Thank you page",mode:tyMode,setMode:setTyMode}].map(({title,mode,setMode})=>(
+        <div key={title} className="rounded-xl bg-white/3 border border-white/8 overflow-hidden">
+          <div className="px-6 py-5 border-b border-white/5"><h3 className="text-base font-semibold text-white text-center">{title}</h3><div className="flex items-center justify-center gap-4 mt-3"><span className={`text-xs ${mode==="platform"?"text-white":"text-white/30"}`}>Build on our platform</span><Toggle value={mode==="embed"} onChange={v=>setMode(v?"embed":"platform")}/><span className={`text-xs ${mode==="embed"?"text-white":"text-white/30"}`}>Embed on your site</span></div></div>
+          {mode==="embed"?(<div className="p-8 flex flex-col items-center justify-center min-h-40" style={{background:"linear-gradient(135deg,#4F6EF7,#3451D1)"}}><h4 className="text-lg font-bold text-white text-center">Embed a widget on your site or funnel</h4><div className="mt-4 bg-white/10 rounded-lg px-5 py-2 text-white text-sm font-medium cursor-pointer hover:bg-white/20">Open embed builder →</div></div>):(<div className="p-8 flex flex-col items-center justify-center min-h-40" style={{background:"linear-gradient(135deg,#059669,#047857)"}}><h4 className="text-lg font-bold text-white text-center">Build and host your {title.toLowerCase()} on our platform</h4><button className="mt-4 bg-white text-green-700 font-semibold text-sm px-5 py-2 rounded-lg hover:bg-white/90">Open page builder →</button></div>)}
         </div>
-      </div>
-    </div>
+      ))}
+      <div className="rounded-xl bg-white/3 border border-white/8 p-6"><h3 className="text-sm font-semibold text-white mb-4">Registration form preview</h3><div className="bg-white rounded-xl p-6 max-w-sm mx-auto shadow-xl"><p className="text-xs text-gray-500 text-center mb-1">Next session in:</p><div className="flex justify-center gap-4 mb-4">{[["0","days"],["0","hours"],["13","minutes"],["57","seconds"]].map(([n,l])=>(<div key={l} className="text-center"><p className="text-2xl font-bold text-gray-900">{n}</p><p className="text-xs text-gray-400">{l}</p></div>))}</div><input placeholder="First Name" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-2 focus:outline-none focus:border-blue-500"/><input placeholder="Email" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-blue-500"/><button className="w-full bg-blue-600 text-white font-bold text-sm py-3 rounded-lg">REGISTER NOW</button></div></div>
+    </div></div>
   );
 }
 
@@ -729,27 +812,37 @@ export default function EvergreenRoomPage() {
   const [saved,setSaved]=useState(false);
   const [videoSource,setVideoSource]=useState<VideoSource|null>(null);
   const [simChats,setSimChats]=useState<SimChat[]>([]);
+  const [videoDuration,setVideoDuration]=useState(0);
   const [loaded,setLoaded]=useState(false);
 
-  // Load persisted state on mount
   useEffect(()=>{
-    const vs=loadVideoSource(slug);
+    const vs=loadLS<VideoSource|null>(`wf-video-${slug}`,null);
     if(vs) setVideoSource(vs);
-    const sc=loadSimChats(slug);
+    const sc=loadLS<SimChat[]>(`wf-chats-${slug}`,[]);
     if(sc.length>0) setSimChats(sc);
+    const dur=loadLS<number>(`wf-duration-${slug}`,0);
+    if(dur>0) setVideoDuration(dur);
     setLoaded(true);
   },[slug]);
 
+  // When duration is detected from video, rescale existing chats
+  const handleVideoDuration=(d:number)=>{
+    if(d===videoDuration||d<=0) return;
+    setVideoDuration(d);
+    saveLS(`wf-duration-${slug}`,d);
+    if(simChats.length>0) {
+      const rescaled=rescaleSimChats(simChats,d);
+      setSimChats(rescaled);
+      saveLS(`wf-chats-${slug}`,rescaled);
+    }
+  };
+
   useEffect(()=>{
-    const i=setInterval(()=>{
-      setViewerCount(p=>{const d=Math.floor(Math.random()*10)-3;return Math.max(MOCK_WEBINAR.viewerCountMin,Math.min(MOCK_WEBINAR.viewerCountMax,p+d));});
-    },5000);
+    const i=setInterval(()=>{setViewerCount(p=>{const d=Math.floor(Math.random()*10)-3;return Math.max(MOCK_WEBINAR.viewerCountMin,Math.min(MOCK_WEBINAR.viewerCountMax,p+d));});},5000);
     return ()=>clearInterval(i);
   },[]);
 
-  useEffect(()=>{
-    return ()=>{if(videoSource?.type==="upload")URL.revokeObjectURL(videoSource.url);};
-  },[videoSource]);
+  useEffect(()=>{return ()=>{if(videoSource?.type==="upload")URL.revokeObjectURL(videoSource.url);};},[videoSource]);
 
   if(!loaded) return <div className="h-screen bg-[#06060f] flex items-center justify-center"><div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"/></div>;
 
@@ -787,8 +880,8 @@ export default function EvergreenRoomPage() {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {activeTab==="watch"&&<WatchRoomTab videoSource={videoSource} simChats={simChats}/>}
-        {activeTab==="settings"&&<SettingsTab slug={slug} videoSource={videoSource} onVideoSourceChange={setVideoSource} simChats={simChats} onSimChatsChange={setSimChats}/>}
+        {activeTab==="watch"&&<WatchRoomTab videoSource={videoSource} simChats={simChats} videoDuration={videoDuration>0?videoDuration:MOCK_WEBINAR.durationSeconds} onVideoDuration={handleVideoDuration}/>}
+        {activeTab==="settings"&&<SettingsTab slug={slug} videoSource={videoSource} onVideoSourceChange={setVideoSource} simChats={simChats} onSimChatsChange={setSimChats} videoDuration={videoDuration} onVideoDuration={handleVideoDuration}/>}
         {activeTab==="analytics"&&<AnalyticsTab/>}
         {activeTab==="registration"&&<RegistrationTab/>}
       </div>
