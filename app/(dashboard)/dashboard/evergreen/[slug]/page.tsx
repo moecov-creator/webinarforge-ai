@@ -249,7 +249,7 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
       if(ct.includes("application/json")){data=await res.json();}
       else{
         const text=await res.text();
-        throw new Error(res.status===413?`File too large (${Math.round(transcribeFile.size/1024/1024)}MB). Export just the audio track as M4A/MP3 (usually under 25MB) and upload that instead.`:`Server error (${res.status}): ${text.slice(0,200)}`);
+        throw new Error(`Server error (${res.status}): ${text.slice(0,200)}`);
       }
       if(!data.success&&!data.chats)throw new Error(data.error||"Something went wrong. Please try again.");
       if(data.usedFallback&&data.message){setTranscribeInfo(data.message);setTimeout(()=>setTranscribeInfo(""),10000);}
