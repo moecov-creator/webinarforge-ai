@@ -4,14 +4,48 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export const maxDuration = 300; // 5 min timeout for large videos
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-// ── Types ──────────────────────────────────────────────────────────
-interface TranscriptSegment {
-  start: number;
-  end: number;
-  text: string;
+// ── Vercel body size limit fix ─────────────────────────────────────
+// By default Vercel limits request bodies to 4.5MB on hobby plans
+// and ~100MB on Pro. For large video files we need to handle this.
+export const config = {
+  api: {
+    bodyParser: false,
+    responseLimit: false,
+  },
+};
+
+// ── Name / city pools ──────────────────────────────────────────────
+const FIRST_NAMES = [
+  "Jason","Michael","David","James","Robert","William","John","Christopher","Daniel","Matthew",
+  "Sarah","Jennifer","Amanda","Jessica","Ashley","Emily","Stephanie","Nicole","Elizabeth","Megan",
+  "Carlos","Miguel","Marcus","Andre","Darius","Priya","Aisha","Sofia","Tyler","Brandon",
+  "Patricia","Sandra","Donna","Carol","Sharon","Trevor","Evan","Sean","Aaron","Adam",
+  "Monica","Tiffany","Jasmine","Keisha","Brianna","Destiny","Crystal","Alexis","Nathan","Justin",
+];
+const LAST_SHORT = ["M.","K.","T.","R.","B.","W.","J.","H.","C.","D.","L.","P.","S.","N."];
+const LAST_FULL  = [
+  "Johnson","Williams","Brown","Jones","Garcia","Miller","Davis","Wilson","Anderson","Taylor",
+  "Thomas","Jackson","White","Harris","Martin","Thompson","Robinson","Clark","Lewis","Walker",
+  "Carter","Mitchell","Perez","Roberts","Turner","Phillips","Campbell","Parker","Evans","Edwards",
+];
+const CITIES = [
+  "New York, NY","Los Angeles, CA","Chicago, IL","Houston, TX","Dallas, TX",
+  "Austin, TX","Atlanta, GA","Miami, FL","Seattle, WA","Denver, CO",
+  "Nashville, TN","Boston, MA","Las Vegas, NV","Orlando, FL","Minneapolis, MN",
+  "London, UK","Manchester, UK","Paris, France","Berlin, Germany","Madrid, Spain",
+  "Toronto, Canada","Sydney, Australia","Dublin, Ireland","Amsterdam, Netherlands","Rome, Italy",
+];
+
+function randomName(seed: number): string {
+  const first = FIRST_NAMES[seed % FIRST_NAMES.length];
+  const fmt = seed % 4;
+  if (fmt === 0) return `${first} ${LAST_SHORT[seed % LAST_SHORT.length]}`;
+  if (fmt === 1) return `${first} ${LAST_FULL[seed % LAST_FULL.length]}`;
+  if (fmt === 2) return `${first}${LAST_FULL[seed % LAST_FULL.length].charAt(0)}`;
+  return `${first} ${LAST_SHORT[(seed + 7) % LAST_SHORT.length]}`;
 }
 
 interface SmartChat {
@@ -24,171 +58,230 @@ interface SmartChat {
   cueType: string;
 }
 
-// ── Name/city pools ────────────────────────────────────────────────
-const FIRST_NAMES = [
-  "Jason","Michael","David","James","Robert","William","John","Christopher","Daniel","Matthew",
-  "Anthony","Mark","Steven","Paul","Andrew","Joshua","Kenneth","Kevin","Brian","Eric",
-  "Sarah","Jennifer","Amanda","Jessica","Ashley","Emily","Stephanie","Nicole","Elizabeth","Megan",
-  "Melissa","Lauren","Rachel","Samantha","Katherine","Christine","Angela","Brenda","Amy","Anna",
-  "Carlos","Miguel","Marcus","Andre","Darius","Terrence","Malik","Priya","Aisha","Sofia",
-  "Tyler","Brandon","Austin","Dylan","Ethan","Logan","Hunter","Caleb","Blake","Nathan",
-  "Patricia","Sandra","Donna","Carol","Sharon","Deborah","Cheryl","Janet","Monica","Tiffany",
-  "Trevor","Evan","Sean","Aaron","Adam","Justin","Bryan","Jeremy","Travis","Derrick",
-];
-const LAST_SHORT = ["M.","K.","T.","R.","B.","W.","J.","H.","C.","D.","L.","P.","S.","N.","F.","G."];
-const LAST_FULL  = [
-  "Johnson","Williams","Brown","Jones","Garcia","Miller","Davis","Wilson","Anderson","Taylor",
-  "Thomas","Jackson","White","Harris","Martin","Thompson","Robinson","Clark","Lewis","Walker",
-  "Howard","Young","Allen","King","Wright","Scott","Green","Baker","Adams","Nelson",
-  "Carter","Mitchell","Perez","Roberts","Turner","Phillips","Campbell","Parker","Evans","Edwards",
-];
-const CITIES = [
-  "New York, NY","Los Angeles, CA","Chicago, IL","Houston, TX","Phoenix, AZ",
-  "San Antonio, TX","San Diego, CA","Dallas, TX","Austin, TX","Jacksonville, FL",
-  "Fort Worth, TX","Columbus, OH","Charlotte, NC","Indianapolis, IN","San Francisco, CA",
-  "Seattle, WA","Denver, CO","Nashville, TN","Oklahoma City, OK","Washington, DC",
-  "Boston, MA","Memphis, TN","Louisville, KY","Portland, OR","Baltimore, MD",
-  "Las Vegas, NV","Atlanta, GA","Miami, FL","Orlando, FL","Tampa, FL",
-  "Minneapolis, MN","Kansas City, MO","Pittsburgh, PA","Cincinnati, OH","St. Louis, MO",
-  "London, UK","Manchester, UK","Birmingham, UK","Paris, France","Berlin, Germany",
-  "Munich, Germany","Madrid, Spain","Barcelona, Spain","Rome, Italy","Amsterdam, Netherlands",
-  "Brussels, Belgium","Zurich, Switzerland","Vienna, Austria","Stockholm, Sweden","Dublin, Ireland",
-  "Toronto, Canada","Vancouver, Canada","Sydney, Australia","Melbourne, Australia","Dubai, UAE",
-];
+// ── Fallback generator (proportional, no AI) ───────────────────────
+function generateFallbackChats(duration: number): SmartChat[] {
+  const cues = [
+    { frac:0.01, type:"joining",     burst:12, responses:(city:string)=>[`Just joined from ${city}!`,`Hello from ${city} 👋`,`${city} checking in!`,`Made it! From ${city}`] },
+    { frac:0.06, type:"dropCity",    burst:16, responses:(city:string)=>[city,`${city} 👋`,`Watching from ${city}`,`Live from ${city}`,`${city} in the house!`] },
+    { frac:0.12, type:"react",       burst:8,  responses:(_:string)=>["🔥🔥🔥","Mind blown 🤯","Taking notes!","WOW","Gold right here 💰","YESSS","💯💯"] },
+    { frac:0.16, type:"type1",       burst:20, responses:(city:string)=>["1","1️⃣","1 ✅","1 👍",`1 from ${city}`,"1 🙌","YES 1","1 — makes total sense","1 💯"] },
+    { frac:0.24, type:"question",    burst:6,  responses:(_:string)=>["Does this work for beginners?","How long does this take?","Can I use this for B2B?","What software do you recommend?","How soon can I see results?"] },
+    { frac:0.30, type:"react",       burst:9,  responses:(_:string)=>["This is incredible!","🙌🙌🙌","Screenshotting this!","Pure value 💎","This changes everything"] },
+    { frac:0.36, type:"type1",       burst:18, responses:(city:string)=>["1","1 ✅",`1 from ${city}`,"1 👊","Typing 1!","1 absolutely","1 yes!!"] },
+    { frac:0.42, type:"testimonial", burst:5,  responses:(_:string)=>["Applied this and closed a $5k deal same week!","This got me to $10k/month in 60 days 🎉","Finally broke 6 figures following these steps 🙏","Best investment I've ever made learning this"] },
+    { frac:0.48, type:"react",       burst:8,  responses:(_:string)=>["🔥🔥🔥","This is insane!","💯💯💯","👏👏👏","Mind blown 🤯"] },
+    { frac:0.54, type:"general",     burst:6,  responses:(city:string)=>[`Watching from ${city} — loving every minute`,"So glad I showed up today!","Taking tons of notes 📓","Pure value 💎"] },
+    { frac:0.60, type:"type1",       burst:16, responses:(city:string)=>["1","1 ✅",`1 from ${city}`,"1 — been waiting for this","YES 1","1 👊"] },
+    { frac:0.66, type:"question",    burst:5,  responses:(_:string)=>["Where do we sign up?","Is this recorded?","Do you offer coaching?","What's the investment?","Is there a community?"] },
+    { frac:0.72, type:"react",       burst:9,  responses:(_:string)=>["🚀🚀","This is the missing piece","I needed to hear this today 🙏","Bookmark worthy content","Telling everyone I know"] },
+    { frac:0.78, type:"type1",       burst:14, responses:(city:string)=>["1","1 💯",`1 from ${city}`,"1 — mind blown","Definitely 1","typing 1 rn"] },
+    { frac:0.84, type:"testimonial", burst:5,  responses:(_:string)=>["This is how I replaced my 9-5 🙏","$22k last month using this exact system","Went from 0 to 4 clients using exactly this"] },
+    { frac:0.90, type:"general",     burst:7,  responses:(_:string)=>["This is the most practical advice I've heard all year","My business will never be the same","Pure gold 💰","Incredible session!"] },
+  ];
 
-function randomName(seed: number): string {
-  const first = FIRST_NAMES[seed % FIRST_NAMES.length];
-  const fmt = seed % 5;
-  if (fmt===0) return `${first} ${LAST_SHORT[seed%LAST_SHORT.length]}`;
-  if (fmt===1) return `${first} ${LAST_FULL[seed%LAST_FULL.length]}`;
-  if (fmt===2) return `${first}${LAST_FULL[seed%LAST_FULL.length].charAt(0)}`;
-  if (fmt===3) return `${first.slice(0,3)}${LAST_FULL[(seed+3)%LAST_FULL.length].slice(0,3)}`;
-  return `${first} ${LAST_SHORT[(seed+7)%LAST_SHORT.length]}`;
-}
-
-function randomCity(seed: number): string {
-  return CITIES[seed % CITIES.length];
+  const chats: SmartChat[] = [];
+  let id = 0;
+  cues.forEach(cue => {
+    const baseTime = cue.frac * duration;
+    const spreadSecs = 0.02 * duration;
+    for (let i = 0; i < cue.burst; i++) {
+      const seed = id * 7 + i * 13;
+      const city = CITIES[seed % CITIES.length];
+      const responses = cue.responses(city);
+      const jitter = (i / cue.burst + Math.random() * 0.3) * spreadSecs;
+      const showAt = Math.round(Math.min(baseTime + jitter, duration - 10));
+      chats.push({
+        id: String(id++),
+        name: randomName(seed),
+        city,
+        message: responses[(seed + i) % responses.length],
+        showAt,
+        showAtFrac: showAt / duration,
+        cueType: cue.type,
+      });
+    }
+  });
+  return chats.sort((a, b) => a.showAt - b.showAt);
 }
 
 // ── Route handler ──────────────────────────────────────────────────
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
+    // Check content length before parsing — Vercel Pro allows up to 100MB
+    const contentLength = req.headers.get("content-length");
+    const fileSizeMB = contentLength ? parseInt(contentLength) / 1024 / 1024 : 0;
+
+    // If file is too large for Whisper (>25MB audio equivalent), use fallback
+    // Whisper API limit is 25MB. Large video files need to be sent as audio only.
+    if (fileSizeMB > 500) {
+      return NextResponse.json({
+        success: false,
+        error: `File too large (${Math.round(fileSizeMB)}MB). Please use a file under 500MB, or export just the audio track (M4A/MP3) for faster processing.`,
+      }, { status: 413 });
+    }
+
+    let formData: FormData;
+    try {
+      formData = await req.formData();
+    } catch (e) {
+      return NextResponse.json({
+        success: false,
+        error: "Could not read the uploaded file. Make sure the file is under 500MB and try again.",
+      }, { status: 400 });
+    }
+
     const videoFile = formData.get("video") as File | null;
     const durationStr = formData.get("duration") as string | null;
     const duration = durationStr ? parseInt(durationStr) : 0;
 
     if (!videoFile) {
-      return NextResponse.json({ success: false, error: "No video file provided" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "No video file provided." }, { status: 400 });
     }
 
-    // ── Step 1: Transcribe with Whisper ──────────────────────────
-    console.log(`Transcribing video: ${videoFile.name} (${Math.round(videoFile.size/1024/1024)}MB)`);
+    const fileMB = Math.round(videoFile.size / 1024 / 1024);
+    console.log(`Transcribing: ${videoFile.name} (${fileMB}MB)`);
 
-    const transcriptionResponse = await openai.audio.transcriptions.create({
-      file: videoFile,
-      model: "whisper-1",
-      response_format: "verbose_json",
-      timestamp_granularities: ["segment"],
-    });
+    // Whisper API hard limit is 25MB
+    if (videoFile.size > 25 * 1024 * 1024) {
+      console.log(`File is ${fileMB}MB — too large for Whisper direct upload. Using fallback.`);
 
-    const segments: TranscriptSegment[] = (transcriptionResponse as any).segments || [];
+      // Use fallback chat generation with the provided duration
+      const fallbackDuration = duration > 0 ? duration : 3600;
+      const chats = generateFallbackChats(fallbackDuration);
+
+      return NextResponse.json({
+        success: true,
+        chats,
+        duration: fallbackDuration,
+        usedFallback: true,
+        message: `Your video (${fileMB}MB) is larger than Whisper's 25MB limit. Smart chat was generated based on your video duration. For AI-accurate comments, export just the audio track as M4A/MP3 (usually under 25MB) and upload that instead.`,
+        transcript: { text: "", segmentCount: 0 },
+      });
+    }
+
+    // ── Step 1: Whisper transcription ──────────────────────────────
+    console.log("Sending to Whisper...");
+    let transcriptionResponse: any;
+    try {
+      transcriptionResponse = await openai.audio.transcriptions.create({
+        file: videoFile,
+        model: "whisper-1",
+        response_format: "verbose_json",
+        timestamp_granularities: ["segment"],
+      });
+    } catch (whisperError: any) {
+      console.error("Whisper error:", whisperError);
+      // If Whisper fails, fall back to proportional generation
+      const fallbackDuration = duration > 0 ? duration : 3600;
+      const chats = generateFallbackChats(fallbackDuration);
+      return NextResponse.json({
+        success: true,
+        chats,
+        duration: fallbackDuration,
+        usedFallback: true,
+        message: `Transcription encountered an issue: ${whisperError.message || "Unknown error"}. Chat was generated proportionally instead. Try uploading just the audio track (M4A/MP3).`,
+        transcript: { text: "", segmentCount: 0 },
+      });
+    }
+
+    const segments = (transcriptionResponse as any).segments || [];
     const fullText = transcriptionResponse.text || "";
     const detectedDuration = segments.length > 0
       ? segments[segments.length - 1].end
       : duration || 3600;
-
     const finalDuration = duration > 0 ? duration : Math.round(detectedDuration);
 
-    console.log(`Transcription complete. Duration: ${finalDuration}s. Segments: ${segments.length}`);
+    console.log(`Transcription done. Duration: ${finalDuration}s, Segments: ${segments.length}`);
 
-    // ── Step 2: Build segment summary for Claude ─────────────────
-    // Group segments into ~20 chunks for analysis
-    const chunkCount = Math.min(20, segments.length);
+    // ── Step 2: Build segment summary ─────────────────────────────
+    const chunkCount = Math.min(20, Math.max(1, segments.length));
     const chunkSize = Math.max(1, Math.floor(segments.length / chunkCount));
 
     const segmentSummaries = segments.length > 0
-      ? Array.from({length: chunkCount}, (_, i) => {
+      ? Array.from({ length: chunkCount }, (_, i) => {
           const start = i * chunkSize;
           const end = Math.min(start + chunkSize, segments.length);
           const chunk = segments.slice(start, end);
           const timeStart = chunk[0]?.start || 0;
-          const timeEnd = chunk[chunk.length-1]?.end || 0;
-          const text = chunk.map(s => s.text).join(" ").trim();
-          return `[${Math.round(timeStart)}s–${Math.round(timeEnd)}s]: ${text.slice(0, 300)}`;
+          const timeEnd = chunk[chunk.length - 1]?.end || 0;
+          const text = chunk.map((s: any) => s.text).join(" ").trim().slice(0, 300);
+          return `[${Math.round(timeStart)}s–${Math.round(timeEnd)}s]: ${text}`;
         }).join("\n")
-      : `Full transcript (${finalDuration}s): ${fullText.slice(0, 3000)}`;
+      : `Full transcript (${finalDuration}s total): ${fullText.slice(0, 3000)}`;
 
-    // ── Step 3: Claude analyzes transcript and generates chat ─────
-    const analysisPrompt = `You are analyzing a webinar transcript to generate realistic simulated audience chat messages.
+    // ── Step 3: GPT-4o chat generation ────────────────────────────
+    let generatedChats: any[] = [];
+    try {
+      const chatResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        max_tokens: 8000,
+        temperature: 0.85,
+        messages: [
+          {
+            role: "system",
+            content: "You generate realistic webinar audience chat messages. Always respond with valid JSON array only. No markdown, no code fences, no explanation — just the raw JSON array.",
+          },
+          {
+            role: "user",
+            content: `You are analyzing a webinar transcript to generate realistic simulated audience chat messages.
 
 WEBINAR TRANSCRIPT (with timestamps):
 ${segmentSummaries}
 
-Total duration: ${finalDuration} seconds (${Math.round(finalDuration/60)} minutes)
+Total duration: ${finalDuration} seconds (${Math.round(finalDuration / 60)} minutes)
 
-Your job: Generate exactly 160 realistic audience chat messages that are CONTEXTUALLY ACCURATE to what the presenter is actually saying at each timestamp.
+Generate exactly 160 realistic audience chat messages that are CONTEXTUALLY ACCURATE to what the presenter is actually saying at each timestamp.
 
 Rules:
 1. Messages must match what the presenter is discussing at that specific time
-2. Include these cue types based on what the presenter says:
-   - "type1": When presenter says "type 1", "comment 1", "drop a 1" — have 15-25 people respond with "1", "1️⃣", "1 ✅", etc. + their city
+2. Cue types to use:
+   - "type1": When presenter says "type 1", "drop a 1", "comment 1" — 15-25 people respond "1", "1 ✅", "1 from [city]"
    - "dropCity": When presenter asks where people are from — city responses
-   - "react": At value bombs, shocking stats, key revelations — emotional reactions
-   - "question": At confusing or deep points — relevant questions about the ACTUAL topic
-   - "testimonial": After success stories — related success stories from audience
+   - "react": At value bombs, key revelations — "🔥🔥🔥", "Mind blown 🤯", etc.
+   - "testimonial": After success stories — audience shares their wins
+   - "question": At teaching moments — specific questions about the ACTUAL topic
    - "general": General engagement throughout
-   - "joining": First 60 seconds — people joining
+   - "joining": First 2 minutes only — people joining
+3. Questions and reactions must reference the ACTUAL webinar topic and content
+4. Spread messages evenly across ALL ${finalDuration} seconds
+5. Each person needs a name and US/European city
 
-3. Questions and reactions must be SPECIFIC to the actual webinar topic, not generic
-4. Spread messages across the FULL ${finalDuration} seconds — don't cluster at the start
-5. Each person has a name (varied formats) and US/European city
+Return ONLY a valid JSON array like this:
+[{"name":"Jason C.","city":"Dallas, TX","message":"1 from Dallas!","showAt":245,"cueType":"type1"}]
 
-Return ONLY valid JSON array, no markdown, no explanation:
-[
-  {
-    "name": "Jason C.",
-    "city": "Dallas, TX",
-    "message": "1 from Dallas!",
-    "showAt": 245,
-    "cueType": "type1"
-  }
-]
+Generate all 160 messages now.`,
+          },
+        ],
+      });
 
-Generate all 160 messages. Make them feel like a real live webinar audience reacting to THIS specific content.`;
-
-    const chatResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      max_tokens: 8000,
-      temperature: 0.85,
-      messages: [
-        {
-          role: "system",
-          content: "You generate realistic webinar chat messages. Always respond with valid JSON array only. No markdown, no code fences, no explanation.",
-        },
-        { role: "user", content: analysisPrompt },
-      ],
-    });
-
-    const rawContent = chatResponse.choices[0]?.message?.content || "[]";
-
-    // Parse the response
-    let generatedChats: any[] = [];
-    try {
+      const rawContent = chatResponse.choices[0]?.message?.content || "[]";
       const cleaned = rawContent.replace(/```json|```/g, "").trim();
-      generatedChats = JSON.parse(cleaned);
-    } catch (err) {
-      console.error("Failed to parse chat JSON:", err);
-      // Fallback: extract JSON array from the response
-      const match = rawContent.match(/\[[\s\S]*\]/);
-      if (match) {
-        try { generatedChats = JSON.parse(match[0]); } catch {}
+
+      try {
+        generatedChats = JSON.parse(cleaned);
+      } catch {
+        // Try extracting JSON array from response
+        const match = cleaned.match(/\[[\s\S]*\]/);
+        if (match) {
+          try { generatedChats = JSON.parse(match[0]); } catch {}
+        }
       }
+    } catch (gptError: any) {
+      console.error("GPT error:", gptError);
+      // Fall back to proportional generation
+      const chats = generateFallbackChats(finalDuration);
+      return NextResponse.json({
+        success: true,
+        chats,
+        duration: finalDuration,
+        usedFallback: true,
+        message: "Chat generation encountered an issue. Chat was generated proportionally based on your transcript timing.",
+        transcript: { text: fullText.slice(0, 500), segmentCount: segments.length },
+      });
     }
 
-    // ── Step 4: Normalize and validate chats ─────────────────────
+    // ── Step 4: Normalize chats ────────────────────────────────────
     const validCueTypes = ["type1","dropCity","react","question","testimonial","general","joining"];
-
     const normalizedChats: SmartChat[] = generatedChats
       .filter((c: any) => c && typeof c.message === "string" && typeof c.showAt === "number")
       .map((c: any, i: number) => {
@@ -196,7 +289,7 @@ Generate all 160 messages. Make them feel like a real live webinar audience reac
         return {
           id: String(i),
           name: c.name || randomName(i * 7),
-          city: c.city || randomCity(i * 13),
+          city: c.city || CITIES[i % CITIES.length],
           message: c.message,
           showAt,
           showAtFrac: showAt / finalDuration,
@@ -205,11 +298,11 @@ Generate all 160 messages. Make them feel like a real live webinar audience reac
       })
       .sort((a: SmartChat, b: SmartChat) => a.showAt - b.showAt);
 
-    // If we got fewer than 100 chats, pad with generic ones
+    // Pad with fallback if we didn't get enough
     if (normalizedChats.length < 100) {
-      console.warn(`Only got ${normalizedChats.length} chats, padding...`);
-      const padding = generatePaddingChats(finalDuration, 160 - normalizedChats.length, normalizedChats.length);
-      normalizedChats.push(...padding);
+      const fallback = generateFallbackChats(finalDuration);
+      const padded = fallback.slice(normalizedChats.length);
+      normalizedChats.push(...padded.map((c, i) => ({ ...c, id: String(normalizedChats.length + i) })));
       normalizedChats.sort((a, b) => a.showAt - b.showAt);
     }
 
@@ -217,37 +310,18 @@ Generate all 160 messages. Make them feel like a real live webinar audience reac
       success: true,
       chats: normalizedChats,
       duration: finalDuration,
+      usedFallback: false,
       transcript: {
-        text: fullText.slice(0, 1000) + (fullText.length > 1000 ? "..." : ""),
+        text: fullText.slice(0, 500) + (fullText.length > 500 ? "..." : ""),
         segmentCount: segments.length,
       },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Transcribe route error:", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Transcription failed" },
+      { success: false, error: error?.message || "An unexpected error occurred. Please try again." },
       { status: 500 }
     );
   }
-}
-
-function generatePaddingChats(duration: number, count: number, startId: number): SmartChat[] {
-  const FIRST_NAMES_P = ["Sarah","Jason","Michael","Jennifer","Marcus","Priya","Tyler","Amanda","David","Nicole"];
-  const CITIES_P = ["New York, NY","Dallas, TX","Chicago, IL","Atlanta, GA","London, UK","Los Angeles, CA","Miami, FL","Austin, TX","Paris, France","Seattle, WA"];
-  const messages = ["🔥🔥🔥","This is incredible!","Taking notes!","Mind blown 🤯","Gold right here 💰","This changes everything","WOW","💯💯","So glad I showed up today!","Sharing this with my team"];
-
-  return Array.from({length: count}, (_, i) => {
-    const seed = (startId + i) * 7;
-    const showAt = Math.round((i / count) * duration * 0.9) + Math.floor(Math.random() * 30);
-    return {
-      id: String(startId + i),
-      name: `${FIRST_NAMES_P[seed % FIRST_NAMES_P.length]} ${["M.","T.","K.","R.","B."][seed%5]}`,
-      city: CITIES_P[seed % CITIES_P.length],
-      message: messages[seed % messages.length],
-      showAt: Math.min(showAt, duration - 5),
-      showAtFrac: Math.min(showAt, duration - 5) / duration,
-      cueType: "react" as const,
-    };
-  });
 }
