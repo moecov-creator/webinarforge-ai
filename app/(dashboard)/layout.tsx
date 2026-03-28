@@ -14,6 +14,7 @@ import {
   Bot,
   Link2,
   Settings,
+  Radio,
 } from "lucide-react";
 
 export default async function DashboardLayout({
@@ -76,6 +77,15 @@ export default async function DashboardLayout({
             >
               <Globe className="w-4 h-4" />
               <span>Evergreen Rooms</span>
+            </Link>
+
+            {/* ── Live Webinars ── */}
+            <Link
+              href="/dashboard/live"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
+            >
+              <Radio className="w-4 h-4" />
+              <span>Live Webinars</span>
             </Link>
 
             <Link
