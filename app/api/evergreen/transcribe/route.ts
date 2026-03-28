@@ -7,16 +7,6 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-// ── Vercel body size limit fix ─────────────────────────────────────
-// By default Vercel limits request bodies to 4.5MB on hobby plans
-// and ~100MB on Pro. For large video files we need to handle this.
-export const config = {
-  api: {
-    bodyParser: false,
-    responseLimit: false,
-  },
-};
-
 // ── Name / city pools ──────────────────────────────────────────────
 const FIRST_NAMES = [
   "Jason","Michael","David","James","Robert","William","John","Christopher","Daniel","Matthew",
