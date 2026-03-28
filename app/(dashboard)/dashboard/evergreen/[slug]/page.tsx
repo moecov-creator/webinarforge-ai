@@ -230,8 +230,14 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
 
   const handleTranscribe=async()=>{
     if(!transcribeFile)return;
+    // Client-side size check — only block if truly over 500MB (Vercel limit)
+    // Files up to 25MB go directly to Whisper; 25-500MB use fallback
+    if(transcribeFile.size > 500 * 1024 * 1024){
+      setTranscribeError(`File too large (${Math.round(transcribeFile.size/1024/1024)}MB). Maximum is 500MB. Please export just the audio track as M4A/MP3.`);
+      return;
+    }
     setTranscribing(true);setTranscribeError("");setTranscribeInfo("");
-    setTranscribeProgress("Uploading video to AI...");
+    setTranscribeProgress("Uploading to AI...");
     try{
       const fd=new FormData();
       fd.append("video",transcribeFile);
