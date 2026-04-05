@@ -1,0 +1,473 @@
+// app/(dashboard)/dashboard/demo/page.tsx  OR  app/demo/page.tsx
+// WebinarForge AI — Public Demo/Landing Page
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+
+const STATS = [
+  { value: "312", label: "Live right now", suffix: "" },
+  { value: "94", label: "Completion rate", suffix: "%" },
+  { value: "18", label: "Avg conversion", suffix: "%" },
+  { value: "2.4", label: "Revenue per attendee", prefix: "$", suffix: "k" },
+];
+
+const TESTIMONIALS = [
+  { name: "Sarah M.", city: "Austin, TX", avatar: "S", msg: "Closed $47k in 6 weeks using WebinarForge. The AI chat alone 3x'd my engagement.", revenue: "$47k" },
+  { name: "Marcus T.", city: "Atlanta, GA", avatar: "M", msg: "Replaced my entire webinar stack. One tool, zero headaches. 840 attendees on my last launch.", revenue: "840 att." },
+  { name: "Priya R.", city: "London, UK", avatar: "P", msg: "The evergreen room runs while I sleep. Woke up to 3 new clients yesterday.", revenue: "3 clients" },
+  { name: "Jason C.", city: "Dallas, TX", avatar: "J", msg: "AI generated chat comments that matched exactly what I was saying. Felt completely real.", revenue: "$22k" },
+];
+
+const FEATURES = [
+  { icon: "🎬", title: "Evergreen Rooms", desc: "Run your recorded webinar 24/7 with AI-synced live chat that fires based on exactly what you say — not random timers." },
+  { icon: "📡", title: "Live Webinars", desc: "Full Zoom-style host controls: participants, polls, Q&A, captions, whiteboard, and one-click save to evergreen." },
+  { icon: "🤖", title: "AI Chat Simulator", desc: "Upload your audio — Whisper transcribes it, GPT-4o reads every word and generates 160 contextually accurate audience reactions." },
+  { icon: "📊", title: "Real Analytics", desc: "Watch time, drop-off curves, CTA clicks, conversion rate. Know exactly where your webinar loses people." },
+  { icon: "🎯", title: "Timed Offers", desc: "Show your offer card at precisely the right moment — after the value bomb, not before. Triggers set to the second." },
+  { icon: "⚡", title: "AI Presenters", desc: "Clone your voice and face for automated webinar delivery. New sessions without new recordings." },
+];
+
+const CHAT_MSGS = [
+  { name: "Jason C.", city: "Dallas, TX", msg: "Just joined from Dallas! 🔥", color: "text-cyan-400", delay: 0 },
+  { name: "Sarah M.", city: "Austin, TX", msg: "This is exactly what I needed", color: "text-purple-400", delay: 1.2 },
+  { name: "Marcus T.", city: "Atlanta, GA", msg: "1 ✅", color: "text-green-400", delay: 2.1 },
+  { name: "Priya R.", city: "London, UK", msg: "Mind blown 🤯 taking notes", color: "text-pink-400", delay: 3.4 },
+  { name: "Tyler H.", city: "Denver, CO", msg: "1 from Denver!", color: "text-green-400", delay: 4.2 },
+  { name: "Amanda B.", city: "Miami, FL", msg: "This changes everything 🚀", color: "text-orange-400", delay: 5.1 },
+  { name: "Carlos G.", city: "NYC, NY", msg: "Gold right here 💰", color: "text-yellow-400", delay: 6.3 },
+  { name: "Nicole P.", city: "Seattle, WA", msg: "How do I get started?", color: "text-blue-400", delay: 7.2 },
+];
+
+function LiveCounter() {
+  const [count, setCount] = useState(312);
+  useEffect(() => {
+    const i = setInterval(() => setCount(c => Math.max(280, Math.min(400, c + Math.floor(Math.random() * 6) - 2))), 3000);
+    return () => clearInterval(i);
+  }, []);
+  return <span>{count.toLocaleString()}</span>;
+}
+
+function AnimatedChat() {
+  const [visible, setVisible] = useState<number[]>([]);
+  useEffect(() => {
+    CHAT_MSGS.forEach((msg, i) => {
+      setTimeout(() => setVisible(v => [...v, i]), msg.delay * 1000);
+    });
+    const loop = setInterval(() => {
+      setVisible([]);
+      setTimeout(() => {
+        CHAT_MSGS.forEach((msg, i) => {
+          setTimeout(() => setVisible(v => [...v, i]), msg.delay * 1000);
+        });
+      }, 500);
+    }, 10000);
+    return () => clearInterval(loop);
+  }, []);
+
+  return (
+    <div className="space-y-2 h-72 overflow-hidden">
+      {CHAT_MSGS.map((msg, i) => (
+        <div key={i} className={`flex gap-2.5 transition-all duration-500 ${visible.includes(i) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white/60 shrink-0">{msg.name.charAt(0)}</div>
+          <div>
+            <div className="flex items-center gap-1.5"><span className={`text-[11px] font-semibold ${msg.color}`}>{msg.name}</span><span className="text-[9px] text-white/20">· {msg.city}</span></div>
+            <p className="text-xs text-white/70 leading-snug mt-0.5">{msg.msg}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function DemoPage() {
+  const [activeFeature, setActiveFeature] = useState(0);
+  const [viewerCount] = useState(312);
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    const onScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const i = setInterval(() => setActiveFeature(f => (f + 1) % FEATURES.length), 3500);
+    return () => clearInterval(i);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#070710] text-white overflow-x-hidden" style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Instrument+Serif:ital@0;1&display=swap');
+        .font-display { font-family: 'Instrument Serif', Georgia, serif; }
+        .font-body { font-family: 'DM Sans', sans-serif; }
+        @keyframes float { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-8px)} }
+        @keyframes pulse-ring { 0%{transform:scale(1);opacity:0.6} 100%{transform:scale(1.4);opacity:0} }
+        @keyframes slide-up { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+        .animate-float { animation: float 4s ease-in-out infinite; }
+        .animate-pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
+        .animate-slide-up { animation: slide-up 0.8s ease-out forwards; }
+        .animate-ticker { animation: ticker 30s linear infinite; }
+        .gradient-text { background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .gradient-text-warm { background: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero-glow { background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99,102,241,0.15) 0%, transparent 70%); }
+        .card-glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
+        .btn-primary { background: linear-gradient(135deg, #7c3aed, #4f46e5); box-shadow: 0 0 40px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.15); transition: all 0.2s; }
+        .btn-primary:hover { box-shadow: 0 0 60px rgba(124,58,237,0.6), inset 0 1px 0 rgba(255,255,255,0.2); transform: translateY(-1px); }
+        .noise { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); }
+      `}</style>
+
+      {/* Noise overlay */}
+      <div className="fixed inset-0 noise pointer-events-none z-0"/>
+
+      {/* Nav */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4" style={{ background: scrollY > 50 ? "rgba(7,7,16,0.95)" : "transparent", backdropFilter: scrollY > 50 ? "blur(20px)" : "none", borderBottom: scrollY > 50 ? "1px solid rgba(255,255,255,0.06)" : "none", transition: "all 0.3s" }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center">
+            <span className="text-xs font-black text-white">WF</span>
+          </div>
+          <span className="font-semibold text-white tracking-tight">WebinarForge <span className="text-purple-400">AI</span></span>
+        </div>
+        <div className="hidden md:flex items-center gap-8">
+          {["Features", "How it works", "Pricing", "Testimonials"].map(l => (
+            <a key={l} href={`#${l.toLowerCase().replace(/ /g,"-")}`} className="text-sm text-white/50 hover:text-white transition-colors">{l}</a>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/sign-in"><button className="text-sm text-white/60 hover:text-white px-4 py-2 transition-colors">Sign in</button></Link>
+          <Link href="/sign-up"><button className="btn-primary text-sm font-semibold px-5 py-2.5 rounded-xl text-white">Start free →</button></Link>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="relative min-h-screen flex items-center pt-24 pb-16 px-6">
+        <div className="hero-glow absolute inset-0 pointer-events-none"/>
+
+        {/* Floating orbs */}
+        <div className="absolute top-32 left-[10%] w-64 h-64 rounded-full opacity-20 animate-float" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", animationDelay: "0s" }}/>
+        <div className="absolute top-48 right-[8%] w-48 h-48 rounded-full opacity-15 animate-float" style={{ background: "radial-gradient(circle, #3b82f6, transparent)", animationDelay: "1.5s" }}/>
+        <div className="absolute bottom-32 left-[20%] w-32 h-32 rounded-full opacity-10 animate-float" style={{ background: "radial-gradient(circle, #ec4899, transparent)", animationDelay: "3s" }}/>
+
+        <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-16 items-center">
+          {/* Left */}
+          <div className="animate-slide-up">
+            {/* Live badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-8" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <div className="relative">
+                <div className="w-2 h-2 rounded-full bg-red-500"/>
+                <div className="absolute inset-0 w-2 h-2 rounded-full bg-red-500 animate-pulse-ring"/>
+              </div>
+              <span className="text-xs font-semibold text-red-400"><LiveCounter/> people watching webinars right now</span>
+            </div>
+
+            <h1 className="font-display text-6xl lg:text-7xl leading-[1.05] mb-6 text-white">
+              The webinar platform<br/>
+              that <span className="gradient-text font-display italic">closes deals</span><br/>
+              while you sleep
+            </h1>
+
+            <p className="text-lg text-white/50 leading-relaxed mb-10 max-w-lg">
+              AI-powered evergreen rooms. Live webinars with Zoom-style controls. Chat that fires based on what your presenter actually says — not generic timers.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 mb-12">
+              <Link href="/sign-up">
+                <button className="btn-primary px-8 py-4 rounded-2xl text-white font-bold text-lg">
+                  Start for free — no card needed
+                </button>
+              </Link>
+              <a href="#how-it-works">
+                <button className="px-8 py-4 rounded-2xl text-white/70 font-semibold text-lg card-glass hover:bg-white/5 transition-all">
+                  Watch demo ↓
+                </button>
+              </a>
+            </div>
+
+            {/* Social proof strip */}
+            <div className="flex items-center gap-6">
+              <div className="flex -space-x-2">
+                {["S","M","J","P","T","A"].map((l,i) => (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-[#070710] flex items-center justify-center text-[10px] font-bold text-white" style={{ background: `hsl(${i*60},60%,45%)` }}>{l}</div>
+                ))}
+              </div>
+              <div>
+                <div className="flex items-center gap-1 mb-0.5">{"⭐⭐⭐⭐⭐".split("").map((s,i)=><span key={i} className="text-yellow-400 text-sm">{s}</span>)}</div>
+                <p className="text-xs text-white/40">Loved by 2,400+ webinar hosts</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Right — Live Demo Preview */}
+          <div className="relative animate-slide-up" style={{ animationDelay: "0.2s" }}>
+            {/* Webinar room mockup */}
+            <div className="relative rounded-3xl overflow-hidden" style={{ background: "#0f0f1f", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 40px 120px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)" }}>
+              {/* Top bar */}
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1.5">{["#ff5f57","#febc2e","#28c840"].map(c=><div key={c} className="w-3 h-3 rounded-full" style={{background:c}}/>)}</div>
+                  <span className="text-xs text-white/30 ml-2 font-mono">webinarforge.ai/room/ai-receptionist</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
+                  <span className="text-[10px] font-bold text-red-400">LIVE</span>
+                </div>
+              </div>
+
+              {/* Video area */}
+              <div className="relative" style={{ paddingBottom: "42%", background: "linear-gradient(135deg, #0f1629 0%, #1a0f2e 100%)" }}>
+                {/* Presentation slide simulation */}
+                <div className="absolute inset-0 flex items-center justify-center p-8">
+                  <div className="text-center">
+                    <p className="text-white/20 text-xs mb-3 uppercase tracking-widest">Today's Training</p>
+                    <h3 className="font-display text-2xl text-white leading-tight mb-2">
+                      AI Receptionist:<br/>Get Customers with<br/><span className="gradient-text italic">Artificial Intelligence</span>
+                    </h3>
+                    <p className="text-white/30 text-xs mt-3">This event is a 45 min training</p>
+                  </div>
+                </div>
+
+                {/* Viewer count overlay */}
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <span className="text-white/50">👥</span>
+                  <span className="font-semibold"><LiveCounter/></span>
+                  <span className="text-white/40">watching</span>
+                </div>
+
+                {/* Timer */}
+                <div className="absolute top-3 right-3 px-2.5 py-1.5 rounded-lg text-xs font-mono" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <span className="text-white/60">24:31</span>
+                </div>
+
+                {/* Offer CTA */}
+                <div className="absolute bottom-3 left-3 right-3 px-4 py-3 rounded-xl flex items-center justify-between" style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.3), rgba(79,70,229,0.3))", border: "1px solid rgba(124,58,237,0.3)", backdropFilter: "blur(10px)" }}>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Ready to implement this?</p>
+                    <p className="text-xs text-white/50">The AI Receptionist System gives you everything</p>
+                  </div>
+                  <button className="px-4 py-2 rounded-lg text-xs font-bold text-white whitespace-nowrap" style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>Tell me more →</button>
+                </div>
+              </div>
+
+              {/* Chat panel */}
+              <div className="px-4 py-4 border-t border-white/5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] text-white/30 uppercase tracking-widest font-semibold">Live Chat · <span className="text-purple-400">164 loaded</span></p>
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"/>
+                </div>
+                <AnimatedChat/>
+                <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <input className="flex-1 bg-transparent text-xs text-white/40 placeholder:text-white/20 outline-none" placeholder="Type a message..."/>
+                  <button className="text-[10px] text-purple-400 font-semibold">Send</button>
+                </div>
+              </div>
+            </div>
+
+            {/* Floating badge */}
+            <div className="absolute -bottom-5 -left-5 px-4 py-3 rounded-2xl animate-float" style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.25)", backdropFilter: "blur(20px)", animationDelay: "2s" }}>
+              <p className="text-xs text-green-400 font-bold">🎉 $22,000</p>
+              <p className="text-[10px] text-green-400/60">closed from last session</p>
+            </div>
+
+            <div className="absolute -top-5 -right-5 px-4 py-3 rounded-2xl animate-float" style={{ background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.25)", backdropFilter: "blur(20px)", animationDelay: "1s" }}>
+              <p className="text-xs text-indigo-400 font-bold">✅ AI transcribed</p>
+              <p className="text-[10px] text-indigo-400/60">Chat synced to your video</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats ticker */}
+      <div className="relative py-6 overflow-hidden border-y border-white/5" style={{ background: "rgba(255,255,255,0.02)" }}>
+        <div className="flex animate-ticker whitespace-nowrap">
+          {[...STATS, ...STATS, ...STATS, ...STATS].map((s, i) => (
+            <div key={i} className="inline-flex items-center gap-2 mx-12">
+              <span className="text-2xl font-black gradient-text">{s.prefix||""}{s.value}{s.suffix}</span>
+              <span className="text-sm text-white/30">{s.label}</span>
+              <span className="text-white/10 mx-4">·</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* How it works */}
+      <section id="how-it-works" className="py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">How it works</p>
+            <h2 className="font-display text-5xl lg:text-6xl text-white mb-6">Three steps to your<br/><span className="gradient-text italic">first automated sale</span></h2>
+            <p className="text-white/40 text-lg max-w-xl mx-auto">From recording to revenue — WebinarForge handles the technology so you can focus on the content.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { step:"01", icon:"🎙️", title:"Record once", desc:"Record your best webinar presentation. Upload it to WebinarForge — we handle the rest forever.", accent:"from-purple-500/20 to-purple-500/0" },
+              { step:"02", icon:"🤖", title:"AI analyzes everything", desc:"Whisper transcribes your audio word-for-word. GPT-4o reads the full transcript and writes 160 chat messages that fire at exactly the right moments.", accent:"from-indigo-500/20 to-indigo-500/0" },
+              { step:"03", icon:"💰", title:"Watch revenue come in", desc:"Your evergreen room runs 24/7. Attendees see a live-feeling webinar with real-feeling engagement. Your offer converts while you sleep.", accent:"from-blue-500/20 to-blue-500/0" },
+            ].map((step, i) => (
+              <div key={i} className="relative p-8 rounded-3xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <div className={`absolute inset-0 bg-gradient-to-br ${step.accent} pointer-events-none`}/>
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-6">
+                    <span className="text-4xl">{step.icon}</span>
+                    <span className="text-5xl font-black text-white/5">{step.step}</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
+                  <p className="text-white/50 text-sm leading-relaxed">{step.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="py-32 px-6" style={{ background: "rgba(255,255,255,0.01)" }}>
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Everything you need</p>
+            <h2 className="font-display text-5xl lg:text-6xl text-white mb-6">Built for hosts who<br/><span className="gradient-text italic">actually want to close</span></h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {FEATURES.map((f, i) => (
+              <div key={i} onClick={() => setActiveFeature(i)}
+                className="p-7 rounded-3xl cursor-pointer transition-all duration-300"
+                style={{
+                  background: activeFeature === i ? "rgba(124,58,237,0.1)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${activeFeature === i ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.07)"}`,
+                  transform: activeFeature === i ? "scale(1.02)" : "scale(1)",
+                }}>
+                <span className="text-3xl mb-4 block">{f.icon}</span>
+                <h3 className="text-lg font-bold text-white mb-2">{f.title}</h3>
+                <p className="text-sm text-white/45 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section id="testimonials" className="py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Real results</p>
+            <h2 className="font-display text-5xl lg:text-6xl text-white mb-6">Hosts who switched to<br/><span className="gradient-text-warm font-display italic">WebinarForge</span></h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {TESTIMONIALS.map((t, i) => (
+              <div key={i} className="p-6 rounded-3xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white" style={{ background: `hsl(${i*80+200},60%,40%)` }}>{t.avatar}</div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{t.name}</p>
+                    <p className="text-xs text-white/30">{t.city}</p>
+                  </div>
+                  <div className="ml-auto px-2.5 py-1 rounded-lg text-xs font-bold" style={{ background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid rgba(16,185,129,0.2)" }}>{t.revenue}</div>
+                </div>
+                <div className="flex mb-3">{[1,2,3,4,5].map(s=><span key={s} className="text-yellow-400 text-xs">⭐</span>)}</div>
+                <p className="text-sm text-white/60 leading-relaxed">"{t.msg}"</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="py-32 px-6" style={{ background: "rgba(255,255,255,0.01)" }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-20">
+            <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Simple pricing</p>
+            <h2 className="font-display text-5xl lg:text-6xl text-white mb-6">Pick your plan.<br/><span className="gradient-text italic">Scale when you're ready.</span></h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { name:"Starter", price:"$97", period:"/mo", attendees:"1,000", features:["Unlimited sessions","AI chat simulator","Evergreen rooms","Chat & Q&A","Basic analytics","Recording & replay"], cta:"Start Starter", highlight:false },
+              { name:"Pro", price:"$297", period:"/mo", attendees:"10,000", features:["Everything in Starter","10,000 attendees","HD video streaming","Advanced analytics","Custom branding","Priority support","AI presenters","Automated sequences"], cta:"Start Pro", highlight:true },
+              { name:"Enterprise", price:"Custom", period:"", attendees:"1,000,000+", features:["Everything in Pro","Unlimited attendees","White-label option","Dedicated infrastructure","SLA guarantee","Custom integrations","Dedicated account manager"], cta:"Contact Sales", highlight:false },
+            ].map((plan, i) => (
+              <div key={i} className={`relative p-8 rounded-3xl ${plan.highlight ? "scale-105" : ""}`}
+                style={{
+                  background: plan.highlight ? "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(79,70,229,0.1))" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${plan.highlight ? "rgba(124,58,237,0.4)" : "rgba(255,255,255,0.07)"}`,
+                  boxShadow: plan.highlight ? "0 0 60px rgba(124,58,237,0.15)" : "none",
+                }}>
+                {plan.highlight && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-xs font-bold text-white" style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>MOST POPULAR</div>}
+                <p className="text-sm font-semibold text-white/50 mb-1">{plan.name}</p>
+                <div className="flex items-end gap-1 mb-1">
+                  <span className="text-4xl font-black text-white">{plan.price}</span>
+                  <span className="text-white/40 mb-1">{plan.period}</span>
+                </div>
+                <p className="text-xs text-white/30 mb-6">Up to {plan.attendees} attendees</p>
+                <div className="space-y-2.5 mb-8">
+                  {plan.features.map(f => (
+                    <div key={f} className="flex items-center gap-2.5">
+                      <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(16,185,129,0.2)" }}>
+                        <span className="text-green-400 text-[10px]">✓</span>
+                      </div>
+                      <span className="text-sm text-white/55">{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/sign-up">
+                  <button className={`w-full py-3.5 rounded-2xl text-sm font-bold transition-all ${plan.highlight ? "btn-primary text-white" : "text-white/70 hover:text-white hover:bg-white/5"}`}
+                    style={!plan.highlight ? { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" } : {}}>
+                    {plan.cta} →
+                  </button>
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-white/25 text-sm mt-8">All plans include 14-day free trial · Cancel anytime · Invoice billing available</p>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-32 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="relative p-16 rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(79,70,229,0.1))", border: "1px solid rgba(124,58,237,0.2)" }}>
+            <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse at center, rgba(124,58,237,0.3), transparent 70%)" }}/>
+            <div className="relative">
+              <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-6">Start today</p>
+              <h2 className="font-display text-5xl lg:text-6xl text-white mb-6">
+                Your next webinar<br/>should <span className="gradient-text italic">close itself.</span>
+              </h2>
+              <p className="text-white/50 text-lg mb-10 max-w-xl mx-auto">Join 2,400+ webinar hosts who automated their revenue with AI-powered webinars that feel completely live.</p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href="/sign-up">
+                  <button className="btn-primary px-10 py-4 rounded-2xl text-white font-bold text-lg">
+                    Start free — no card needed
+                  </button>
+                </Link>
+                <Link href="/dashboard">
+                  <button className="px-10 py-4 rounded-2xl text-white/70 font-semibold text-lg card-glass hover:bg-white/5 transition-all">
+                    View dashboard →
+                  </button>
+                </Link>
+              </div>
+              <p className="text-white/25 text-sm mt-6">14-day free trial · Cancel anytime · Setup in under 10 minutes</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/5 py-12 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center"><span className="text-[10px] font-black text-white">WF</span></div>
+            <span className="text-sm font-semibold text-white/60">WebinarForge AI</span>
+          </div>
+          <div className="flex items-center gap-8">
+            {["Privacy","Terms","Support","Contact"].map(l => <a key={l} href="#" className="text-xs text-white/25 hover:text-white/60 transition-colors">{l}</a>)}
+          </div>
+          <p className="text-xs text-white/20">© 2026 WebinarForge AI. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
