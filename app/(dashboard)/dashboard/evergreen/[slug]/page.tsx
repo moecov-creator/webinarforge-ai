@@ -128,8 +128,15 @@ function WatchRoomTab({videoSource,simChats,videoDuration,onVideoDuration}:{vide
   const [visibleComments,setVisibleComments]=useState<TimedCommentDTO[]>([]);
   const [visibleSim,setVisibleSim]=useState<SimChat[]>([]);
   const [activeCTA,setActiveCTA]=useState<CTASequenceDTO|null>(null);
+  const [userInput,setUserInput]=useState("");
+  const [userMessages,setUserMessages]=useState<{id:string;name:string;message:string;time:string}[]>([]);
   const chatEndRef=useRef<HTMLDivElement>(null);
   const videoRef=useRef<HTMLVideoElement>(null);
+  const sendUserMessage=()=>{
+    if(!userInput.trim())return;
+    setUserMessages(p=>[...p,{id:`u-${Date.now()}`,name:"You",message:userInput.trim(),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]);
+    setUserInput("");
+  };
   const timerRef=useRef<NodeJS.Timeout>();
   const dur=videoDuration>0?videoDuration:MOCK_WEBINAR.durationSeconds;
 
@@ -147,6 +154,7 @@ function WatchRoomTab({videoSource,simChats,videoDuration,onVideoDuration}:{vide
   const allMessages=[
     ...visibleComments.map(c=>({id:`tc-${c.id}`,time:c.triggerAt,type:"timed" as const,data:c})),
     ...visibleSim.map(c=>({id:`sc-${c.id}`,time:c.showAt,type:"sim" as const,data:c})),
+    ...userMessages.map(c=>({id:c.id,time:currentTime+0.1,type:"user" as const,data:c})),
   ].sort((a,b)=>a.time-b.time);
   const progress=dur>0?(currentTime/dur)*100:0;
 
@@ -207,11 +215,12 @@ function WatchRoomTab({videoSource,simChats,videoDuration,onVideoDuration}:{vide
           )}
           {allMessages.map(msg=>{
             if(msg.type==="timed"){const c=msg.data as TimedCommentDTO;return(<div key={msg.id} className="flex gap-2 animate-in fade-in slide-in-from-bottom-2"><div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 text-[10px] font-semibold text-white/40">{c.authorName.charAt(0)}</div><div className="flex-1 min-w-0"><p className={`text-[11px] font-medium mb-0.5 ${getCommentColor(c.type)}`}>{c.authorName}</p><p className="text-xs text-white/55 leading-relaxed">{c.content}</p></div></div>);}
+            else if(msg.type==="user"){const c=msg.data as {id:string;name:string;message:string;time:string};return(<div key={msg.id} className="flex gap-2 animate-in fade-in slide-in-from-bottom-2"><div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center shrink-0 text-[10px] font-semibold text-white">Y</div><div className="flex-1 min-w-0"><p className="text-[11px] font-medium mb-0.5 text-purple-400">You</p><p className="text-xs text-white/80 leading-relaxed">{c.message}</p></div></div>);}
             else{const c=msg.data as SimChat;return(<div key={msg.id} className="flex gap-2 animate-in fade-in slide-in-from-bottom-2"><div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center shrink-0 text-[10px] font-semibold text-white/30">{c.name.charAt(0)}</div><div className="flex-1 min-w-0"><div className="flex items-center gap-1.5 mb-0.5 flex-wrap"><p className={`text-[11px] font-medium ${getCueColor(c.cueType)}`}>{c.name}</p><span className="text-[9px] text-white/20">· {c.city}</span></div><p className="text-xs text-white/60 leading-relaxed">{c.message}</p></div></div>);}
           })}
           <div ref={chatEndRef}/>
         </div>
-        <div className="px-3 py-2 border-t border-white/5"><div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2"><input placeholder="Type a message..." className="flex-1 bg-transparent text-xs text-white/40 placeholder:text-white/20 outline-none"/><button className="text-white/20 hover:text-white/50 text-xs">Send</button></div></div>
+        <div className="px-3 py-2 border-t border-white/5"><div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2"><input value={userInput} onChange={e=>setUserInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendUserMessage();}} placeholder="Type a message..." className="flex-1 bg-transparent text-xs text-white placeholder:text-white/30 outline-none"/><button onClick={sendUserMessage} className="text-purple-400 hover:text-purple-300 text-xs font-medium transition-colors px-1">Send</button></div></div>
       </div>
     </div>
   );
