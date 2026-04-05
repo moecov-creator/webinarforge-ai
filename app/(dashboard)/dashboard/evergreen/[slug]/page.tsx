@@ -9,7 +9,7 @@ import {
   Users, Volume2, VolumeX, Maximize2, SkipForward,
   Play, Pause, PlayCircle, Settings2, BarChart2,
   ClipboardList, Globe, Video, MessageSquare,
-  Gift, FileText, BarChart, Tag, Code, Upload, Sparkles,
+  Gift, FileText, BarChart, Tag, Code, Sparkles,
 } from "lucide-react";
 import type { TimedCommentDTO, CTASequenceDTO } from "@/types/webinar";
 
@@ -301,12 +301,12 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
           <div className="p-4 bg-purple-500/8 border border-purple-500/20 rounded-xl">
             <div className="flex items-start gap-2 mb-2"><Sparkles className="w-3.5 h-3.5 text-purple-400 mt-0.5 shrink-0"/><p className="text-xs text-purple-300 font-medium">How it works</p></div>
             <ol className="text-xs text-white/35 space-y-1 ml-5 list-decimal leading-relaxed">
-              <li>Upload your webinar video (MP4, MOV, WebM) or audio (M4A, MP3)</li>
-              <li>OpenAI Whisper transcribes the full audio with timestamps</li>
+              <li>Upload your audio file to Google Drive or Dropbox and make it public</li>
+              <li>Paste the share link below — the AI downloads and transcribes it with Whisper</li>
               <li>GPT-4o identifies key moments (value bombs, "type a 1" cues, Q&A, etc.)</li>
               <li>Generates 160 contextual comments matching what the presenter actually says</li>
             </ol>
-            <p className="text-[10px] text-orange-400/70 mt-2">⚡ For large videos (over 25MB): export just the audio as M4A/MP3 for best results</p>
+            <p className="text-[10px] text-green-400/70 mt-2">✅ No file size limits — works with any size audio file via Google Drive or Dropbox</p>
           </div>
 
           {transcribeError&&<div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg"><p className="text-xs text-red-400">{transcribeError}</p></div>}
@@ -316,17 +316,25 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
             <div className="p-6 border border-purple-500/20 rounded-xl bg-purple-500/5 text-center space-y-3">
               <div className="flex items-center justify-center gap-2"><svg className="animate-spin h-5 w-5 text-purple-400" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg><span className="text-sm text-purple-300 font-medium">Processing...</span></div>
               <p className="text-xs text-white/40">{transcribeProgress}</p>
-              <p className="text-[10px] text-white/20">Don't close this tab.</p>
+              <p className="text-[10px] text-white/20">This may take 2–4 minutes. Don't close this tab.</p>
             </div>
           ):(
             <>
-              <label htmlFor="transcribe-video-input" className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 text-center cursor-pointer group transition-all ${transcribeFile?"border-purple-500/50 bg-purple-500/5":"border-white/10 hover:border-purple-500/40 hover:bg-purple-500/5"}`}>
-                <Upload className={`w-8 h-8 mb-2 transition-colors ${transcribeFile?"text-purple-400":"text-white/20 group-hover:text-purple-400"}`}/>
-                {transcribeFile?(<><p className="text-sm text-green-400 font-medium">{transcribeFile.name}</p><p className="text-xs text-white/30 mt-1">{(transcribeFile.size/1024/1024).toFixed(1)} MB · Click to change</p></>):(<><p className="text-sm text-white/40 group-hover:text-white/60">Drop your webinar video here or <span className="text-purple-400 underline">browse</span></p><p className="text-xs text-white/20 mt-1">MP4, MOV, WebM · Audio: M4A, MP3</p></>)}
-              </label>
-              <input id="transcribe-video-input" type="file" accept="video/*,audio/*,.mp4,.mov,.webm,.m4a,.mp3" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)setTranscribeFile(f);}}/>
-              <button onClick={handleTranscribe} disabled={!transcribeFile} className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2">
-                <Sparkles className="w-4 h-4"/>{transcribeFile?"Analyze Video & Generate Smart Chat →":"Upload a video first"}
+              <div>
+                <label className="text-xs text-white/40 mb-1.5 block">Google Drive or Dropbox audio link</label>
+                <input
+                  value={audioUrl}
+                  onChange={e=>setAudioUrl(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/... or https://dropbox.com/..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500"
+                />
+                <p className="text-[10px] text-white/25 mt-1.5 leading-relaxed">
+                  1. Upload your MP3/M4A to Google Drive → right-click → Share → Anyone with the link → Copy link<br/>
+                  2. Paste the link above and click Analyze
+                </p>
+              </div>
+              <button onClick={handleTranscribe} disabled={!audioUrl.trim()} className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2">
+                <Sparkles className="w-4 h-4"/>{audioUrl.trim()?"✦ Analyze Audio & Generate Smart Chat →":"Paste a Google Drive or Dropbox link first"}
               </button>
             </>
           )}
