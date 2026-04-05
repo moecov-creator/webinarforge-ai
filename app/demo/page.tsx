@@ -116,6 +116,7 @@ export default function DemoPage() {
         .card-glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
         .btn-primary { background: linear-gradient(135deg, #7c3aed, #4f46e5); box-shadow: 0 0 40px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.15); transition: all 0.2s; }
         .btn-primary:hover { box-shadow: 0 0 60px rgba(124,58,237,0.6), inset 0 1px 0 rgba(255,255,255,0.2); transform: translateY(-1px); }
+        html { scroll-behavior: smooth; }
         .noise { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); }
       `}</style>
 
@@ -131,8 +132,13 @@ export default function DemoPage() {
           <span className="font-semibold text-white tracking-tight">WebinarForge <span className="text-purple-400">AI</span></span>
         </div>
         <div className="hidden md:flex items-center gap-8">
-          {["Features", "How it works", "Pricing", "Testimonials"].map(l => (
-            <a key={l} href={`#${l.toLowerCase().replace(/ /g,"-")}`} className="text-sm text-white/50 hover:text-white transition-colors">{l}</a>
+          {[
+            {label:"Features",id:"features"},
+            {label:"How it works",id:"how-it-works"},
+            {label:"Pricing",id:"pricing"},
+            {label:"Testimonials",id:"testimonials"},
+          ].map(l => (
+            <button key={l.id} onClick={()=>document.getElementById(l.id)?.scrollIntoView({behavior:"smooth"})} className="text-sm text-white/50 hover:text-white transition-colors">{l.label}</button>
           ))}
         </div>
         <div className="flex items-center gap-3">
@@ -178,11 +184,9 @@ export default function DemoPage() {
                   Start for free — no card needed
                 </button>
               </Link>
-              <a href="#how-it-works">
-                <button className="px-8 py-4 rounded-2xl text-white/70 font-semibold text-lg card-glass hover:bg-white/5 transition-all">
-                  Watch demo ↓
-                </button>
-              </a>
+              <button onClick={()=>document.getElementById("how-it-works")?.scrollIntoView({behavior:"smooth"})} className="px-8 py-4 rounded-2xl text-white/70 font-semibold text-lg card-glass hover:bg-white/5 transition-all">
+                Watch demo ↓
+              </button>
             </div>
 
             {/* Social proof strip */}
@@ -292,7 +296,7 @@ export default function DemoPage() {
       </div>
 
       {/* How it works */}
-      <section id="how-it-works" className="py-32 px-6">
+      <section id="how-it-works" className="py-32 px-6" style={{scrollMarginTop:"80px"}}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">How it works</p>
@@ -323,7 +327,7 @@ export default function DemoPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-32 px-6" style={{ background: "rgba(255,255,255,0.01)" }}>
+      <section id="features" style={{scrollMarginTop:"80px"}} className="py-32 px-6" style={{ background: "rgba(255,255,255,0.01)" }}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Everything you need</p>
@@ -349,7 +353,7 @@ export default function DemoPage() {
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" className="py-32 px-6">
+      <section id="testimonials" style={{scrollMarginTop:"80px"}} className="py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Real results</p>
@@ -376,7 +380,7 @@ export default function DemoPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-32 px-6" style={{ background: "rgba(255,255,255,0.01)" }}>
+      <section id="pricing" style={{scrollMarginTop:"80px"}} className="py-32 px-6" style={{ background: "rgba(255,255,255,0.01)" }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-20">
             <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Simple pricing</p>
