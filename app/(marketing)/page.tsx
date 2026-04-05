@@ -47,7 +47,6 @@ export default function MarketingPage() {
 
         <div className="flex flex-col md:flex-row gap-4 justify-center mb-6">
           
-          {/* 🔥 UPDATED BUTTON */}
           <button
             onClick={handleGenerate}
             className="bg-purple-600 hover:bg-purple-700 px-8 py-4 rounded-xl font-semibold text-lg transition"
@@ -55,11 +54,12 @@ export default function MarketingPage() {
             Start My AI Webinar Funnel →
           </button>
 
-          <a href="#demo">
+          {/* FIXED: links to /demo page instead of #demo anchor */}
+          <Link href="/demo">
             <button className="border border-gray-500 hover:border-white px-8 py-4 rounded-xl font-semibold text-lg transition">
               Watch Demo
             </button>
-          </a>
+          </Link>
         </div>
 
         <p className="text-sm text-gray-400">
