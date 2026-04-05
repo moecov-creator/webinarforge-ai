@@ -220,7 +220,7 @@ function WatchRoomTab({videoSource,simChats,videoDuration,onVideoDuration}:{vide
 // ── Chat Simulator Section ─────────────────────────────────────────
 function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVideoDuration}:{slug:string;simChats:SimChat[];onSimChatsChange:(c:SimChat[])=>void;videoDuration:number;onVideoDuration:(d:number)=>void}){
   const [mode,setMode]=useState<"ai"|"fallback">("ai");
-  const [transcribeFile,setTranscribeFile]=useState<File|null>(null);
+  const [audioUrl,setAudioUrl]=useState("");
   const [transcribing,setTranscribing]=useState(false);
   const [transcribeProgress,setTranscribeProgress]=useState("");
   const [transcribeError,setTranscribeError]=useState("");
@@ -229,35 +229,26 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
   const [manualDuration,setManualDuration]=useState(videoDuration>0?String(Math.round(videoDuration/60)):"");
 
   const handleTranscribe=async()=>{
-    if(!transcribeFile)return;
-    // Client-side size check — only block if truly over 500MB (Vercel limit)
-    // Files up to 25MB go directly to Whisper; 25-500MB use fallback
-    if(transcribeFile.size > 500 * 1024 * 1024){
-      setTranscribeError(`File too large (${Math.round(transcribeFile.size/1024/1024)}MB). Maximum is 500MB. Please export just the audio track as M4A/MP3.`);
-      return;
-    }
+    if(!audioUrl.trim()){setTranscribeError("Please paste a Google Drive or Dropbox link to your audio file.");return;}
     setTranscribing(true);setTranscribeError("");setTranscribeInfo("");
-    setTranscribeProgress("Uploading to AI...");
+    setTranscribeProgress("Connecting to your audio file...");
     try{
-      const fd=new FormData();
-      fd.append("video",transcribeFile);
-      if(videoDuration>0)fd.append("duration",String(videoDuration));
-      setTranscribeProgress("Transcribing audio with Whisper AI... (this may take 1–3 minutes)");
-      const res=await fetch("/api/evergreen/transcribe",{method:"POST",body:fd});
+      setTranscribeProgress("Transcribing with Whisper AI... (this may take 2–4 minutes for long audio)");
+      const res=await fetch("/api/evergreen/transcribe",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({url:audioUrl.trim(),duration:videoDuration>0?videoDuration:undefined}),
+      });
       let data:any;
-      const ct=res.headers.get("content-type")||"";
-      if(ct.includes("application/json")){data=await res.json();}
-      else{
-        const text=await res.text();
-        throw new Error(`Server error (${res.status}): ${text.slice(0,200)}`);
-      }
+      try{data=await res.json();}
+      catch{const text=await res.text();throw new Error(`Server error (${res.status}): ${text.slice(0,200)}`);}
       if(!data.success&&!data.chats)throw new Error(data.error||"Something went wrong. Please try again.");
-      if(data.usedFallback&&data.message){setTranscribeInfo(data.message);setTimeout(()=>setTranscribeInfo(""),10000);}
+      if(data.usedFallback&&data.message){setTranscribeInfo(data.message);setTimeout(()=>setTranscribeInfo(""),12000);}
       setTranscribeProgress("");
       const chats:SimChat[]=data.chats;
       const detectedDur:number=data.duration;
       if(detectedDur>0&&detectedDur!==videoDuration){onVideoDuration(detectedDur);saveLS(`wf-duration-${slug}`,detectedDur);}
-      onSimChatsChange(chats);saveLS(`wf-chats-${slug}`,chats);setTranscribeFile(null);
+      onSimChatsChange(chats);saveLS(`wf-chats-${slug}`,chats);
     }catch(err){
       setTranscribeError(err instanceof Error?err.message:"Something went wrong. Please try again.");
       setTranscribeProgress("");
@@ -280,7 +271,7 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-white">Chat Simulator</h3>
-          <p className="text-xs text-white/30 mt-0.5">{simChats.length>0?`${simChats.length} messages · ${videoDuration>0?`synced to ${formatTime(videoDuration)} video`:"set video duration to sync"}`:"AI reads your video and generates contextual chat"}</p>
+          <p className="text-xs text-white/30 mt-0.5">{simChats.length>0?`${simChats.length} messages · ${videoDuration>0?`synced to ${formatTime(videoDuration)} video`:"set video duration to sync"}`:"AI reads your audio and generates contextual chat"}</p>
         </div>
         {simChats.length>0&&<button onClick={()=>{onSimChatsChange([]);saveLS(`wf-chats-${slug}`,[]);}} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remove all</button>}
       </div>
@@ -288,11 +279,11 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
       <div className="grid grid-cols-2 gap-3">
         <button onClick={()=>setMode("ai")} className={`p-4 rounded-xl border-2 text-left transition-all ${mode==="ai"?"border-purple-500 bg-purple-500/10":"border-white/10 hover:border-white/20 bg-white/3"}`}>
           <div className="flex items-center gap-2 mb-1"><Sparkles className={`w-4 h-4 ${mode==="ai"?"text-purple-400":"text-white/30"}`}/><span className={`text-sm font-semibold ${mode==="ai"?"text-white":"text-white/50"}`}>AI Video Analysis</span><span className="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded-full">Recommended</span></div>
-          <p className="text-xs text-white/25 leading-snug">Upload your video — AI transcribes it and generates comments that match exactly what the presenter says</p>
+          <p className="text-xs text-white/25 leading-snug">Paste a Google Drive or Dropbox link — AI transcribes and generates comments matching exactly what the presenter says</p>
         </button>
         <button onClick={()=>setMode("fallback")} className={`p-4 rounded-xl border-2 text-left transition-all ${mode==="fallback"?"border-purple-500 bg-purple-500/10":"border-white/10 hover:border-white/20 bg-white/3"}`}>
           <div className="flex items-center gap-2 mb-1"><MessageSquare className={`w-4 h-4 ${mode==="fallback"?"text-purple-400":"text-white/30"}`}/><span className={`text-sm font-semibold ${mode==="fallback"?"text-white":"text-white/50"}`}>Quick Generate</span></div>
-          <p className="text-xs text-white/25 leading-snug">Generate generic but realistic chat messages spread across your video without uploading</p>
+          <p className="text-xs text-white/25 leading-snug">Generate generic but realistic chat messages spread across your video without any link</p>
         </button>
       </div>
 
@@ -301,12 +292,12 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
           <div className="p-4 bg-purple-500/8 border border-purple-500/20 rounded-xl">
             <div className="flex items-start gap-2 mb-2"><Sparkles className="w-3.5 h-3.5 text-purple-400 mt-0.5 shrink-0"/><p className="text-xs text-purple-300 font-medium">How it works</p></div>
             <ol className="text-xs text-white/35 space-y-1 ml-5 list-decimal leading-relaxed">
-              <li>Upload your audio file to Google Drive or Dropbox and make it public</li>
-              <li>Paste the share link below — the AI downloads and transcribes it with Whisper</li>
-              <li>GPT-4o identifies key moments (value bombs, "type a 1" cues, Q&A, etc.)</li>
-              <li>Generates 160 contextual comments matching what the presenter actually says</li>
+              <li>Upload your MP3/M4A to Google Drive → Share → Anyone with the link</li>
+              <li>Paste the share link below</li>
+              <li>AI downloads, transcribes with Whisper, and identifies key moments</li>
+              <li>Generates 160 comments timed to exactly what the presenter says</li>
             </ol>
-            <p className="text-[10px] text-green-400/70 mt-2">✅ No file size limits — works with any size audio file via Google Drive or Dropbox</p>
+            <p className="text-[10px] text-green-400/70 mt-2">✅ No file size limits — works with any size audio via Google Drive or Dropbox</p>
           </div>
 
           {transcribeError&&<div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg"><p className="text-xs text-red-400">{transcribeError}</p></div>}
@@ -319,24 +310,16 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
               <p className="text-[10px] text-white/20">This may take 2–4 minutes. Don't close this tab.</p>
             </div>
           ):(
-            <>
+            <div className="space-y-3">
               <div>
                 <label className="text-xs text-white/40 mb-1.5 block">Google Drive or Dropbox audio link</label>
-                <input
-                  value={audioUrl}
-                  onChange={e=>setAudioUrl(e.target.value)}
-                  placeholder="https://drive.google.com/file/d/... or https://dropbox.com/..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500"
-                />
-                <p className="text-[10px] text-white/25 mt-1.5 leading-relaxed">
-                  1. Upload your MP3/M4A to Google Drive → right-click → Share → Anyone with the link → Copy link<br/>
-                  2. Paste the link above and click Analyze
-                </p>
+                <input value={audioUrl} onChange={e=>setAudioUrl(e.target.value)} placeholder="https://drive.google.com/file/d/... or https://dropbox.com/..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500"/>
+                <p className="text-[10px] text-white/25 mt-1.5 leading-relaxed">In Google Drive: right-click file → Share → Anyone with the link → Copy link</p>
               </div>
               <button onClick={handleTranscribe} disabled={!audioUrl.trim()} className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2">
                 <Sparkles className="w-4 h-4"/>{audioUrl.trim()?"✦ Analyze Audio & Generate Smart Chat →":"Paste a Google Drive or Dropbox link first"}
               </button>
-            </>
+            </div>
           )}
         </div>
       )}
@@ -352,6 +335,7 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
           <button onClick={handleFallback} disabled={generatingFallback} className="w-full py-3 bg-white/8 hover:bg-white/12 border border-white/10 hover:border-white/20 disabled:opacity-50 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2">
             {generatingFallback?(<><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Generating...</>):"✦ Generate Generic Chat Messages"}
           </button>
+          <p className="text-xs text-white/20 text-center">Messages spread proportionally. For video-accurate comments use AI Video Analysis.</p>
         </div>
       )}
 
