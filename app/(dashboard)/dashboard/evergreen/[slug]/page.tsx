@@ -234,6 +234,8 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
   const [transcribeProgress,setTranscribeProgress]=useState("");
   const [transcribeError,setTranscribeError]=useState("");
   const [transcribeInfo,setTranscribeInfo]=useState("");
+  const [transcriptPreview,setTranscriptPreview]=useState("");
+  const [aiSuccess,setAiSuccess]=useState(false);
   const [generatingFallback,setGeneratingFallback]=useState(false);
   const [manualDuration,setManualDuration]=useState(videoDuration>0?String(Math.round(videoDuration/60)):"");
 
@@ -252,7 +254,14 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
       try{data=await res.json();}
       catch{const text=await res.text();throw new Error(`Server error (${res.status}): ${text.slice(0,200)}`);}
       if(!data.success&&!data.chats)throw new Error(data.error||"Something went wrong. Please try again.");
-      if(data.usedFallback&&data.message){setTranscribeInfo(data.message);setTimeout(()=>setTranscribeInfo(""),12000);}
+      if(data.usedFallback){
+        setTranscribeInfo(data.message||"Chat generated proportionally — AI transcription did not run.");
+        setAiSuccess(false);
+      } else {
+        setAiSuccess(true);
+        setTranscribeInfo("");
+        if(data.transcript?.text){setTranscriptPreview(data.transcript.text.slice(0,300));}
+      }
       setTranscribeProgress("");
       const chats:SimChat[]=data.chats;
       const detectedDur:number=data.duration;
@@ -310,7 +319,13 @@ function ChatSimulatorSection({slug,simChats,onSimChatsChange,videoDuration,onVi
           </div>
 
           {transcribeError&&<div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg"><p className="text-xs text-red-400">{transcribeError}</p></div>}
-          {transcribeInfo&&<div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg"><p className="text-xs text-blue-400">{transcribeInfo}</p></div>}
+          {aiSuccess&&transcriptPreview&&(
+            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg space-y-1">
+              <p className="text-xs text-green-400 font-medium">✅ AI transcription successful! Comments are synced to your video content.</p>
+              <p className="text-[10px] text-green-400/60 leading-relaxed italic">"{transcriptPreview}..."</p>
+            </div>
+          )}
+          {transcribeInfo&&!aiSuccess&&<div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg"><p className="text-xs text-orange-400 font-medium">⚠️ Fallback used</p><p className="text-xs text-orange-400/70 mt-1">{transcribeInfo}</p></div>}
 
           {transcribing?(
             <div className="p-6 border border-purple-500/20 rounded-xl bg-purple-500/5 text-center space-y-3">
