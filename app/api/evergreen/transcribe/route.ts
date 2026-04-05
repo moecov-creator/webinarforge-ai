@@ -7,7 +7,6 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-// ── Name / city pools ──────────────────────────────────────────────
 const FIRST_NAMES=["Jason","Michael","David","James","Robert","Sarah","Jennifer","Amanda","Jessica","Ashley","Emily","Carlos","Miguel","Marcus","Priya","Tyler","Brandon","Patricia","Trevor","Monica","Tiffany","Jasmine","Keisha","Ethan","Logan","Nathan","Justin","Crystal","Destiny","Brianna"];
 const LAST_SHORT=["M.","K.","T.","R.","B.","W.","J.","H.","C.","D.","L.","P.","S.","N."];
 const LAST_FULL=["Johnson","Williams","Brown","Jones","Garcia","Miller","Davis","Wilson","Anderson","Taylor","Thomas","Jackson","White","Harris","Martin","Thompson","Robinson","Clark","Lewis","Walker","Carter","Mitchell","Perez","Roberts","Turner"];
@@ -17,7 +16,6 @@ function randomName(seed:number):string{const first=FIRST_NAMES[seed%FIRST_NAMES
 
 interface SmartChat{id:string;name:string;city:string;message:string;showAt:number;showAtFrac:number;cueType:string;}
 
-// ── Fallback generator ─────────────────────────────────────────────
 function generateFallbackChats(duration:number):SmartChat[]{
   const cues=[
     {frac:0.01,type:"joining",burst:12,responses:(city:string)=>[`Just joined from ${city}!`,`Hello from ${city} 👋`,`${city} checking in!`,`Made it! From ${city}`]},
@@ -51,29 +49,99 @@ function generateFallbackChats(duration:number):SmartChat[]{
   return chats.sort((a,b)=>a.showAt-b.showAt);
 }
 
-// ── Convert Google Drive share URL to direct download URL ──────────
+// ── Extract Google Drive file ID and download properly ─────────────
+function extractGdriveFileId(url: string): string | null {
+  const patterns = [
+    /\/file\/d\/([a-zA-Z0-9_-]+)/,
+    /id=([a-zA-Z0-9_-]+)/,
+    /\/open\?id=([a-zA-Z0-9_-]+)/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+async function downloadGdriveFile(fileId: string): Promise<ArrayBuffer | null> {
+  // Step 1: Try direct download
+  const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
+  
+  const res1 = await fetch(directUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "Accept": "*/*",
+    },
+    redirect: "follow",
+  });
+
+  const contentType = res1.headers.get("content-type") || "";
+  
+  // If we got HTML back, Google is showing a virus scan warning
+  if (contentType.includes("text/html")) {
+    console.log("Got HTML from Google Drive — extracting confirm token...");
+    const html = await res1.text();
+    
+    // Extract the confirm token from the warning page
+    const confirmMatch = html.match(/confirm=([a-zA-Z0-9_-]+)/) || 
+                         html.match(/name="confirm"\s+value="([^"]+)"/) ||
+                         html.match(/confirm=t&amp;uuid=([^"&]+)/);
+    
+    // Extract uuid if present
+    const uuidMatch = html.match(/uuid=([a-zA-Z0-9_-]+)/);
+    
+    let downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
+    if (uuidMatch) {
+      downloadUrl += `&uuid=${uuidMatch[1]}`;
+    }
+    
+    console.log(`Retrying with: ${downloadUrl}`);
+    const res2 = await fetch(downloadUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "*/*",
+      },
+      redirect: "follow",
+    });
+
+    const ct2 = res2.headers.get("content-type") || "";
+    if (ct2.includes("text/html")) {
+      // Try the export API approach
+      const exportUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
+      console.log(`Trying export API: ${exportUrl}`);
+      const res3 = await fetch(exportUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "*/*",
+        },
+        redirect: "follow",
+      });
+      const ct3 = res3.headers.get("content-type") || "";
+      if (!ct3.includes("text/html") && res3.ok) {
+        return res3.arrayBuffer();
+      }
+      return null; // All attempts failed
+    }
+
+    if (!res2.ok) return null;
+    return res2.arrayBuffer();
+  }
+
+  if (!res1.ok) return null;
+  return res1.arrayBuffer();
+}
+
 function toDirectDownloadUrl(url: string): string {
-  // Handle Google Drive share links
-  const gdriveMatcher = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (gdriveMatcher) {
-    return `https://drive.google.com/uc?export=download&id=${gdriveMatcher[1]}&confirm=t`;
-  }
-  // Handle Dropbox share links
   if (url.includes("dropbox.com")) {
-    return url.replace("www.dropbox.com", "dl.dropboxusercontent.com").replace("?dl=0", "").replace("?dl=1", "");
+    return url.replace("www.dropbox.com", "dl.dropboxusercontent.com").replace("?dl=0","").replace("?dl=1","");
   }
-  // Return as-is for direct URLs
   return url;
 }
 
-// ── Route handler ──────────────────────────────────────────────────
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null);
-
-    if (!body) {
-      return NextResponse.json({ success: false, error: "Invalid request body." }, { status: 400 });
-    }
+    if (!body) return NextResponse.json({ success: false, error: "Invalid request." }, { status: 400 });
 
     const { url, duration: durationStr } = body;
     const duration = durationStr ? parseInt(String(durationStr)) : 0;
@@ -82,54 +150,79 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "No audio URL provided." }, { status: 400 });
     }
 
-    const directUrl = toDirectDownloadUrl(url.trim());
-    console.log(`Fetching audio from: ${directUrl}`);
+    console.log(`Processing URL: ${url}`);
 
-    // ── Step 1: Download the audio file from URL ───────────────────
-    let audioBuffer: ArrayBuffer;
-    try {
-      const audioRes = await fetch(directUrl, {
-        headers: { "User-Agent": "Mozilla/5.0" },
+    // ── Step 1: Download audio ─────────────────────────────────────
+    let audioBuffer: ArrayBuffer | null = null;
+    let downloadMethod = "unknown";
+
+    const gdriveId = extractGdriveFileId(url);
+
+    if (gdriveId) {
+      console.log(`Google Drive file ID: ${gdriveId}`);
+      downloadMethod = "gdrive";
+      audioBuffer = await downloadGdriveFile(gdriveId).catch(e => {
+        console.error("GDrive download error:", e);
+        return null;
       });
-      if (!audioRes.ok) {
-        throw new Error(`Failed to download file: HTTP ${audioRes.status}`);
+    } else {
+      // Direct URL or Dropbox
+      const directUrl = toDirectDownloadUrl(url.trim());
+      downloadMethod = "direct";
+      try {
+        const res = await fetch(directUrl, {
+          headers: { "User-Agent": "Mozilla/5.0" },
+          redirect: "follow",
+        });
+        if (res.ok) audioBuffer = await res.arrayBuffer();
+      } catch (e) {
+        console.error("Direct download error:", e);
       }
-      audioBuffer = await audioRes.arrayBuffer();
-    } catch (fetchError: any) {
-      console.error("Download error:", fetchError);
-      // Fall back to proportional chat if download fails
+    }
+
+    if (!audioBuffer || audioBuffer.byteLength === 0) {
+      console.log("Download failed — using fallback");
       const fallbackDuration = duration > 0 ? duration : 3600;
       const chats = generateFallbackChats(fallbackDuration);
       return NextResponse.json({
         success: true, chats, duration: fallbackDuration, usedFallback: true,
-        message: `Could not download the file: ${fetchError.message}. Make sure the link is publicly accessible. Chat was generated proportionally instead.`,
+        message: "⚠️ Could not download your audio file. Make sure sharing is set to 'Anyone with the link' in Google Drive. Chat was generated proportionally instead.",
         transcript: { text: "", segmentCount: 0 },
       });
     }
 
     const fileSizeMB = audioBuffer.byteLength / 1024 / 1024;
-    console.log(`Downloaded: ${fileSizeMB.toFixed(1)}MB`);
+    console.log(`Downloaded ${fileSizeMB.toFixed(1)}MB via ${downloadMethod}`);
 
-    // ── Step 2: Whisper transcription ──────────────────────────────
-    // Convert ArrayBuffer to File for OpenAI SDK
-    const audioFile = new File(
-      [audioBuffer],
-      "audio.mp3",
-      { type: "audio/mpeg" }
-    );
-
-    if (audioFile.size > 25 * 1024 * 1024) {
-      console.log(`File ${fileSizeMB.toFixed(1)}MB exceeds Whisper 25MB limit — using fallback`);
+    // Check if we accidentally downloaded HTML (Google's warning page)
+    const firstBytes = new Uint8Array(audioBuffer.slice(0, 20));
+    const firstChars = String.fromCharCode(...firstBytes);
+    if (firstChars.includes("<!") || firstChars.includes("<html") || firstChars.includes("<!DOCTYPE")) {
+      console.log("Downloaded HTML instead of audio — Google Drive blocked download");
       const fallbackDuration = duration > 0 ? duration : 3600;
       const chats = generateFallbackChats(fallbackDuration);
       return NextResponse.json({
         success: true, chats, duration: fallbackDuration, usedFallback: true,
-        message: `Audio file is ${fileSizeMB.toFixed(1)}MB — over Whisper's 25MB limit. Chat was generated proportionally. Try compressing further to under 25MB.`,
+        message: "⚠️ Google Drive blocked the download (returned a webpage instead of audio). To fix: in Google Drive, right-click your file → Share → change to 'Anyone with the link' → save. Then try again. Chat was generated proportionally for now.",
         transcript: { text: "", segmentCount: 0 },
       });
     }
 
+    if (fileSizeMB > 25) {
+      console.log(`File too large for Whisper: ${fileSizeMB.toFixed(1)}MB`);
+      const fallbackDuration = duration > 0 ? duration : 3600;
+      const chats = generateFallbackChats(fallbackDuration);
+      return NextResponse.json({
+        success: true, chats, duration: fallbackDuration, usedFallback: true,
+        message: `Audio is ${fileSizeMB.toFixed(1)}MB — over Whisper's 25MB limit. Please compress further to under 25MB. Chat generated proportionally for now.`,
+        transcript: { text: "", segmentCount: 0 },
+      });
+    }
+
+    // ── Step 2: Whisper transcription ──────────────────────────────
     console.log("Sending to Whisper...");
+    const audioFile = new File([audioBuffer], "audio.mp3", { type: "audio/mpeg" });
+
     let transcriptionResponse: any;
     try {
       transcriptionResponse = await openai.audio.transcriptions.create({
@@ -144,7 +237,7 @@ export async function POST(req: Request) {
       const chats = generateFallbackChats(fallbackDuration);
       return NextResponse.json({
         success: true, chats, duration: fallbackDuration, usedFallback: true,
-        message: `Transcription failed: ${whisperError.message}. Chat was generated proportionally instead.`,
+        message: `Whisper transcription failed: ${whisperError.message}. Chat generated proportionally.`,
         transcript: { text: "", segmentCount: 0 },
       });
     }
@@ -154,9 +247,9 @@ export async function POST(req: Request) {
     const detectedDuration = segments.length > 0 ? segments[segments.length - 1].end : duration || 3600;
     const finalDuration = duration > 0 ? duration : Math.round(detectedDuration);
 
-    console.log(`Transcription done. Duration: ${finalDuration}s, Segments: ${segments.length}`);
+    console.log(`✅ Transcription done: ${segments.length} segments, ${finalDuration}s`);
 
-    // ── Step 3: Build segment summary for GPT-4o ───────────────────
+    // ── Step 3: GPT-4o chat generation ────────────────────────────
     const chunkCount = Math.min(20, Math.max(1, segments.length));
     const chunkSize = Math.max(1, Math.floor(segments.length / chunkCount));
     const segmentSummaries = segments.length > 0
@@ -164,14 +257,10 @@ export async function POST(req: Request) {
           const start = i * chunkSize;
           const end = Math.min(start + chunkSize, segments.length);
           const chunk = segments.slice(start, end);
-          const timeStart = chunk[0]?.start || 0;
-          const timeEnd = chunk[chunk.length - 1]?.end || 0;
-          const text = chunk.map((s: any) => s.text).join(" ").trim().slice(0, 300);
-          return `[${Math.round(timeStart)}s–${Math.round(timeEnd)}s]: ${text}`;
+          return `[${Math.round(chunk[0]?.start||0)}s–${Math.round(chunk[chunk.length-1]?.end||0)}s]: ${chunk.map((s:any)=>s.text).join(" ").trim().slice(0,300)}`;
         }).join("\n")
-      : `Full transcript (${finalDuration}s): ${fullText.slice(0, 3000)}`;
+      : `Full transcript (${finalDuration}s): ${fullText.slice(0,3000)}`;
 
-    // ── Step 4: GPT-4o generates contextual chat ───────────────────
     let generatedChats: any[] = [];
     try {
       const chatResponse = await openai.chat.completions.create({
@@ -180,7 +269,7 @@ export async function POST(req: Request) {
         temperature: 0.85,
         messages: [
           { role: "system", content: "You generate realistic webinar audience chat messages. Always respond with valid JSON array only. No markdown, no code fences, no explanation." },
-          { role: "user", content: `Analyze this webinar transcript and generate exactly 160 realistic audience chat messages that match what the presenter is saying at each timestamp.
+          { role: "user", content: `Analyze this webinar transcript and generate exactly 160 realistic audience chat messages timed to what the presenter is saying.
 
 TRANSCRIPT:
 ${segmentSummaries}
@@ -189,40 +278,39 @@ Total duration: ${finalDuration} seconds (${Math.round(finalDuration/60)} minute
 
 Rules:
 1. Messages must match the ACTUAL content being discussed at that timestamp
-2. Cue types: "type1" (when presenter says type 1), "dropCity" (where are you from), "react" (value bombs), "testimonial" (success stories), "question" (Q&A moments), "general" (engagement), "joining" (first 2 min only)
-3. Questions must reference the ACTUAL webinar topic
-4. Spread messages across ALL ${finalDuration} seconds evenly
-5. Each needs a realistic name and US/European city
+2. Use cue types: "type1" (when presenter says type 1/drop a 1), "dropCity" (where are you from), "react" (value moments), "testimonial" (success stories), "question" (Q&A moments), "general" (engagement), "joining" (first 2 min only)
+3. Questions and reactions must reference the ACTUAL webinar topic
+4. Spread messages across ALL ${finalDuration} seconds
+5. Each message needs a realistic name and US/European city
 
 Return ONLY valid JSON array:
-[{"name":"Jason C.","city":"Dallas, TX","message":"1 from Dallas!","showAt":245,"cueType":"type1"}]
-
-Generate all 160 now.` }
+[{"name":"Jason C.","city":"Dallas, TX","message":"1 from Dallas!","showAt":245,"cueType":"type1"}]` }
         ],
       });
 
       const raw = chatResponse.choices[0]?.message?.content || "[]";
-      const cleaned = raw.replace(/```json|```/g, "").trim();
+      const cleaned = raw.replace(/\`\`\`json|\`\`\`/g, "").trim();
       try { generatedChats = JSON.parse(cleaned); }
       catch { const m = cleaned.match(/\[[\s\S]*\]/); if(m) try { generatedChats = JSON.parse(m[0]); } catch {} }
     } catch (gptError: any) {
       console.error("GPT error:", gptError);
       const chats = generateFallbackChats(finalDuration);
-      return NextResponse.json({
-        success: true, chats, duration: finalDuration, usedFallback: true,
-        message: "Chat generation had an issue. Chat was generated proportionally based on transcript timing.",
-        transcript: { text: fullText.slice(0, 500), segmentCount: segments.length },
-      });
+      return NextResponse.json({ success: true, chats, duration: finalDuration, usedFallback: true, message: "Chat generation had an issue. Generated proportionally.", transcript: { text: fullText.slice(0,500), segmentCount: segments.length } });
     }
 
-    // ── Step 5: Normalize ──────────────────────────────────────────
+    // ── Step 4: Normalize ──────────────────────────────────────────
     const validCueTypes = ["type1","dropCity","react","question","testimonial","general","joining"];
     const normalizedChats: SmartChat[] = generatedChats
       .filter((c:any) => c && typeof c.message === "string" && typeof c.showAt === "number")
-      .map((c:any, i:number) => {
-        const showAt = Math.max(0, Math.min(Math.round(c.showAt), finalDuration - 5));
-        return { id:String(i), name:c.name||randomName(i*7), city:c.city||CITIES[i%CITIES.length], message:c.message, showAt, showAtFrac:showAt/finalDuration, cueType:validCueTypes.includes(c.cueType)?c.cueType:"general" };
-      })
+      .map((c:any, i:number) => ({
+        id: String(i),
+        name: c.name || randomName(i*7),
+        city: c.city || CITIES[i%CITIES.length],
+        message: c.message,
+        showAt: Math.max(0, Math.min(Math.round(c.showAt), finalDuration-5)),
+        showAtFrac: Math.max(0, Math.min(Math.round(c.showAt), finalDuration-5)) / finalDuration,
+        cueType: validCueTypes.includes(c.cueType) ? c.cueType : "general",
+      }))
       .sort((a:SmartChat,b:SmartChat) => a.showAt - b.showAt);
 
     if (normalizedChats.length < 100) {
@@ -236,11 +324,11 @@ Generate all 160 now.` }
       chats: normalizedChats,
       duration: finalDuration,
       usedFallback: false,
-      transcript: { text: fullText.slice(0, 500) + (fullText.length > 500 ? "..." : ""), segmentCount: segments.length },
+      transcript: { text: fullText.slice(0,500)+(fullText.length>500?"...":""), segmentCount: segments.length },
     });
 
   } catch (error: any) {
-    console.error("Transcribe route error:", error);
-    return NextResponse.json({ success: false, error: error?.message || "An unexpected error occurred." }, { status: 500 });
+    console.error("Route error:", error);
+    return NextResponse.json({ success: false, error: error?.message || "Unexpected error." }, { status: 500 });
   }
 }
