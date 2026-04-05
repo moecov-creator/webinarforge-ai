@@ -2,7 +2,7 @@
 // WebinarForge AI — Public Demo/Landing Page
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 const STATS = [
@@ -327,7 +327,7 @@ export default function DemoPage() {
       </section>
 
       {/* Features */}
-      <section id="features" style={{scrollMarginTop:"80px"}} className="py-32 px-6" style={{ background: "rgba(255,255,255,0.01)" }}>
+      <section id="features" className="py-32 px-6" style={{ background: "rgba(255,255,255,0.01)", scrollMarginTop:"80px" }}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Everything you need</p>
@@ -353,7 +353,7 @@ export default function DemoPage() {
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" style={{scrollMarginTop:"80px"}} className="py-32 px-6">
+      <section id="testimonials" className="py-32 px-6" style={{scrollMarginTop:"80px"}}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Real results</p>
@@ -380,7 +380,7 @@ export default function DemoPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" style={{scrollMarginTop:"80px"}} className="py-32 px-6" style={{ background: "rgba(255,255,255,0.01)" }}>
+      <section id="pricing" className="py-32 px-6" style={{ background: "rgba(255,255,255,0.01)", scrollMarginTop:"80px" }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-20">
             <p className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Simple pricing</p>
