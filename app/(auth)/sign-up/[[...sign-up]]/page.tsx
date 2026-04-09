@@ -1,11 +1,9 @@
-// app/(auth)/sign-up/[[...sign-up]]/page.tsx
 "use client"
 
 import { SignUp } from "@clerk/nextjs"
 import Link from "next/link"
 import { Zap, CheckCircle } from "lucide-react"
-import { useSearchParams } from "next/navigation"
-import { Suspense } from "react"
+import { useEffect, useState, Suspense } from "react"
 
 const TRIAL_PERKS = [
   "2 AI-generated webinars",
@@ -24,16 +22,19 @@ const EARLY_BIRD_PERKS = [
 ]
 
 function SignUpContent() {
-  const searchParams = useSearchParams()
-  const plan = searchParams.get("plan")
-  const upsell = searchParams.get("upsell")
-  const isEarlyBird = plan === "earlybird"
+  const [redirectUrl, setRedirectUrl] = useState("/dashboard")
+  const [isEarlyBird, setIsEarlyBird] = useState(false)
 
-  const redirectUrl = isEarlyBird
-    ? "/checkout?plan=earlybird"
-    : upsell
-    ? `/checkout?upsell=${upsell}`
-    : "/dashboard"
+  useEffect(() => {
+    // Read intent from sessionStorage set by pricing page button
+    const intent = sessionStorage.getItem("checkout_intent")
+    if (intent === "EARLY_BIRD") {
+      setIsEarlyBird(true)
+      setRedirectUrl("/checkout?plan=earlybird")
+      // Clear so it doesn't persist after this session
+      sessionStorage.removeItem("checkout_intent")
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-[#080812] flex items-center justify-center px-6 py-12">
