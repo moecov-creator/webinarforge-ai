@@ -86,14 +86,14 @@ function EarlyBirdButton({ fullWidth = true }: { fullWidth?: boolean }) {
           window.location.href = data.url
         } else {
           setLoading(false)
-          router.push("/pricing")
         }
       } catch {
         setLoading(false)
-        router.push("/pricing")
       }
     } else {
-      router.push("/sign-up?plan=earlybird")
+      // Store intent so sign-up page picks it up
+      sessionStorage.setItem("checkout_intent", "EARLY_BIRD")
+      window.location.href = "/sign-up"
     }
   }
 
@@ -101,7 +101,9 @@ function EarlyBirdButton({ fullWidth = true }: { fullWidth?: boolean }) {
     <button
       onClick={handleClick}
       disabled={loading}
-      className={`${fullWidth ? "w-full" : "px-10 py-5 text-xl"} bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
+      className={`${
+        fullWidth ? "w-full" : "px-10 py-5 text-xl"
+      } bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
     >
       {loading ? (
         <>
