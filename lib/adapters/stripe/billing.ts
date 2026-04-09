@@ -4,7 +4,6 @@ import { prisma } from "@/lib/db/prisma";
 import { PLANS, type PlanKey } from "@/lib/config/plans";
 import type { IBillingService, SubscriptionDetails } from "@/lib/services/interfaces";
 
-// Lazy Stripe client — only initialized when actually called, not at build time
 function stripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!, {
     apiVersion: "2024-11-20.acacia",
@@ -15,6 +14,7 @@ const PRICE_ID_MAP: Record<string, string | undefined> = {
   STARTER: process.env.STRIPE_PRICE_STARTER_MONTHLY,
   PRO: process.env.STRIPE_PRICE_PRO_MONTHLY,
   SCALE: process.env.STRIPE_PRICE_SCALE_MONTHLY,
+  EARLY_BIRD: process.env.STRIPE_PRICE_EARLY_BIRD,
 };
 
 export class StripeBillingAdapter implements IBillingService {
@@ -39,18 +39,38 @@ export class StripeBillingAdapter implements IBillingService {
       await prisma.subscription.upsert({
         where: { workspaceId },
         update: { stripeCustomerId: customerId },
-        create: { workspaceId, stripeCustomerId: customerId, plan: "FREE_TRIAL", status: "trialing" },
+        create: {
+          workspaceId,
+          stripeCustomerId: customerId,
+          plan: "FREE_TRIAL",
+          status: "trialing",
+        },
       });
     }
 
+    // Early bird is a one-time payment, not a subscription
+    const isEarlyBird = planKey === "EARLY_BIRD"
+
     const session = await stripe().checkout.sessions.create({
       customer: customerId,
-      mode: "subscription",
+      mode: isEarlyBird ? "payment" : "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?upgraded=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`,
+      success_url: isEarlyBird
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?earlybird=true`
+        : `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?upgraded=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
       metadata: { workspaceId, planKey },
-      subscription_data: { metadata: { workspaceId, planKey } },
+      ...(isEarlyBird
+        ? {
+            payment_intent_data: {
+              metadata: { workspaceId, planKey },
+            },
+          }
+        : {
+            subscription_data: {
+              metadata: { workspaceId, planKey },
+            },
+          }),
     });
 
     return session.url!;
@@ -88,18 +108,38 @@ export class StripeBillingAdapter implements IBillingService {
     );
 
     switch (event.type) {
+
+      // ── Subscription checkout (STARTER, PRO, SCALE) ──
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const workspaceId = session.metadata?.workspaceId;
         const planKey = session.metadata?.planKey as PlanKey;
         if (!workspaceId || !planKey) break;
 
-        await prisma.subscription.update({
-          where: { workspaceId },
-          data: { plan: planKey, status: "active", stripeSubscriptionId: session.subscription as string },
-        });
+        if (planKey === "EARLY_BIRD") {
+          // One-time payment — set as lifetime active, no subscription ID
+          await prisma.subscription.update({
+            where: { workspaceId },
+            data: {
+              plan: "EARLY_BIRD",
+              status: "active",
+              cancelAtPeriodEnd: false,
+            },
+          });
+        } else {
+          await prisma.subscription.update({
+            where: { workspaceId },
+            data: {
+              plan: planKey,
+              status: "active",
+              stripeSubscriptionId: session.subscription as string,
+            },
+          });
+        }
         break;
       }
+
+      // ── Subscription updated ──
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
         const workspaceId = sub.metadata?.workspaceId;
@@ -116,6 +156,8 @@ export class StripeBillingAdapter implements IBillingService {
         });
         break;
       }
+
+      // ── Subscription cancelled ──
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
         const workspaceId = sub.metadata?.workspaceId;
