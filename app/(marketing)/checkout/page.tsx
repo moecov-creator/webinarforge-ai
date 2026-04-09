@@ -1,9 +1,8 @@
 // app/(marketing)/checkout/page.tsx
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { Suspense } from "react"
 
 const UPSELL_MAP: Record<string, string> = {
   templates: "UPSELL_TEMPLATES",
@@ -47,16 +46,28 @@ function CheckoutRedirect() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-6">
-      <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-14 h-14 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
       <p className="text-white/60 text-lg">Preparing your secure checkout...</p>
-      <p className="text-amber-400 font-bold">🔒 Locking in your $49 early bird price</p>
+      <p className="text-amber-400 font-bold text-xl">
+        🔒 Locking in your $49 early bird price
+      </p>
+      <p className="text-white/30 text-sm">
+        You will be redirected to Stripe shortly
+      </p>
     </div>
   )
 }
 
 export default function CheckoutPage() {
   return (
-    <Suspense>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-6">
+          <div className="w-14 h-14 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-white/60 text-lg">Loading checkout...</p>
+        </div>
+      }
+    >
       <CheckoutRedirect />
     </Suspense>
   )
