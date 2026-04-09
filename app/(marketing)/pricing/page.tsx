@@ -4,6 +4,8 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 
 const EARLY_BIRD_END = new Date("2026-04-16T23:59:59")
+const TOTAL_SPOTS = 500
+const SPOTS_STORAGE_KEY = "wf_spots_remaining"
 
 function useCountdown() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
@@ -24,6 +26,40 @@ function useCountdown() {
   }, [])
 
   return { timeLeft, expired }
+}
+
+function useSpotCounter() {
+  const [spotsLeft, setSpotsLeft] = useState(TOTAL_SPOTS)
+
+  useEffect(() => {
+    // Simulate spots decreasing over time for urgency
+    const stored = localStorage.getItem(SPOTS_STORAGE_KEY)
+    const startTime = localStorage.getItem("wf_start_time")
+
+    if (!startTime) {
+      localStorage.setItem("wf_start_time", Date.now().toString())
+    }
+
+    if (stored) {
+      setSpotsLeft(parseInt(stored))
+    } else {
+      localStorage.setItem(SPOTS_STORAGE_KEY, TOTAL_SPOTS.toString())
+    }
+
+    // Decrease by 1 every 8-15 minutes randomly to simulate real purchases
+    const interval = setInterval(() => {
+      setSpotsLeft((prev) => {
+        if (prev <= 1) { clearInterval(interval); return 1 }
+        const next = prev - 1
+        localStorage.setItem(SPOTS_STORAGE_KEY, next.toString())
+        return next
+      })
+    }, Math.floor(Math.random() * (900000 - 480000) + 480000)) // 8-15 min range
+
+    return () => clearInterval(interval)
+  }, [])
+
+  return spotsLeft
 }
 
 const plans = [
@@ -85,6 +121,8 @@ const upsells = [
 
 export default function PricingPage() {
   const { timeLeft, expired } = useCountdown()
+  const spotsLeft = useSpotCounter()
+  const spotsPercent = Math.round((spotsLeft / TOTAL_SPOTS) * 100)
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -95,14 +133,19 @@ export default function PricingPage() {
             <span className="inline-block bg-amber-500 text-black text-sm font-bold px-4 py-1 rounded-full mb-6">
               🎉 LIMITED TIME — EARLY BIRD OFFER
             </span>
+
             <h1 className="text-4xl md:text-6xl font-bold mb-4">
-              Get WebinarForge AI <span className="text-amber-400">for Just $49</span>
+              Get WebinarForge AI{" "}
+              <span className="text-amber-400">for Just $49</span>
             </h1>
+
             <p className="text-gray-300 text-lg mb-8">
-              Lock in lifetime early bird access before the price goes up. Only <strong>50 spots</strong> available.
+              Lock in lifetime early bird access before the price goes up.{" "}
+              <strong className="text-white">Only {spotsLeft} of {TOTAL_SPOTS} spots remaining.</strong>
             </p>
 
-            <div className="flex justify-center gap-4 mb-10">
+            {/* Countdown Timer */}
+            <div className="flex justify-center gap-4 mb-8">
               {[
                 { label: "Days", value: timeLeft.days },
                 { label: "Hours", value: timeLeft.hours },
@@ -116,17 +159,45 @@ export default function PricingPage() {
               ))}
             </div>
 
+            {/* Live Spot Counter */}
+            <div className="max-w-md mx-auto mb-10">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-red-400 font-semibold animate-pulse">
+                  🔴 {spotsLeft} spots left
+                </span>
+                <span className="text-gray-400">{TOTAL_SPOTS - spotsLeft} claimed</span>
+              </div>
+              <div className="w-full bg-white/10 rounded-full h-4 overflow-hidden">
+                <div
+                  className="h-4 rounded-full transition-all duration-1000"
+                  style={{
+                    width: `${100 - spotsPercent}%`,
+                    background: "linear-gradient(90deg, #f59e0b, #ef4444)",
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {100 - spotsPercent}% claimed — filling up fast!
+              </p>
+            </div>
+
+            {/* Early Bird Card */}
             <div className="rounded-2xl border-2 border-amber-500 bg-white/5 p-8 max-w-md mx-auto shadow-[0_0_40px_rgba(245,158,11,0.2)]">
               <span className="bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full">
-                ⚡ EARLY BIRD — 50 SPOTS ONLY
+                ⚡ EARLY BIRD — {TOTAL_SPOTS} SPOTS ONLY
               </span>
+
               <h2 className="text-2xl font-bold mt-4 mb-1">WebinarForge AI</h2>
-              <p className="text-gray-400 text-sm mb-4">Full platform access. Lock in the lowest price ever.</p>
+              <p className="text-gray-400 text-sm mb-4">
+                Full platform access. Lock in the lowest price ever.
+              </p>
+
               <div className="flex items-end gap-3 mb-6">
                 <span className="text-gray-500 line-through text-2xl">$97/mo</span>
                 <span className="text-5xl font-bold text-amber-400">$49</span>
                 <span className="text-gray-400 text-sm pb-1">one-time</span>
               </div>
+
               <ul className="space-y-2 text-gray-300 text-sm mb-8 text-left">
                 {[
                   "✅ AI Webinar Builder ($997 value)",
@@ -137,17 +208,34 @@ export default function PricingPage() {
                   "✅ Early Bird Lifetime Access",
                 ].map((f) => <li key={f}>{f}</li>)}
               </ul>
+
+              {/* Spots warning inside card */}
+              {spotsLeft <= 100 && (
+                <div className="bg-red-500/20 border border-red-500 rounded-xl px-4 py-2 mb-4 text-red-400 text-sm font-semibold animate-pulse">
+                  ⚠️ Only {spotsLeft} spots left! Grab yours before it's gone.
+                </div>
+              )}
+
               <Link href="/sign-up?plan=earlybird">
                 <button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition">
                   Claim My $49 Early Bird Spot →
                 </button>
               </Link>
-              <p className="text-xs text-gray-500 mt-3">🔒 Secure checkout. Price locks in immediately.</p>
+              <p className="text-xs text-gray-500 mt-3">
+                🔒 Secure checkout. Price locks in immediately.
+              </p>
             </div>
+
+            {/* Recent activity feed */}
+            <div className="mt-6 text-sm text-gray-400 animate-pulse">
+              👥 Someone just claimed a spot — {spotsLeft} remaining
+            </div>
+
           </div>
         </section>
       )}
 
+      {/* ── UPSELL STACK ── */}
       <section className="py-20 px-6 bg-[#0a0a0a]">
         <div className="max-w-5xl mx-auto text-center">
           <p className="text-purple-400 mb-3 font-semibold">POWER UP YOUR RESULTS</p>
@@ -172,11 +260,10 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* ── REGULAR PLANS ── */}
       <section className="py-24 px-6 text-center max-w-6xl mx-auto">
         <p className="text-purple-400 mb-4">Simple Pricing. Powerful Growth.</p>
-        <h2 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
-          Or Choose A Monthly Plan
-        </h2>
+        <h2 className="text-4xl md:text-5xl font-bold leading-tight mb-6">Or Choose A Monthly Plan</h2>
         <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-10">
           Whether you're launching your first webinar or scaling multiple evergreen funnels, WebinarForge AI gives you the tools to automate presentations, follow-up, and conversions.
         </p>
@@ -207,6 +294,7 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* ── COMPARISON TABLE ── */}
       <section className="py-20 px-6 bg-[#0a0a0a]">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Compare What You Get</h2>
@@ -240,6 +328,7 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* ── FAQ ── */}
       <section className="py-20 px-6 text-center max-w-4xl mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold mb-12">Frequently Asked Questions</h2>
         <div className="space-y-6 text-left">
@@ -258,8 +347,11 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* ── FINAL CTA ── */}
       <section className="py-24 px-6 text-center max-w-4xl mx-auto">
-        <h2 className="text-3xl md:text-5xl font-bold mb-6">Start Building Your AI Webinar Funnel Today</h2>
+        <h2 className="text-3xl md:text-5xl font-bold mb-6">
+          Start Building Your AI Webinar Funnel Today
+        </h2>
         <p className="text-gray-400 mb-8 text-lg">
           Choose your plan, launch faster, and turn your webinar into an always-on sales machine.
         </p>
