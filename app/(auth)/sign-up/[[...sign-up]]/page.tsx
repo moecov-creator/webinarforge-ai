@@ -1,3 +1,4 @@
+// app/(auth)/sign-up/[[...sign-up]]/page.tsx
 "use client"
 
 import { SignUp } from "@clerk/nextjs"
@@ -24,17 +25,25 @@ const EARLY_BIRD_PERKS = [
 function SignUpContent() {
   const [redirectUrl, setRedirectUrl] = useState("/dashboard")
   const [isEarlyBird, setIsEarlyBird] = useState(false)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    // Read intent from sessionStorage set by pricing page button
     const intent = sessionStorage.getItem("checkout_intent")
     if (intent === "EARLY_BIRD") {
       setIsEarlyBird(true)
       setRedirectUrl("/checkout?plan=earlybird")
-      // Clear so it doesn't persist after this session
-      sessionStorage.removeItem("checkout_intent")
     }
+    setReady(true)
   }, [])
+
+  // Don't render Clerk until we know the redirect URL
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-[#080812] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#080812] flex items-center justify-center px-6 py-12">
