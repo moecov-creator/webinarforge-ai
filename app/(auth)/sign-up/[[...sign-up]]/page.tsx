@@ -29,11 +29,10 @@ function SignUpContent() {
   const upsell = searchParams.get("upsell")
   const isEarlyBird = plan === "earlybird"
 
-  // After Clerk auth, redirect to correct destination
   const redirectUrl = isEarlyBird
-    ? "/api/checkout?plan=earlybird"
+    ? "/checkout?plan=earlybird"
     : upsell
-    ? `/api/checkout?upsell=${upsell}`
+    ? `/checkout?upsell=${upsell}`
     : "/dashboard"
 
   return (
@@ -53,7 +52,6 @@ function SignUpContent() {
 
           {isEarlyBird ? (
             <>
-              {/* Early Bird Left Panel */}
               <div className="inline-block bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full mb-4">
                 ⚡ EARLY BIRD — $49 ONE-TIME
               </div>
@@ -84,7 +82,6 @@ function SignUpContent() {
             </>
           ) : (
             <>
-              {/* Default Free Trial Left Panel */}
               <h1 className="font-display text-4xl font-bold text-white leading-tight mb-4">
                 Start your 14-day<br />
                 <span className="gradient-text">free trial</span>
@@ -107,7 +104,6 @@ function SignUpContent() {
 
         {/* Right — Clerk SignUp */}
         <div className="flex flex-col items-center">
-          {/* Mobile logo */}
           <Link href="/" className="flex items-center gap-2 mb-4 lg:hidden">
             <div className="w-7 h-7 rounded-lg gradient-brand flex items-center justify-center">
               <Zap className="w-3.5 h-3.5 text-white" />
@@ -117,7 +113,6 @@ function SignUpContent() {
             </span>
           </Link>
 
-          {/* Mobile early bird badge */}
           {isEarlyBird && (
             <div className="lg:hidden inline-block bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full mb-4">
               ⚡ EARLY BIRD — $49 ONE-TIME
