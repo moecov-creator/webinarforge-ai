@@ -1,16 +1,41 @@
 // app/(auth)/sign-up/[[...sign-up]]/page.tsx
-import { SignUp } from "@clerk/nextjs";
-import Link from "next/link";
-import { Zap, CheckCircle } from "lucide-react";
+"use client"
+
+import { SignUp } from "@clerk/nextjs"
+import Link from "next/link"
+import { Zap, CheckCircle } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
 
 const TRIAL_PERKS = [
   "2 AI-generated webinars",
   "1 AI presenter profile",
   "Evergreen room included",
   "No credit card required",
-];
+]
 
-export default function SignUpPage() {
+const EARLY_BIRD_PERKS = [
+  "Full AI Webinar Builder ($997 value)",
+  "AI Avatar Presenter ($497 value)",
+  "Funnel Templates ($297 value)",
+  "Email + SMS Automation ($497 value)",
+  "Evergreen Replay Engine ($997 value)",
+  "Lifetime Early Bird Access — locked in forever",
+]
+
+function SignUpContent() {
+  const searchParams = useSearchParams()
+  const plan = searchParams.get("plan")
+  const upsell = searchParams.get("upsell")
+  const isEarlyBird = plan === "earlybird"
+
+  // After Clerk auth, redirect to correct destination
+  const redirectUrl = isEarlyBird
+    ? "/api/checkout?plan=earlybird"
+    : upsell
+    ? `/api/checkout?upsell=${upsell}`
+    : "/dashboard"
+
   return (
     <div className="min-h-screen bg-[#080812] flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-12 items-center">
@@ -25,28 +50,65 @@ export default function SignUpPage() {
               WebinarForge <span className="text-purple-400">AI</span>
             </span>
           </Link>
-          <h1 className="font-display text-4xl font-bold text-white leading-tight mb-4">
-            Start your 14-day<br />
-            <span className="gradient-text">free trial</span>
-          </h1>
-          <p className="text-white/45 text-base mb-8 leading-relaxed">
-            Build your first AI-powered evergreen webinar in under 10 minutes.
-            No credit card. No commitment.
-          </p>
-          <div className="space-y-3">
-            {TRIAL_PERKS.map((perk) => (
-              <div key={perk} className="flex items-center gap-3">
-                <CheckCircle className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                <span className="text-sm text-white/60">{perk}</span>
+
+          {isEarlyBird ? (
+            <>
+              {/* Early Bird Left Panel */}
+              <div className="inline-block bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full mb-4">
+                ⚡ EARLY BIRD — $49 ONE-TIME
               </div>
-            ))}
-          </div>
+              <h1 className="font-display text-4xl font-bold text-white leading-tight mb-4">
+                Lock in your<br />
+                <span className="text-amber-400">$49 lifetime spot</span>
+              </h1>
+              <p className="text-white/45 text-base mb-8 leading-relaxed">
+                Create your account first, then complete your $49 payment.
+                Your early bird price is locked in the moment you sign up.
+              </p>
+              <div className="space-y-3">
+                {EARLY_BIRD_PERKS.map((perk) => (
+                  <div key={perk} className="flex items-center gap-3">
+                    <CheckCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                    <span className="text-sm text-white/60">{perk}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                <p className="text-amber-400 text-sm font-semibold">
+                  💰 You save $48/month vs regular pricing
+                </p>
+                <p className="text-white/40 text-xs mt-1">
+                  Regular price: $97/month → Your price: $49 one-time
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Default Free Trial Left Panel */}
+              <h1 className="font-display text-4xl font-bold text-white leading-tight mb-4">
+                Start your 14-day<br />
+                <span className="gradient-text">free trial</span>
+              </h1>
+              <p className="text-white/45 text-base mb-8 leading-relaxed">
+                Build your first AI-powered evergreen webinar in under 10 minutes.
+                No credit card. No commitment.
+              </p>
+              <div className="space-y-3">
+                {TRIAL_PERKS.map((perk) => (
+                  <div key={perk} className="flex items-center gap-3">
+                    <CheckCircle className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                    <span className="text-sm text-white/60">{perk}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right — Clerk SignUp */}
         <div className="flex flex-col items-center">
           {/* Mobile logo */}
-          <Link href="/" className="flex items-center gap-2 mb-6 lg:hidden">
+          <Link href="/" className="flex items-center gap-2 mb-4 lg:hidden">
             <div className="w-7 h-7 rounded-lg gradient-brand flex items-center justify-center">
               <Zap className="w-3.5 h-3.5 text-white" />
             </div>
@@ -55,10 +117,18 @@ export default function SignUpPage() {
             </span>
           </Link>
 
+          {/* Mobile early bird badge */}
+          {isEarlyBird && (
+            <div className="lg:hidden inline-block bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full mb-4">
+              ⚡ EARLY BIRD — $49 ONE-TIME
+            </div>
+          )}
+
           <SignUp
+            forceRedirectUrl={redirectUrl}
             appearance={{
               variables: {
-                colorPrimary: "#8B5CF6",
+                colorPrimary: isEarlyBird ? "#f59e0b" : "#8B5CF6",
                 colorBackground: "#13131f",
                 colorText: "#ffffff",
                 colorTextSecondary: "rgba(255,255,255,0.5)",
@@ -76,8 +146,9 @@ export default function SignUpPage() {
                   "bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors",
                 formFieldInput:
                   "bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-purple-500/50",
-                formButtonPrimary:
-                  "bg-gradient-to-r from-purple-500 to-blue-500 hover:opacity-90 transition-opacity",
+                formButtonPrimary: isEarlyBird
+                  ? "bg-amber-500 hover:bg-amber-400 text-black font-bold transition-opacity"
+                  : "bg-gradient-to-r from-purple-500 to-blue-500 hover:opacity-90 transition-opacity",
                 footerActionLink: "text-purple-400 hover:text-purple-300",
                 dividerLine: "bg-white/8",
                 dividerText: "text-white/30",
@@ -91,5 +162,13 @@ export default function SignUpPage() {
         </div>
       </div>
     </div>
-  );
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpContent />
+    </Suspense>
+  )
 }
