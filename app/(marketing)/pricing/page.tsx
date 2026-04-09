@@ -1,10 +1,9 @@
-// app/(marketing)/pricing/page.tsx
 "use client"
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
-const EARLY_BIRD_END = new Date("2025-04-20T23:59:59")
+const EARLY_BIRD_END = new Date("2026-04-16T23:59:59")
 
 function useCountdown() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
@@ -33,13 +32,7 @@ const plans = [
     price: "$97",
     period: "/month",
     description: "Best for solo business owners launching their first automated webinar funnel.",
-    features: [
-      "1 webinar funnel",
-      "AI webinar script generator",
-      "Basic evergreen automation",
-      "Core analytics",
-      "Email support",
-    ],
+    features: ["1 webinar funnel", "AI webinar script generator", "Basic evergreen automation", "Core analytics", "Email support"],
     cta: "Start Starter Plan",
     href: "/sign-up",
     featured: false,
@@ -49,15 +42,7 @@ const plans = [
     price: "$297",
     period: "/month",
     description: "Best for serious marketers, coaches, consultants, and agencies ready to scale.",
-    features: [
-      "Unlimited webinar funnels",
-      "AI presenter tools",
-      "Advanced evergreen automation",
-      "Email + SMS follow-up",
-      "Conversion analytics dashboard",
-      "Affiliate tools",
-      "Priority support",
-    ],
+    features: ["Unlimited webinar funnels", "AI presenter tools", "Advanced evergreen automation", "Email + SMS follow-up", "Conversion analytics dashboard", "Affiliate tools", "Priority support"],
     cta: "Start Pro Trial",
     href: "/sign-up",
     featured: true,
@@ -67,14 +52,7 @@ const plans = [
     price: "Custom",
     period: "",
     description: "Best for teams, agencies, and white-label partners that need advanced scale.",
-    features: [
-      "White-label options",
-      "Team access",
-      "Advanced integrations",
-      "Custom onboarding",
-      "Dedicated support",
-      "Custom workflows",
-    ],
+    features: ["White-label options", "Team access", "Advanced integrations", "Custom onboarding", "Dedicated support", "Custom workflows"],
     cta: "Contact Sales",
     href: "/contact",
     featured: false,
@@ -111,24 +89,19 @@ export default function PricingPage() {
   return (
     <main className="min-h-screen bg-black text-white">
 
-      {/* ── EARLY BIRD HERO ── */}
       {!expired && (
         <section className="py-16 px-6 text-center bg-gradient-to-b from-purple-950/40 to-black">
           <div className="max-w-3xl mx-auto">
             <span className="inline-block bg-amber-500 text-black text-sm font-bold px-4 py-1 rounded-full mb-6">
               🎉 LIMITED TIME — EARLY BIRD OFFER
             </span>
-
             <h1 className="text-4xl md:text-6xl font-bold mb-4">
-              Get WebinarForge AI
-              <span className="text-amber-400"> for Just $49</span>
+              Get WebinarForge AI <span className="text-amber-400">for Just $49</span>
             </h1>
-
             <p className="text-gray-300 text-lg mb-8">
               Lock in lifetime early bird access before the price goes up. Only <strong>50 spots</strong> available.
             </p>
 
-            {/* Countdown */}
             <div className="flex justify-center gap-4 mb-10">
               {[
                 { label: "Days", value: timeLeft.days },
@@ -143,22 +116,17 @@ export default function PricingPage() {
               ))}
             </div>
 
-            {/* Early Bird Card */}
             <div className="rounded-2xl border-2 border-amber-500 bg-white/5 p-8 max-w-md mx-auto shadow-[0_0_40px_rgba(245,158,11,0.2)]">
-              <div className="mb-2">
-                <span className="bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full">
-                  ⚡ EARLY BIRD — 50 SPOTS ONLY
-                </span>
-              </div>
+              <span className="bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full">
+                ⚡ EARLY BIRD — 50 SPOTS ONLY
+              </span>
               <h2 className="text-2xl font-bold mt-4 mb-1">WebinarForge AI</h2>
               <p className="text-gray-400 text-sm mb-4">Full platform access. Lock in the lowest price ever.</p>
-
               <div className="flex items-end gap-3 mb-6">
                 <span className="text-gray-500 line-through text-2xl">$97/mo</span>
                 <span className="text-5xl font-bold text-amber-400">$49</span>
                 <span className="text-gray-400 text-sm pb-1">one-time</span>
               </div>
-
               <ul className="space-y-2 text-gray-300 text-sm mb-8 text-left">
                 {[
                   "✅ AI Webinar Builder ($997 value)",
@@ -169,7 +137,6 @@ export default function PricingPage() {
                   "✅ Early Bird Lifetime Access",
                 ].map((f) => <li key={f}>{f}</li>)}
               </ul>
-
               <Link href="/sign-up?plan=earlybird">
                 <button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition">
                   Claim My $49 Early Bird Spot →
@@ -181,17 +148,13 @@ export default function PricingPage() {
         </section>
       )}
 
-      {/* ── UPSELL STACK ── */}
       <section className="py-20 px-6 bg-[#0a0a0a]">
         <div className="max-w-5xl mx-auto text-center">
           <p className="text-purple-400 mb-3 font-semibold">POWER UP YOUR RESULTS</p>
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Upgrade Your Experience
-          </h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Upgrade Your Experience</h2>
           <p className="text-gray-400 mb-12 max-w-2xl mx-auto">
             Add these to your order and get results faster. Each upgrade is designed to help you launch, convert, and scale quicker.
           </p>
-
           <div className="grid md:grid-cols-3 gap-6">
             {upsells.map((item) => (
               <div key={item.name} className="rounded-2xl border border-purple-500/30 bg-white/5 p-6 text-left flex flex-col">
@@ -209,32 +172,20 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── REGULAR PLANS ── */}
       <section className="py-24 px-6 text-center max-w-6xl mx-auto">
         <p className="text-purple-400 mb-4">Simple Pricing. Powerful Growth.</p>
         <h2 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
           Or Choose A Monthly Plan
         </h2>
         <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-10">
-          Whether you're launching your first webinar or scaling multiple evergreen funnels,
-          WebinarForge AI gives you the tools to automate presentations, follow-up, and conversions.
+          Whether you're launching your first webinar or scaling multiple evergreen funnels, WebinarForge AI gives you the tools to automate presentations, follow-up, and conversions.
         </p>
-
         <div className="grid md:grid-cols-3 gap-8 items-stretch">
           {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`rounded-2xl border p-8 text-left flex flex-col ${
-                plan.featured
-                  ? "border-purple-500 bg-white/10 shadow-[0_0_40px_rgba(168,85,247,0.15)]"
-                  : "border-white/10 bg-white/5"
-              }`}
-            >
+            <div key={plan.name} className={`rounded-2xl border p-8 text-left flex flex-col ${plan.featured ? "border-purple-500 bg-white/10 shadow-[0_0_40px_rgba(168,85,247,0.15)]" : "border-white/10 bg-white/5"}`}>
               {plan.featured && (
                 <div className="mb-4">
-                  <span className="inline-block rounded-full bg-purple-600 px-3 py-1 text-sm font-semibold">
-                    Most Popular
-                  </span>
+                  <span className="inline-block rounded-full bg-purple-600 px-3 py-1 text-sm font-semibold">Most Popular</span>
                 </div>
               )}
               <h2 className="text-2xl font-bold mb-2">{plan.name}</h2>
@@ -244,16 +195,10 @@ export default function PricingPage() {
                 <span className="text-gray-400">{plan.period}</span>
               </div>
               <ul className="space-y-3 text-gray-300 mb-8 flex-1">
-                {plan.features.map((feature) => (
-                  <li key={feature}>✅ {feature}</li>
-                ))}
+                {plan.features.map((feature) => <li key={feature}>✅ {feature}</li>)}
               </ul>
               <Link href={plan.href}>
-                <button className={`w-full rounded-xl px-6 py-4 font-semibold text-lg transition ${
-                  plan.featured
-                    ? "bg-purple-600 hover:bg-purple-700"
-                    : "border border-white/20 hover:border-white/50"
-                }`}>
+                <button className={`w-full rounded-xl px-6 py-4 font-semibold text-lg transition ${plan.featured ? "bg-purple-600 hover:bg-purple-700" : "border border-white/20 hover:border-white/50"}`}>
                   {plan.cta}
                 </button>
               </Link>
@@ -262,7 +207,6 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── COMPARISON TABLE ── */}
       <section className="py-20 px-6 bg-[#0a0a0a]">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Compare What You Get</h2>
@@ -296,7 +240,6 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
       <section className="py-20 px-6 text-center max-w-4xl mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold mb-12">Frequently Asked Questions</h2>
         <div className="space-y-6 text-left">
@@ -315,11 +258,8 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── FINAL CTA ── */}
       <section className="py-24 px-6 text-center max-w-4xl mx-auto">
-        <h2 className="text-3xl md:text-5xl font-bold mb-6">
-          Start Building Your AI Webinar Funnel Today
-        </h2>
+        <h2 className="text-3xl md:text-5xl font-bold mb-6">Start Building Your AI Webinar Funnel Today</h2>
         <p className="text-gray-400 mb-8 text-lg">
           Choose your plan, launch faster, and turn your webinar into an always-on sales machine.
         </p>
