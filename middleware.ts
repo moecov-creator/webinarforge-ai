@@ -1,24 +1,23 @@
 // middleware.ts
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Routes that require authentication
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
   "/onboarding(.*)",
 ]);
 
-// Routes that are always public
 const isPublicRoute = createRouteMatcher([
   "/",
   "/pricing",
   "/affiliates",
+  "/checkout(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api/webhooks(.*)",  // Stripe + external webhooks must be public
+  "/api/webhooks(.*)",
+  "/api/billing/checkout",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Protect dashboard and onboarding routes
   if (isProtectedRoute(req)) {
     await auth.protect();
   }
@@ -26,9 +25,7 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and static files
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };
