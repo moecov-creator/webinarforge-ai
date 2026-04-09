@@ -1,4 +1,3 @@
-// app/(marketing)/pricing/page.tsx
 "use client"
 
 import Link from "next/link"
@@ -11,13 +10,19 @@ const TOTAL_SPOTS = 500
 const SPOTS_STORAGE_KEY = "wf_spots_remaining"
 
 function useCountdown() {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  const [timeLeft, setTimeLeft] = useState({
+    days: 0, hours: 0, minutes: 0, seconds: 0,
+  })
   const [expired, setExpired] = useState(false)
 
   useEffect(() => {
     const timer = setInterval(() => {
       const distance = EARLY_BIRD_END.getTime() - new Date().getTime()
-      if (distance <= 0) { setExpired(true); clearInterval(timer); return }
+      if (distance <= 0) {
+        setExpired(true)
+        clearInterval(timer)
+        return
+      }
       setTimeLeft({
         days: Math.floor(distance / (1000 * 60 * 60 * 24)),
         hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -44,7 +49,10 @@ function useSpotCounter() {
 
     const interval = setInterval(() => {
       setSpotsLeft((prev) => {
-        if (prev <= 1) { clearInterval(interval); return 1 }
+        if (prev <= 1) {
+          clearInterval(interval)
+          return 1
+        }
         const next = prev - 1
         localStorage.setItem(SPOTS_STORAGE_KEY, next.toString())
         return next
@@ -57,8 +65,7 @@ function useSpotCounter() {
   return spotsLeft
 }
 
-// ── Smart Early Bird Button ──────────────────────────────
-function EarlyBirdButton() {
+function EarlyBirdButton({ fullWidth = true }: { fullWidth?: boolean }) {
   const { isSignedIn, isLoaded } = useAuth()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -68,7 +75,6 @@ function EarlyBirdButton() {
     setLoading(true)
 
     if (isSignedIn) {
-      // Already logged in — go straight to Stripe checkout
       try {
         const res = await fetch("/api/billing/checkout", {
           method: "POST",
@@ -87,7 +93,6 @@ function EarlyBirdButton() {
         router.push("/pricing")
       }
     } else {
-      // Not logged in — go to sign up then checkout
       router.push("/sign-up?plan=earlybird")
     }
   }
@@ -96,7 +101,7 @@ function EarlyBirdButton() {
     <button
       onClick={handleClick}
       disabled={loading}
-      className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      className={`${fullWidth ? "w-full" : "px-10 py-5 text-xl"} bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
     >
       {loading ? (
         <>
@@ -178,6 +183,7 @@ export default function PricingPage() {
       {!expired && (
         <section className="py-16 px-6 text-center bg-gradient-to-b from-purple-950/40 to-black">
           <div className="max-w-3xl mx-auto">
+
             <span className="inline-block bg-amber-500 text-black text-sm font-bold px-4 py-1 rounded-full mb-6">
               🎉 LIMITED TIME — EARLY BIRD OFFER
             </span>
@@ -189,10 +195,11 @@ export default function PricingPage() {
 
             <p className="text-gray-300 text-lg mb-8">
               Lock in lifetime early bird access before the price goes up.{" "}
-              <strong className="text-white">Only {spotsLeft} of {TOTAL_SPOTS} spots remaining.</strong>
+              <strong className="text-white">
+                Only {spotsLeft} of {TOTAL_SPOTS} spots remaining.
+              </strong>
             </p>
 
-            {/* Countdown Timer */}
             <div className="flex justify-center gap-4 mb-8">
               {[
                 { label: "Days", value: timeLeft.days },
@@ -201,13 +208,14 @@ export default function PricingPage() {
                 { label: "Seconds", value: timeLeft.seconds },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-white/10 border border-white/20 rounded-xl px-5 py-4 min-w-[70px]">
-                  <div className="text-3xl font-bold text-amber-400">{String(value).padStart(2, "0")}</div>
+                  <div className="text-3xl font-bold text-amber-400">
+                    {String(value).padStart(2, "0")}
+                  </div>
                   <div className="text-xs text-gray-400 mt-1">{label}</div>
                 </div>
               ))}
             </div>
 
-            {/* Spot Counter */}
             <div className="max-w-md mx-auto mb-10">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-red-400 font-semibold animate-pulse">
@@ -229,14 +237,15 @@ export default function PricingPage() {
               </p>
             </div>
 
-            {/* Early Bird Card */}
             <div className="rounded-2xl border-2 border-amber-500 bg-white/5 p-8 max-w-md mx-auto shadow-[0_0_40px_rgba(245,158,11,0.2)]">
               <span className="bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full">
                 ⚡ EARLY BIRD — {TOTAL_SPOTS} SPOTS ONLY
               </span>
 
               <h2 className="text-2xl font-bold mt-4 mb-1">WebinarForge AI</h2>
-              <p className="text-gray-400 text-sm mb-4">Full platform access. Lock in the lowest price ever.</p>
+              <p className="text-gray-400 text-sm mb-4">
+                Full platform access. Lock in the lowest price ever.
+              </p>
 
               <div className="flex items-end gap-3 mb-6">
                 <span className="text-gray-500 line-through text-2xl">$97/mo</span>
@@ -252,7 +261,9 @@ export default function PricingPage() {
                   "✅ Email + SMS Automation ($497 value)",
                   "✅ Evergreen Replay Engine ($997 value)",
                   "✅ Early Bird Lifetime Access",
-                ].map((f) => <li key={f}>{f}</li>)}
+                ].map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
               </ul>
 
               {spotsLeft <= 100 && (
@@ -261,8 +272,7 @@ export default function PricingPage() {
                 </div>
               )}
 
-              {/* ← Smart button handles logged in vs logged out */}
-              <EarlyBirdButton />
+              <EarlyBirdButton fullWidth={true} />
 
               <p className="text-xs text-gray-500 mt-3">
                 🔒 Secure checkout. Price locks in immediately.
@@ -272,11 +282,11 @@ export default function PricingPage() {
             <div className="mt-6 text-sm text-gray-400 animate-pulse">
               👥 Someone just claimed a spot — {spotsLeft} remaining
             </div>
+
           </div>
         </section>
       )}
 
-      {/* ── UPSELL STACK ── */}
       <section className="py-20 px-6 bg-[#0a0a0a]">
         <div className="max-w-5xl mx-auto text-center">
           <p className="text-purple-400 mb-3 font-semibold">POWER UP YOUR RESULTS</p>
@@ -301,19 +311,30 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── REGULAR PLANS ── */}
       <section className="py-24 px-6 text-center max-w-6xl mx-auto">
         <p className="text-purple-400 mb-4">Simple Pricing. Powerful Growth.</p>
-        <h2 className="text-4xl md:text-5xl font-bold leading-tight mb-6">Or Choose A Monthly Plan</h2>
+        <h2 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
+          Or Choose A Monthly Plan
+        </h2>
         <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-10">
-          Whether you're launching your first webinar or scaling multiple evergreen funnels, WebinarForge AI gives you the tools to automate presentations, follow-up, and conversions.
+          Whether you're launching your first webinar or scaling multiple evergreen funnels,
+          WebinarForge AI gives you the tools to automate presentations, follow-up, and conversions.
         </p>
         <div className="grid md:grid-cols-3 gap-8 items-stretch">
           {plans.map((plan) => (
-            <div key={plan.name} className={`rounded-2xl border p-8 text-left flex flex-col ${plan.featured ? "border-purple-500 bg-white/10 shadow-[0_0_40px_rgba(168,85,247,0.15)]" : "border-white/10 bg-white/5"}`}>
+            <div
+              key={plan.name}
+              className={`rounded-2xl border p-8 text-left flex flex-col ${
+                plan.featured
+                  ? "border-purple-500 bg-white/10 shadow-[0_0_40px_rgba(168,85,247,0.15)]"
+                  : "border-white/10 bg-white/5"
+              }`}
+            >
               {plan.featured && (
                 <div className="mb-4">
-                  <span className="inline-block rounded-full bg-purple-600 px-3 py-1 text-sm font-semibold">Most Popular</span>
+                  <span className="inline-block rounded-full bg-purple-600 px-3 py-1 text-sm font-semibold">
+                    Most Popular
+                  </span>
                 </div>
               )}
               <h2 className="text-2xl font-bold mb-2">{plan.name}</h2>
@@ -323,10 +344,18 @@ export default function PricingPage() {
                 <span className="text-gray-400">{plan.period}</span>
               </div>
               <ul className="space-y-3 text-gray-300 mb-8 flex-1">
-                {plan.features.map((feature) => <li key={feature}>✅ {feature}</li>)}
+                {plan.features.map((feature) => (
+                  <li key={feature}>✅ {feature}</li>
+                ))}
               </ul>
               <Link href={plan.href}>
-                <button className={`w-full rounded-xl px-6 py-4 font-semibold text-lg transition ${plan.featured ? "bg-purple-600 hover:bg-purple-700" : "border border-white/20 hover:border-white/50"}`}>
+                <button
+                  className={`w-full rounded-xl px-6 py-4 font-semibold text-lg transition ${
+                    plan.featured
+                      ? "bg-purple-600 hover:bg-purple-700"
+                      : "border border-white/20 hover:border-white/50"
+                  }`}
+                >
                   {plan.cta}
                 </button>
               </Link>
@@ -335,7 +364,80 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── COMPARISON TABLE ── */}
       <section className="py-20 px-6 bg-[#0a0a0a]">
         <div className="max-w-6xl mx-auto">
-          <h2 className="te
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+            Compare What You Get
+          </h2>
+          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+            <table className="w-full text-left">
+              <thead className="border-b border-white/10">
+                <tr>
+                  <th className="p-6">Features</th>
+                  <th className="p-6">Starter</th>
+                  <th className="p-6">Pro</th>
+                  <th className="p-6">Enterprise</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-300">
+                {[
+                  ["Webinar Funnels", "1", "Unlimited", "Unlimited"],
+                  ["AI Script Builder", "Yes", "Yes", "Yes"],
+                  ["AI Presenter Tools", "No", "Yes", "Yes"],
+                  ["Evergreen Automation", "Basic", "Advanced", "Advanced"],
+                  ["Analytics", "Core", "Advanced", "Custom"],
+                  ["Support", "Email", "Priority", "Dedicated"],
+                ].map(([feature, ...cols]) => (
+                  <tr key={feature} className="border-b border-white/10 last:border-0">
+                    <td className="p-6">{feature}</td>
+                    {cols.map((col, i) => (
+                      <td key={i} className="p-6">{col}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 px-6 text-center max-w-4xl mx-auto">
+        <h2 className="text-3xl md:text-4xl font-bold mb-12">
+          Frequently Asked Questions
+        </h2>
+        <div className="space-y-6 text-left">
+          {[
+            { q: "Do I need to go live?", a: "No. WebinarForge AI is designed to help you create automated evergreen webinars that run without you going live every time." },
+            { q: "Can I use my own offer and niche?", a: "Yes. You can build webinar funnels for your own niche, audience, and offer." },
+            { q: "Do you support AI presenters?", a: "Yes. Pro and Enterprise plans are built for AI presenter workflows and advanced automation." },
+            { q: "Can agencies use this for clients?", a: "Absolutely. Pro works well for many agencies, and Enterprise is ideal for teams, client management, and white-label use cases." },
+            { q: "What happens after the early bird ends?", a: "The $49 price goes away permanently. Early bird members lock in their rate and keep access at that price." },
+          ].map(({ q, a }) => (
+            <div key={q} className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <h3 className="text-xl font-semibold mb-2">{q}</h3>
+              <p className="text-gray-400">{a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="py-24 px-6 text-center max-w-4xl mx-auto">
+        <h2 className="text-3xl md:text-5xl font-bold mb-6">
+          Start Building Your AI Webinar Funnel Today
+        </h2>
+        <p className="text-gray-400 mb-8 text-lg">
+          Choose your plan, launch faster, and turn your webinar into an always-on sales machine.
+        </p>
+        <div className="flex flex-col md:flex-row gap-4 justify-center">
+          <EarlyBirdButton fullWidth={false} />
+          <Link href="/contact">
+            <button className="border border-white/20 hover:border-white/50 px-10 py-5 rounded-xl font-semibold text-xl transition">
+              Contact Sales
+            </button>
+          </Link>
+        </div>
+      </section>
+
+    </main>
+  )
+}
