@@ -32,11 +32,11 @@ function SignUpContent() {
     if (intent === "EARLY_BIRD") {
       setIsEarlyBird(true)
       setRedirectUrl("/checkout?plan=earlybird")
+      sessionStorage.removeItem("checkout_intent")
     }
     setReady(true)
   }, [])
 
-  // Don't render Clerk until we know the redirect URL
   if (!ready) {
     return (
       <div className="min-h-screen bg-[#080812] flex items-center justify-center">
@@ -49,7 +49,6 @@ function SignUpContent() {
     <div className="min-h-screen bg-[#080812] flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-12 items-center">
 
-        {/* Left — value prop */}
         <div className="hidden lg:block">
           <Link href="/" className="flex items-center gap-2 mb-8">
             <div className="w-8 h-8 rounded-lg gradient-brand flex items-center justify-center">
@@ -112,7 +111,6 @@ function SignUpContent() {
           )}
         </div>
 
-        {/* Right — Clerk SignUp */}
         <div className="flex flex-col items-center">
           <Link href="/" className="flex items-center gap-2 mb-4 lg:hidden">
             <div className="w-7 h-7 rounded-lg gradient-brand flex items-center justify-center">
