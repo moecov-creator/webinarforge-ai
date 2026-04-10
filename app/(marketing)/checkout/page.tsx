@@ -28,20 +28,38 @@ function CheckoutRedirect() {
       return
     }
 
-    fetch("/api/billing/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ planKey }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
+    // Retry up to 5 times with delay — workspace may not be ready yet
+    let attempts = 0
+
+    const tryCheckout = async () => {
+      attempts++
+      try {
+        const res = await fetch("/api/billing/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ planKey }),
+        })
+        const data = await res.json()
+
         if (data.url) {
           window.location.href = data.url
+        } else if (attempts < 5) {
+          // Wait 1 second and retry
+          setTimeout(tryCheckout, 1000)
         } else {
           router.push("/pricing")
         }
-      })
-      .catch(() => router.push("/pricing"))
+      } catch {
+        if (attempts < 5) {
+          setTimeout(tryCheckout, 1000)
+        } else {
+          router.push("/pricing")
+        }
+      }
+    }
+
+    // Small initial delay to let Clerk finish setting up the user
+    setTimeout(tryCheckout, 800)
   }, [plan, upsell, router])
 
   return (
