@@ -61,11 +61,7 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const handleChange = (
-    e: React.ChangeEvent
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
+  const handleChange = (e: React.ChangeEvent<any>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
@@ -102,10 +98,7 @@ export default function ContactPage() {
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
           {SOCIAL_PROOF.map(({ metric, label }) => (
-            <div
-              key={label}
-              className="bg-white/5 border border-white/10 rounded-xl p-4"
-            >
+            <div key={label} className="bg-white/5 border border-white/10 rounded-xl p-4">
               <div className="text-2xl font-bold text-purple-400">{metric}</div>
               <div className="text-xs text-gray-400 mt-1">{label}</div>
             </div>
@@ -175,23 +168,19 @@ export default function ContactPage() {
                 </p>
                 <Link href="/">
                   <button className="bg-purple-600 hover:bg-purple-700 px-8 py-4 rounded-xl font-semibold transition">
-                    Back to Home →
+                    Back to Home
                   </button>
                 </Link>
               </div>
             ) : (
               <div className="space-y-4">
-                <h3 className="text-2xl font-bold mb-2">
-                  Get Enterprise Access
-                </h3>
+                <h3 className="text-2xl font-bold mb-2">Get Enterprise Access</h3>
                 <p className="text-gray-400 text-sm mb-4">
                   Fill out the form and our team will reach out within 24 hours.
                 </p>
 
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
-                    Full Name *
-                  </label>
+                  <label className="text-sm text-gray-400 mb-1 block">Full Name *</label>
                   <input
                     type="text"
                     name="name"
@@ -203,9 +192,7 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
-                    Business Email *
-                  </label>
+                  <label className="text-sm text-gray-400 mb-1 block">Business Email *</label>
                   <input
                     type="email"
                     name="email"
@@ -217,9 +204,7 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
-                    Company / Agency Name *
-                  </label>
+                  <label className="text-sm text-gray-400 mb-1 block">Company / Agency Name *</label>
                   <input
                     type="text"
                     name="company"
@@ -231,9 +216,7 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
-                    Phone Number
-                  </label>
+                  <label className="text-sm text-gray-400 mb-1 block">Phone Number</label>
                   <input
                     type="tel"
                     name="phone"
@@ -245,9 +228,7 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
-                    Webinars per month?
-                  </label>
+                  <label className="text-sm text-gray-400 mb-1 block">Webinars per month?</label>
                   <select
                     name="webinars"
                     value={formData.webinars}
@@ -263,9 +244,7 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
-                    Monthly Budget
-                  </label>
+                  <label className="text-sm text-gray-400 mb-1 block">Monthly Budget</label>
                   <select
                     name="budget"
                     value={formData.budget}
@@ -280,9 +259,7 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
-                    Tell us about your needs
-                  </label>
+                  <label className="text-sm text-gray-400 mb-1 block">Tell us about your needs</label>
                   <textarea
                     name="message"
                     value={formData.message}
@@ -295,12 +272,7 @@ export default function ContactPage() {
 
                 <button
                   onClick={handleSubmit}
-                  disabled={
-                    loading ||
-                    !formData.name ||
-                    !formData.email ||
-                    !formData.company
-                  }
+                  disabled={loading || !formData.name || !formData.email || !formData.company}
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl text-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? (
@@ -326,15 +298,10 @@ export default function ContactPage() {
       </section>
 
       <section className="py-20 px-6 max-w-4xl mx-auto">
-        <h2 className="text-3xl font-bold text-center mb-12">
-          Enterprise FAQ
-        </h2>
+        <h2 className="text-3xl font-bold text-center mb-12">Enterprise FAQ</h2>
         <div className="space-y-6">
           {FAQ.map(({ q, a }) => (
-            <div
-              key={q}
-              className="rounded-2xl border border-white/10 bg-white/5 p-6"
-            >
+            <div key={q} className="rounded-2xl border border-white/10 bg-white/5 p-6">
               <h3 className="text-xl font-semibold mb-2">{q}</h3>
               <p className="text-gray-400">{a}</p>
             </div>
@@ -356,7 +323,7 @@ export default function ContactPage() {
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             className="bg-purple-600 hover:bg-purple-700 px-10 py-5 rounded-xl font-bold text-xl transition"
           >
-            Apply for Enterprise →
+            Apply for Enterprise
           </button>
           <Link href="/pricing">
             <button className="border border-white/20 hover:border-white/50 px-10 py-5 rounded-xl font-semibold text-xl transition">
