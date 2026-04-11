@@ -3,7 +3,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Zap, CheckCircle, ArrowRight, Phone, Mail, Calendar } from "lucide-react"
+import { CheckCircle, ArrowRight, Mail, Calendar } from "lucide-react"
 
 const ENTERPRISE_FEATURES = [
   "Unlimited webinar funnels",
@@ -25,6 +25,29 @@ const SOCIAL_PROOF = [
   { metric: "$3,285+", label: "Value Included" },
 ]
 
+const FAQ = [
+  {
+    q: "How is Enterprise different from Pro?",
+    a: "Enterprise adds white-label branding, team seats, a dedicated account manager, custom workflows, and monthly strategy calls. It's built for agencies managing multiple clients.",
+  },
+  {
+    q: "Can I white-label this for my clients?",
+    a: "Yes. Enterprise includes full white-label options so you can present WebinarForge AI under your own brand to your clients.",
+  },
+  {
+    q: "How many team members can I add?",
+    a: "Enterprise starts with up to 10 seats. Additional seats can be added based on your needs.",
+  },
+  {
+    q: "Is there a setup fee?",
+    a: "No setup fee. Your first month includes a custom onboarding session where we help you configure everything for your business.",
+  },
+  {
+    q: "Can I get a custom contract or invoice?",
+    a: "Yes. Enterprise clients can receive custom contracts, invoices, and annual billing options. Contact us to discuss.",
+  },
+]
+
 export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: "",
@@ -44,12 +67,9 @@ export default function ContactPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = async (e: React.MouseEvent) => {
-    e.preventDefault()
+  const handleSubmit = async () => {
     if (!formData.name || !formData.email || !formData.company) return
     setLoading(true)
-
-    // Send to your email via API
     try {
       await fetch("/api/contact", {
         method: "POST",
@@ -57,9 +77,8 @@ export default function ContactPage() {
         body: JSON.stringify(formData),
       })
     } catch {
-      // Still show success even if API fails
+      // Still show success
     }
-
     setTimeout(() => {
       setLoading(false)
       setSubmitted(true)
@@ -82,9 +101,7 @@ export default function ContactPage() {
           Built for agencies, consultants, and teams that need unlimited funnels,
           custom branding, and a dedicated partner to help them scale.
         </p>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
           {SOCIAL_PROOF.map(({ metric, label }) => (
             <div key={label} className="bg-white/5 border border-white/10 rounded-xl p-4">
               <div className="text-2xl font-bold text-purple-400">{metric}</div>
@@ -98,17 +115,14 @@ export default function ContactPage() {
       <section className="py-12 px-6 max-w-6xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-16 items-start">
 
-          {/* Left — Features */}
+          {/* Left */}
           <div>
-            <h2 className="text-3xl font-bold mb-4">
-              Everything in Pro, Plus:
-            </h2>
+            <h2 className="text-3xl font-bold mb-4">Everything in Pro, Plus:</h2>
             <p className="text-gray-400 mb-8">
               Enterprise gives you the full WebinarForge AI platform with
               white-label branding, team access, and a dedicated partner
               committed to your success.
             </p>
-
             <div className="space-y-3 mb-10">
               {ENTERPRISE_FEATURES.map((feature) => (
                 <div key={feature} className="flex items-center gap-3">
@@ -117,8 +131,6 @@ export default function ContactPage() {
                 </div>
               ))}
             </div>
-
-            {/* Pricing hint */}
             <div className="bg-purple-600/10 border border-purple-500/30 rounded-2xl p-6 mb-8">
               <p className="text-purple-400 font-semibold mb-1">Starting at $497/month</p>
               <p className="text-gray-400 text-sm">
@@ -126,8 +138,6 @@ export default function ContactPage() {
                 see ROI within the first 30 days.
               </p>
             </div>
-
-            {/* Contact options */}
             <div className="space-y-4">
               
                 href="mailto:hello@webinarforge.ai"
@@ -155,9 +165,7 @@ export default function ContactPage() {
                 <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-6">
                   <CheckCircle className="w-8 h-8 text-purple-400" />
                 </div>
-                <h3 className="text-2xl font-bold mb-3">
-                  We'll be in touch shortly!
-                </h3>
+                <h3 className="text-2xl font-bold mb-3">We'll be in touch shortly!</h3>
                 <p className="text-gray-400 mb-8">
                   Thanks for reaching out. Our team will contact you within
                   24 hours to schedule your strategy call.
@@ -174,13 +182,9 @@ export default function ContactPage() {
                 <p className="text-gray-400 text-sm mb-8">
                   Fill out the form and our team will reach out within 24 hours.
                 </p>
-
                 <div className="space-y-4">
-                  {/* Name */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
-                      Full Name *
-                    </label>
+                    <label className="text-sm text-gray-400 mb-1 block">Full Name *</label>
                     <input
                       type="text"
                       name="name"
@@ -190,12 +194,8 @@ export default function ContactPage() {
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-
-                  {/* Email */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
-                      Business Email *
-                    </label>
+                    <label className="text-sm text-gray-400 mb-1 block">Business Email *</label>
                     <input
                       type="email"
                       name="email"
@@ -205,12 +205,8 @@ export default function ContactPage() {
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-
-                  {/* Company */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
-                      Company / Agency Name *
-                    </label>
+                    <label className="text-sm text-gray-400 mb-1 block">Company / Agency Name *</label>
                     <input
                       type="text"
                       name="company"
@@ -220,12 +216,8 @@ export default function ContactPage() {
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-
-                  {/* Phone */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
-                      Phone Number
-                    </label>
+                    <label className="text-sm text-gray-400 mb-1 block">Phone Number</label>
                     <input
                       type="tel"
                       name="phone"
@@ -235,8 +227,6 @@ export default function ContactPage() {
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-
-                  {/* Webinars per month */}
                   <div>
                     <label className="text-sm text-gray-400 mb-1 block">
                       How many webinars do you run per month?
@@ -254,12 +244,8 @@ export default function ContactPage() {
                       <option value="20+">20+ webinars</option>
                     </select>
                   </div>
-
-                  {/* Budget */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
-                      Monthly Budget
-                    </label>
+                    <label className="text-sm text-gray-400 mb-1 block">Monthly Budget</label>
                     <select
                       name="budget"
                       value={formData.budget}
@@ -272,12 +258,8 @@ export default function ContactPage() {
                       <option value="2000+">$2,000+/month</option>
                     </select>
                   </div>
-
-                  {/* Message */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
-                      Tell us about your needs
-                    </label>
+                    <label className="text-sm text-gray-400 mb-1 block">Tell us about your needs</label>
                     <textarea
                       name="message"
                       value={formData.message}
@@ -287,7 +269,6 @@ export default function ContactPage() {
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition resize-none"
                     />
                   </div>
-
                   <button
                     onClick={handleSubmit}
                     disabled={loading || !formData.name || !formData.email || !formData.company}
@@ -305,7 +286,6 @@ export default function ContactPage() {
                       </>
                     )}
                   </button>
-
                   <p className="text-xs text-gray-600 text-center">
                     Our team will respond within 24 hours. No spam, ever.
                   </p>
@@ -318,32 +298,9 @@ export default function ContactPage() {
 
       {/* FAQ */}
       <section className="py-20 px-6 max-w-4xl mx-auto">
-        <h2 className="text-3xl font-bold text-center mb-12">
-          Enterprise FAQ
-        </h2>
+        <h2 className="text-3xl font-bold text-center mb-12">Enterprise FAQ</h2>
         <div className="space-y-6">
-          {[
-            {
-              q: "How is Enterprise different from Pro?",
-              a: "Enterprise adds white-label branding, team seats, a dedicated account manager, custom workflows, and monthly strategy calls. It's built for agencies managing multiple clients."
-            },
-            {
-              q: "Can I white-label this for my clients?",
-              a: "Yes. Enterprise includes full white-label options so you can present WebinarForge AI under your own brand to your clients."
-            },
-            {
-              q: "How many team members can I add?",
-              a: "Enterprise starts with up to 10 seats. Additional seats can be added based on your needs."
-            },
-            {
-              q: "Is there a setup fee?",
-              a: "No setup fee. Your first month includes a custom onboarding session where we help you configure everything for your business."
-            },
-            {
-              q: "Can I get a custom contract or invoice?",
-              a: "Yes. Enterprise clients can receive custom contracts, invoices, and annual billing options. Contact us to discuss."
-            },
-          ].map(({ q, a }) => (
+          {FAQ.map(({ q, a }) => (
             <div key={q} className="rounded-2xl border border-white/10 bg-white/5 p-6">
               <h3 className="text-xl font-semibold mb-2">{q}</h3>
               <p className="text-gray-400">{a}</p>
@@ -363,11 +320,12 @@ export default function ContactPage() {
           automated webinar funnels for their clients.
         </p>
         <div className="flex flex-col md:flex-row gap-4 justify-center">
-          <a href="#top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <button className="bg-purple-600 hover:bg-purple-700 px-10 py-5 rounded-xl font-bold text-xl transition">
-              Apply for Enterprise →
-            </button>
-          </a>
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="bg-purple-600 hover:bg-purple-700 px-10 py-5 rounded-xl font-bold text-xl transition"
+          >
+            Apply for Enterprise →
+          </button>
           <Link href="/pricing">
             <button className="border border-white/20 hover:border-white/50 px-10 py-5 rounded-xl font-semibold text-xl transition">
               View All Plans
