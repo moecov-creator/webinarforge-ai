@@ -50,18 +50,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Clerk user not found" }, { status: 404 })
 
     const email = clerkUser.emailAddresses[0]?.emailAddress ?? ""
-
-    // Use short unique slug to avoid length issues
     const shortId = clerkId.slice(-8)
+
+    // Find or create workspace
     let workspace = await prisma.workspace.findFirst({
       where: { slug: { contains: shortId } },
     })
 
     if (!workspace) {
+      const now = new Date()
       workspace = await prisma.workspace.create({
         data: {
           name: "My Workspace",
           slug: `ws-${shortId}-${nanoid(4)}`,
+          createdAt: now,
+          updatedAt: now,
         },
       })
     }
