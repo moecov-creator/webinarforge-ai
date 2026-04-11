@@ -71,7 +71,11 @@ function EarlyBirdButton({ fullWidth = true }: { fullWidth?: boolean }) {
   const [loading, setLoading] = useState(false)
 
   const handleClick = async () => {
-    if (!isLoaded) return
+    if (!isLoaded) {
+      alert("Auth not loaded yet — try again")
+      return
+    }
+
     setLoading(true)
 
     if (isSignedIn) {
@@ -82,38 +86,46 @@ function EarlyBirdButton({ fullWidth = true }: { fullWidth?: boolean }) {
           body: JSON.stringify({ planKey: "EARLY_BIRD" }),
         })
         const data = await res.json()
+        alert("API Response: " + JSON.stringify(data))
         if (data.url) {
           window.location.href = data.url
         } else {
           setLoading(false)
         }
-      } catch {
+      } catch (err: any) {
+        alert("Fetch error: " + err.message)
         setLoading(false)
       }
     } else {
-      // Store intent so sign-up page picks it up
+      alert("Not signed in — going to sign up")
       sessionStorage.setItem("checkout_intent", "EARLY_BIRD")
       window.location.href = "/sign-up"
     }
   }
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={loading}
-      className={`${
-        fullWidth ? "w-full" : "px-10 py-5 text-xl"
-      } bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
-    >
-      {loading ? (
-        <>
-          <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-          Preparing checkout...
-        </>
-      ) : (
-        "Claim My $49 Early Bird Spot →"
-      )}
-    </button>
+    <div className={fullWidth ? "w-full" : ""}>
+      <p className="text-xs text-gray-500 mb-2 text-center">
+        Auth loaded: {isLoaded ? "✅" : "❌"} |
+        Signed in: {isSignedIn ? "✅" : "❌"}
+      </p>
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        className={`${
+          fullWidth ? "w-full" : "px-10 py-5 text-xl"
+        } bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
+      >
+        {loading ? (
+          <>
+            <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+            Preparing checkout...
+          </>
+        ) : (
+          "Claim My $49 Early Bird Spot →"
+        )}
+      </button>
+    </div>
   )
 }
 
@@ -152,23 +164,23 @@ const plans = [
 
 const upsells = [
   {
-    name: "🚀 Done-For-You Templates",
+    name: "Done-For-You Templates",
     price: "$97",
-    description: "Get 10 proven webinar funnel templates built for coaches, SaaS, and real estate. Plug in your offer and launch in minutes.",
+    description: "Get 10 proven webinar funnel templates built for coaches, SaaS, and real estate.",
     cta: "Add Templates →",
     href: "/sign-up?upsell=templates",
   },
   {
-    name: "🎯 1:1 Onboarding Call",
+    name: "1:1 Onboarding Call",
     price: "$197",
-    description: "30-minute strategy session with our team. We'll review your funnel, optimize your offer, and get you converting faster.",
+    description: "30-minute strategy session with our team. We'll review your funnel and get you converting faster.",
     cta: "Book My Call →",
     href: "/sign-up?upsell=onboarding",
   },
   {
-    name: "⚡ Full Funnel Build",
+    name: "Full Funnel Build",
     price: "$497",
-    description: "We build your entire webinar funnel for you — script, slides, automation, and follow-up sequences. Done in 5 business days.",
+    description: "We build your entire webinar funnel for you — script, slides, automation, and follow-up sequences.",
     cta: "Get It Built →",
     href: "/sign-up?upsell=fullfunnel",
   },
@@ -187,7 +199,7 @@ export default function PricingPage() {
           <div className="max-w-3xl mx-auto">
 
             <span className="inline-block bg-amber-500 text-black text-sm font-bold px-4 py-1 rounded-full mb-6">
-              🎉 LIMITED TIME — EARLY BIRD OFFER
+              LIMITED TIME — EARLY BIRD OFFER
             </span>
 
             <h1 className="text-4xl md:text-6xl font-bold mb-4">
@@ -221,7 +233,7 @@ export default function PricingPage() {
             <div className="max-w-md mx-auto mb-10">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-red-400 font-semibold animate-pulse">
-                  🔴 {spotsLeft} spots left
+                  {spotsLeft} spots left
                 </span>
                 <span className="text-gray-400">{TOTAL_SPOTS - spotsLeft} claimed</span>
               </div>
@@ -241,7 +253,7 @@ export default function PricingPage() {
 
             <div className="rounded-2xl border-2 border-amber-500 bg-white/5 p-8 max-w-md mx-auto shadow-[0_0_40px_rgba(245,158,11,0.2)]">
               <span className="bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full">
-                ⚡ EARLY BIRD — {TOTAL_SPOTS} SPOTS ONLY
+                EARLY BIRD — {TOTAL_SPOTS} SPOTS ONLY
               </span>
 
               <h2 className="text-2xl font-bold mt-4 mb-1">WebinarForge AI</h2>
@@ -257,32 +269,32 @@ export default function PricingPage() {
 
               <ul className="space-y-2 text-gray-300 text-sm mb-8 text-left">
                 {[
-                  "✅ AI Webinar Builder ($997 value)",
-                  "✅ AI Avatar Presenter ($497 value)",
-                  "✅ Funnel Templates ($297 value)",
-                  "✅ Email + SMS Automation ($497 value)",
-                  "✅ Evergreen Replay Engine ($997 value)",
-                  "✅ Early Bird Lifetime Access",
+                  "AI Webinar Builder ($997 value)",
+                  "AI Avatar Presenter ($497 value)",
+                  "Funnel Templates ($297 value)",
+                  "Email + SMS Automation ($497 value)",
+                  "Evergreen Replay Engine ($997 value)",
+                  "Early Bird Lifetime Access",
                 ].map((f) => (
-                  <li key={f}>{f}</li>
+                  <li key={f}>✅ {f}</li>
                 ))}
               </ul>
 
               {spotsLeft <= 100 && (
                 <div className="bg-red-500/20 border border-red-500 rounded-xl px-4 py-2 mb-4 text-red-400 text-sm font-semibold animate-pulse">
-                  ⚠️ Only {spotsLeft} spots left! Grab yours before it's gone.
+                  Only {spotsLeft} spots left! Grab yours before it is gone.
                 </div>
               )}
 
               <EarlyBirdButton fullWidth={true} />
 
-              <p className="text-xs text-gray-500 mt-3">
-                🔒 Secure checkout. Price locks in immediately.
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                Secure checkout. Price locks in immediately.
               </p>
             </div>
 
             <div className="mt-6 text-sm text-gray-400 animate-pulse">
-              👥 Someone just claimed a spot — {spotsLeft} remaining
+              Someone just claimed a spot — {spotsLeft} remaining
             </div>
 
           </div>
@@ -294,7 +306,7 @@ export default function PricingPage() {
           <p className="text-purple-400 mb-3 font-semibold">POWER UP YOUR RESULTS</p>
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Upgrade Your Experience</h2>
           <p className="text-gray-400 mb-12 max-w-2xl mx-auto">
-            Add these to your order and get results faster. Each upgrade is designed to help you launch, convert, and scale quicker.
+            Add these to your order and get results faster.
           </p>
           <div className="grid md:grid-cols-3 gap-6">
             {upsells.map((item) => (
@@ -319,7 +331,7 @@ export default function PricingPage() {
           Or Choose A Monthly Plan
         </h2>
         <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-10">
-          Whether you're launching your first webinar or scaling multiple evergreen funnels,
+          Whether you are launching your first webinar or scaling multiple evergreen funnels,
           WebinarForge AI gives you the tools to automate presentations, follow-up, and conversions.
         </p>
         <div className="grid md:grid-cols-3 gap-8 items-stretch">
@@ -409,10 +421,10 @@ export default function PricingPage() {
         </h2>
         <div className="space-y-6 text-left">
           {[
-            { q: "Do I need to go live?", a: "No. WebinarForge AI is designed to help you create automated evergreen webinars that run without you going live every time." },
+            { q: "Do I need to go live?", a: "No. WebinarForge AI creates automated evergreen webinars that run without you going live every time." },
             { q: "Can I use my own offer and niche?", a: "Yes. You can build webinar funnels for your own niche, audience, and offer." },
-            { q: "Do you support AI presenters?", a: "Yes. Pro and Enterprise plans are built for AI presenter workflows and advanced automation." },
-            { q: "Can agencies use this for clients?", a: "Absolutely. Pro works well for many agencies, and Enterprise is ideal for teams, client management, and white-label use cases." },
+            { q: "Do you support AI presenters?", a: "Yes. Pro and Enterprise plans include AI presenter workflows and advanced automation." },
+            { q: "Can agencies use this for clients?", a: "Absolutely. Pro works well for many agencies, and Enterprise is ideal for teams and white-label use cases." },
             { q: "What happens after the early bird ends?", a: "The $49 price goes away permanently. Early bird members lock in their rate and keep access at that price." },
           ].map(({ q, a }) => (
             <div key={q} className="rounded-2xl border border-white/10 bg-white/5 p-6">
