@@ -71,11 +71,7 @@ function EarlyBirdButton({ fullWidth = true }: { fullWidth?: boolean }) {
   const [loading, setLoading] = useState(false)
 
   const handleClick = async () => {
-    if (!isLoaded) {
-      alert("Auth not loaded yet — try again")
-      return
-    }
-
+    if (!isLoaded) return
     setLoading(true)
 
     if (isSignedIn) {
@@ -86,46 +82,37 @@ function EarlyBirdButton({ fullWidth = true }: { fullWidth?: boolean }) {
           body: JSON.stringify({ planKey: "EARLY_BIRD" }),
         })
         const data = await res.json()
-        alert("API Response: " + JSON.stringify(data))
         if (data.url) {
           window.location.href = data.url
         } else {
           setLoading(false)
         }
-      } catch (err: any) {
-        alert("Fetch error: " + err.message)
+      } catch {
         setLoading(false)
       }
     } else {
-      alert("Not signed in — going to sign up")
       sessionStorage.setItem("checkout_intent", "EARLY_BIRD")
       window.location.href = "/sign-up"
     }
   }
 
   return (
-    <div className={fullWidth ? "w-full" : ""}>
-      <p className="text-xs text-gray-500 mb-2 text-center">
-        Auth loaded: {isLoaded ? "✅" : "❌"} |
-        Signed in: {isSignedIn ? "✅" : "❌"}
-      </p>
-      <button
-        onClick={handleClick}
-        disabled={loading}
-        className={`${
-          fullWidth ? "w-full" : "px-10 py-5 text-xl"
-        } bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
-      >
-        {loading ? (
-          <>
-            <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-            Preparing checkout...
-          </>
-        ) : (
-          "Claim My $49 Early Bird Spot →"
-        )}
-      </button>
-    </div>
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className={`${
+        fullWidth ? "w-full" : "px-10 py-5 text-xl"
+      } bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
+    >
+      {loading ? (
+        <>
+          <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+          Preparing checkout...
+        </>
+      ) : (
+        "Claim My $49 Early Bird Spot →"
+      )}
+    </button>
   )
 }
 
@@ -173,7 +160,7 @@ const upsells = [
   {
     name: "1:1 Onboarding Call",
     price: "$197",
-    description: "30-minute strategy session with our team. We'll review your funnel and get you converting faster.",
+    description: "30-minute strategy session with our team. We will review your funnel and get you converting faster.",
     cta: "Book My Call →",
     href: "/sign-up?upsell=onboarding",
   },
@@ -233,7 +220,7 @@ export default function PricingPage() {
             <div className="max-w-md mx-auto mb-10">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-red-400 font-semibold animate-pulse">
-                  {spotsLeft} spots left
+                  🔴 {spotsLeft} spots left
                 </span>
                 <span className="text-gray-400">{TOTAL_SPOTS - spotsLeft} claimed</span>
               </div>
