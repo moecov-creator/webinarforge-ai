@@ -1,56 +1,5 @@
 "use client"
 
-type FormData = {
-  businessName: string
-  businessPhone: string
-  businessWebsite: string
-  templateId: string
-  formTitle: string
-  formSubtitle: string
-  buttonText: string
-  thankYouMessage: string
-  collectPhone: boolean
-  requirePhone: boolean
-  smsConsent: boolean
-  redirectUrl: string
-  primaryColor: string
-}
-
-type SubmissionData = {
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  company: string
-  niche: string
-  revenue: string
-  goal: string
-  subject: string
-  message: string
-  smsConsent: boolean
-  emailConsent: boolean
-}
-
-type Template = {
-  id: string
-  name: string
-  icon: string
-  desc: string
-  fields: string[]
-}
-
-type Props = {
-  formData: FormData
-  selectedTemplate: Template
-  submission: SubmissionData
-  setSubmission: (s: SubmissionData) => void
-  submitted: boolean
-  submitting: boolean
-  onSubmit: () => void
-  a2pText: string
-  preview: boolean
-}
-
 export default function FormPreview({
   formData,
   selectedTemplate,
@@ -61,7 +10,50 @@ export default function FormPreview({
   onSubmit,
   a2pText,
   preview,
-}: Props) {
+}: {
+  formData: {
+    businessName: string
+    businessPhone: string
+    businessWebsite: string
+    templateId: string
+    formTitle: string
+    formSubtitle: string
+    buttonText: string
+    thankYouMessage: string
+    collectPhone: boolean
+    requirePhone: boolean
+    smsConsent: boolean
+    redirectUrl: string
+    primaryColor: string
+  }
+  selectedTemplate: {
+    id: string
+    name: string
+    icon: string
+    desc: string
+    fields: string[]
+  }
+  submission: {
+    firstName: string
+    lastName: string
+    email: string
+    phone: string
+    company: string
+    niche: string
+    revenue: string
+    goal: string
+    subject: string
+    message: string
+    smsConsent: boolean
+    emailConsent: boolean
+  }
+  setSubmission: (s: any) => void
+  submitted: boolean
+  submitting: boolean
+  onSubmit: () => void
+  a2pText: string
+  preview: boolean
+}) {
   return (
     <div
       className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden"
@@ -236,7 +228,7 @@ export default function FormPreview({
 
         {formData.collectPhone && formData.smsConsent && (
           <div className="bg-black/40 border border-white/10 rounded-xl p-4">
-            <label className="flex items-start gap-3 cursor-pointer">
+            <div className="flex items-start gap-3">
               <div className="flex-shrink-0 mt-0.5">
                 <input
                   type="checkbox"
@@ -250,7 +242,7 @@ export default function FormPreview({
               <p className="text-xs text-gray-300 leading-relaxed">
                 {a2pText}
               </p>
-            </label>
+            </div>
           </div>
         )}
 
@@ -288,7 +280,8 @@ export default function FormPreview({
         <p className="text-xs text-gray-600 text-center">
           Your information is secure and will never be shared with third parties.
           {formData.businessWebsite && (
-            <span> See our{" "}
+            <span>
+              {" "}See our{" "}
               
                 href={formData.businessWebsite + "/privacy"}
                 className="underline hover:text-gray-400"
