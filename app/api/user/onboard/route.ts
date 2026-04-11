@@ -1,84 +1,74 @@
-// app/api/user/onboard/route.ts
+// app/api/billing/checkout/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
+import { billingAdapter } from "@/lib/adapters/stripe/billing";
 import { nanoid } from "nanoid";
-export const dynamic = 'force-dynamic';
-const OnboardSchema = z.object({
-  name: z.string().min(1),
-  company: z.string().min(1),
-  niche: z.string().min(1),
-  primaryOffer: z.string().min(1),
-  targetAudience: z.string().min(5),
-  webinarGoal: z.string().min(1),
+
+const CheckoutSchema = z.object({
+  planKey: z.enum(["STARTER", "PRO", "SCALE", "EARLY_BIRD"]),
 });
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = await auth();
-  if (!clerkId) {
+  if (!clerkId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const clerkUser = await currentUser();
-  const email = clerkUser?.emailAddresses[0]?.emailAddress;
-  if (!email) {
-    return NextResponse.json({ error: "Email not found" }, { status: 400 });
-  }
 
   const body = await req.json();
-  const parsed = OnboardSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
-  }
+  const parsed = CheckoutSchema.safeParse(body);
+  if (!parsed.success)
+    return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
 
-  const data = parsed.data;
-
-  // Upsert user
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: {
-      clerkId,
-      name: data.name,
-      company: data.company,
-      niche: data.niche as any,
-      primaryOffer: data.primaryOffer,
-      targetAudience: data.targetAudience,
-      webinarGoal: data.webinarGoal,
-      onboardingComplete: true,
-    },
-    create: {
-      email,
-      clerkId,
-      name: data.name,
-      company: data.company,
-      niche: data.niche as any,
-      primaryOffer: data.primaryOffer,
-      targetAudience: data.targetAudience,
-      webinarGoal: data.webinarGoal,
-      onboardingComplete: true,
-    },
+  // Find existing workspace member
+  let member = await prisma.workspaceMember.findFirst({
+    where: { user: { clerkId }, role: "owner" },
   });
 
-  // Create workspace if not already in one
-  const existingMembership = await prisma.workspaceMember.findFirst({
-    where: { userId: user.id },
-  });
+  // If no workspace yet create user and workspace automatically
+  if (!member) {
+    const clerkUser = await currentUser()
+    if (!clerkUser)
+      return NextResponse.json({ error: "Clerk user not found" }, { status: 404 });
 
-  if (!existingMembership) {
-    const slug = `${data.company.toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30)}-${nanoid(6)}`;
+    const email = clerkUser.emailAddresses[0]?.emailAddress ?? ""
+    const name = `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() || "User"
 
+    // Upsert user — handles both new and existing users
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: { clerkId },
+      create: {
+        clerkId,
+        email,
+        name,
+        company: "My Company",
+        niche: "COACHING",
+        primaryOffer: "",
+        targetAudience: "",
+        webinarGoal: "SELL_PRODUCT",
+        onboardingComplete: false,
+      },
+    })
+
+    // Create workspace
+    const slug = `workspace-${nanoid(6)}`
     const workspace = await prisma.workspace.create({
       data: {
-        name: data.company,
+        name: "My Workspace",
         slug,
         members: {
-          create: { userId: user.id, role: "owner" },
+          create: {
+            userId: user.id,
+            role: "owner",
+          },
         },
       },
-    });
+    })
 
-    // Create subscription (14-day trial)
+    // Create subscription record
     await prisma.subscription.create({
       data: {
         workspaceId: workspace.id,
@@ -86,36 +76,29 @@ export async function POST(req: NextRequest) {
         status: "trialing",
         trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       },
-    });
+    })
 
-    // Initialize usage counters
+    // Create plan usage
     await prisma.planUsage.create({
       data: { workspaceId: workspace.id },
-    });
+    })
 
-    // Create default AI presenter
-    await prisma.aIPresenter.create({
-      data: {
-        workspaceId: workspace.id,
-        userId: user.id,
-        name: data.name,
-        speakingStyle: "conversational",
-        tone: "professional",
-        nicheSpecialty: data.niche as any,
-        isDefault: true,
-      },
-    });
-
-    // Track analytics
-    await prisma.analyticsEvent.create({
-      data: {
-        workspaceId: workspace.id,
-        userId: user.id,
-        event: "user.onboarded",
-        properties: { niche: data.niche, goal: data.webinarGoal },
-      },
-    });
+    member = await prisma.workspaceMember.findFirst({
+      where: { workspaceId: workspace.id, role: "owner" },
+    })
   }
 
-  return NextResponse.json({ success: true });
+  if (!member)
+    return NextResponse.json({ error: "Workspace setup failed" }, { status: 500 });
+
+  try {
+    const url = await billingAdapter.createCheckoutSession(
+      member.workspaceId,
+      parsed.data.planKey
+    );
+    return NextResponse.json({ url });
+  } catch (err: any) {
+    console.error("Checkout session error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
