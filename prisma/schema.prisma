@@ -12,6 +12,7 @@ model Workspace {
   name      String
   slug      String   @unique
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   webinars  Webinar[]
   analytics AnalyticsEvent[]
