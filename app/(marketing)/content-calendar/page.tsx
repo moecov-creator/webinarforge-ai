@@ -20,6 +20,31 @@ const PLATFORMS = [
   { id: "threads", name: "Threads", icon: "🧵", color: "gray", category: "Threads" },
 ]
 
+// Platform-specific settings
+const PLATFORM_SPECS: Record<string, {
+  ratio: string
+  ratioLabel: string
+  maxChars: number
+  captionStyle: string
+  bgColor: string
+  accentColor: string
+}> = {
+  instagram:        { ratio: "aspect-square", ratioLabel: "1:1 Square", maxChars: 2200, captionStyle: "below", bgColor: "bg-gradient-to-br from-purple-900 to-pink-900", accentColor: "text-pink-400" },
+  instagram_reels:  { ratio: "aspect-[9/16]", ratioLabel: "9:16 Reels", maxChars: 2200, captionStyle: "overlay", bgColor: "bg-black", accentColor: "text-pink-400" },
+  instagram_stories:{ ratio: "aspect-[9/16]", ratioLabel: "9:16 Story", maxChars: 0, captionStyle: "overlay", bgColor: "bg-black", accentColor: "text-pink-400" },
+  tiktok:           { ratio: "aspect-[9/16]", ratioLabel: "9:16 TikTok", maxChars: 2200, captionStyle: "overlay", bgColor: "bg-black", accentColor: "text-red-400" },
+  youtube_shorts:   { ratio: "aspect-[9/16]", ratioLabel: "9:16 Shorts", maxChars: 500, captionStyle: "overlay", bgColor: "bg-black", accentColor: "text-red-400" },
+  youtube:          { ratio: "aspect-video", ratioLabel: "16:9 YouTube", maxChars: 5000, captionStyle: "below", bgColor: "bg-gray-900", accentColor: "text-red-400" },
+  facebook_personal:{ ratio: "aspect-video", ratioLabel: "16:9 Facebook", maxChars: 63206, captionStyle: "below", bgColor: "bg-blue-950", accentColor: "text-blue-400" },
+  facebook_page:    { ratio: "aspect-video", ratioLabel: "16:9 Facebook", maxChars: 63206, captionStyle: "below", bgColor: "bg-blue-950", accentColor: "text-blue-400" },
+  facebook_group:   { ratio: "aspect-video", ratioLabel: "16:9 Facebook", maxChars: 63206, captionStyle: "below", bgColor: "bg-blue-950", accentColor: "text-blue-400" },
+  linkedin:         { ratio: "aspect-video", ratioLabel: "16:9 LinkedIn", maxChars: 3000, captionStyle: "below", bgColor: "bg-indigo-950", accentColor: "text-indigo-400" },
+  linkedin_page:    { ratio: "aspect-video", ratioLabel: "16:9 LinkedIn", maxChars: 3000, captionStyle: "below", bgColor: "bg-indigo-950", accentColor: "text-indigo-400" },
+  twitter:          { ratio: "aspect-video", ratioLabel: "16:9 Twitter/X", maxChars: 280, captionStyle: "below", bgColor: "bg-gray-950", accentColor: "text-gray-400" },
+  pinterest:        { ratio: "aspect-[2/3]", ratioLabel: "2:3 Pinterest", maxChars: 500, captionStyle: "below", bgColor: "bg-red-950", accentColor: "text-red-400" },
+  threads:          { ratio: "aspect-square", ratioLabel: "1:1 Threads", maxChars: 500, captionStyle: "below", bgColor: "bg-gray-950", accentColor: "text-gray-400" },
+}
+
 const CONTENT_TYPES = [
   { id: "post", label: "Post", icon: "📝", desc: "Static text or image post" },
   { id: "reel", label: "Reel / Short", icon: "🎬", desc: "Short vertical video 15-90 sec" },
@@ -70,6 +95,7 @@ type Post = {
   id: string
   title: string
   content: string
+  platformCaptions: Record<string, string>
   date: string
   time: string
   platforms: string[]
@@ -82,7 +108,7 @@ type Post = {
 }
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"]
 
 const colorMap: Record<string, string> = {
   blue: "bg-blue-500/20 border-blue-500/50 text-blue-400",
@@ -108,6 +134,7 @@ const SAMPLE_POSTS: Post[] = [
     id: "1",
     title: "Early Bird Launch Announcement",
     content: "🚀 Big news! WebinarForge AI Early Bird is LIVE. Get lifetime access for just $49 — only 500 spots available. Link in bio!",
+    platformCaptions: {},
     date: "2026-04-12",
     time: "09:00",
     platforms: ["facebook_personal", "instagram", "linkedin", "twitter"],
@@ -121,6 +148,7 @@ const SAMPLE_POSTS: Post[] = [
     id: "2",
     title: "How AI Webinars Work - Reel",
     content: "Ever wondered how AI runs a webinar without you being live? Here is exactly how it works in 60 seconds...",
+    platformCaptions: {},
     date: "2026-04-13",
     time: "12:00",
     platforms: ["instagram_reels", "tiktok", "youtube_shorts"],
@@ -134,6 +162,7 @@ const SAMPLE_POSTS: Post[] = [
     id: "3",
     title: "Client Result Testimonial",
     content: "Sarah generated 312 leads in her first week using WebinarForge AI. Here is her story...",
+    platformCaptions: {},
     date: "2026-04-14",
     time: "15:00",
     platforms: ["facebook_page", "instagram", "linkedin"],
@@ -147,6 +176,7 @@ const SAMPLE_POSTS: Post[] = [
     id: "4",
     title: "Behind the Scenes - Building WebinarForge",
     content: "Taking you behind the scenes of how we built the AI that runs webinars 24/7...",
+    platformCaptions: {},
     date: "2026-04-15",
     time: "10:00",
     platforms: ["instagram_stories", "facebook_personal", "tiktok"],
@@ -160,6 +190,7 @@ const SAMPLE_POSTS: Post[] = [
     id: "5",
     title: "5 Reasons Webinars Fail",
     content: "Most webinars fail because of these 5 reasons. Here is how to fix all of them with AI...",
+    platformCaptions: {},
     date: "2026-04-16",
     time: "11:00",
     platforms: ["linkedin", "twitter", "facebook_page"],
@@ -180,7 +211,7 @@ export default function ContentCalendarPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showPostModal, setShowPostModal] = useState<Post | null>(null)
   const [showCalendarSync, setShowCalendarSync] = useState(false)
-  const [activeTab, setActiveTab] = useState<"create" | "ai">("create")
+  const [activeTab, setActiveTab] = useState<"create" | "ai" | "preview">("create")
   const [syncedCalendars, setSyncedCalendars] = useState<string[]>([])
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiGenerating, setAiGenerating] = useState(false)
@@ -192,6 +223,9 @@ export default function ContentCalendarPage() {
   const [postError, setPostError] = useState("")
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
+  const [previewPlatform, setPreviewPlatform] = useState("instagram")
+  const [usePlatformCaptions, setUsePlatformCaptions] = useState(false)
+  const [platformCaptions, setPlatformCaptions] = useState<Record<string, string>>({})
 
   const [newPost, setNewPost] = useState<Partial<Post>>({
     platforms: [],
@@ -199,6 +233,7 @@ export default function ContentCalendarPage() {
     category: "educational",
     status: "draft",
     hashtags: [],
+    platformCaptions: {},
   })
   const [hashtagInput, setHashtagInput] = useState("")
 
@@ -240,6 +275,15 @@ export default function ContentCalendarPage() {
     return date
   }
 
+  const getCaptionForPlatform = (pid: string) => {
+    if (usePlatformCaptions && platformCaptions[pid]) return platformCaptions[pid]
+    return newPost.content || ""
+  }
+
+  const getPreviewCaption = () => {
+    return getCaptionForPlatform(previewPlatform)
+  }
+
   const handleAIGenerate = async () => {
     if (!aiPrompt) return
     setAiGenerating(true)
@@ -248,6 +292,7 @@ export default function ContentCalendarPage() {
       id: Date.now().toString(),
       title: `AI: ${aiPrompt.slice(0, 40)}...`,
       content: `🤖 AI Generated: ${aiPrompt}\n\nHere is an engaging post about this topic designed to drive maximum engagement and conversions for your audience.\n\n#AIContent #WebinarForgeAI`,
+      platformCaptions: {},
       date: selectedDate || new Date().toISOString().split("T")[0],
       time: "10:00",
       platforms: ["instagram", "facebook_personal", "linkedin", "twitter"],
@@ -269,6 +314,7 @@ export default function ContentCalendarPage() {
       id: Date.now().toString(),
       title: newPost.title || "",
       content: newPost.content || "",
+      platformCaptions: usePlatformCaptions ? platformCaptions : {},
       date: normalizeDate(newPost.date),
       time: newPost.time || "09:00",
       platforms: newPost.platforms || [],
@@ -283,7 +329,9 @@ export default function ContentCalendarPage() {
     setShowCreateModal(false)
     setMediaFile(null)
     setMediaPreview(null)
-    setNewPost({ platforms: [], contentType: "post", category: "educational", status: "draft", hashtags: [] })
+    setPlatformCaptions({})
+    setUsePlatformCaptions(false)
+    setNewPost({ platforms: [], contentType: "post", category: "educational", status: "draft", hashtags: {}, platformCaptions: {} })
   }
 
   const handlePublishNow = async (post: Post) => {
@@ -310,6 +358,7 @@ export default function ContentCalendarPage() {
           content: post.content,
           hashtags: post.hashtags,
           mediaUrl: post.mediaUrl,
+          platformCaptions: post.platformCaptions,
         }),
       })
       const data = await res.json()
@@ -347,9 +396,18 @@ export default function ContentCalendarPage() {
     return matchPlatform && matchStatus
   })
 
+  const currentPreviewSpec = PLATFORM_SPECS[previewPlatform] || PLATFORM_SPECS["instagram"]
+  const previewCaption = getPreviewCaption()
+  const previewHashtags = newPost.hashtags?.join(" ") || ""
+  const fullPreviewText = [previewCaption, previewHashtags].filter(Boolean).join("\n\n")
+  const charCount = fullPreviewText.length
+  const maxChars = currentPreviewSpec.maxChars
+  const isOverLimit = maxChars > 0 && charCount > maxChars
+
   return (
     <main className="min-h-screen bg-black text-white">
 
+      {/* HEADER */}
       <section className="py-12 px-6 border-b border-white/10">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -432,6 +490,7 @@ export default function ContentCalendarPage() {
         </div>
       </section>
 
+      {/* CONTROLS */}
       <section className="px-6 py-4 border-b border-white/10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
@@ -466,6 +525,7 @@ export default function ContentCalendarPage() {
         </div>
       </section>
 
+      {/* CALENDAR VIEW */}
       {view === "calendar" && (
         <section className="px-6 py-6 max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
@@ -517,6 +577,7 @@ export default function ContentCalendarPage() {
         </section>
       )}
 
+      {/* LIST VIEW */}
       {view === "list" && (
         <section className="px-6 py-6 max-w-7xl mx-auto">
           <div className="space-y-3">
@@ -566,6 +627,7 @@ export default function ContentCalendarPage() {
         </section>
       )}
 
+      {/* GRID VIEW */}
       {view === "grid" && (
         <section className="px-6 py-6 max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -574,10 +636,10 @@ export default function ContentCalendarPage() {
                 className="bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-2xl p-5 cursor-pointer transition">
                 {post.mediaUrl && (
                   <div className="mb-3 rounded-xl overflow-hidden">
-                    {post.mediaUrl.includes("video") ? (
-                      <video src={post.mediaUrl} className="w-full h-32 object-cover" />
-                    ) : (
+                    {post.mediaUrl.startsWith("blob") && post.mediaUrl ? (
                       <img src={post.mediaUrl} alt={post.title} className="w-full h-32 object-cover" />
+                    ) : (
+                      <div className="w-full h-32 bg-white/5 flex items-center justify-center text-2xl">📎</div>
                     )}
                   </div>
                 )}
@@ -612,10 +674,13 @@ export default function ContentCalendarPage() {
         </section>
       )}
 
+      {/* CREATE MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-8 overflow-y-auto">
-          <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#0a0a0a]">
+          <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-y-auto">
+
+            {/* Modal Header */}
+            <div className="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#0a0a0a] z-10">
               <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
                 <button onClick={() => setActiveTab("create")}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "create" ? "bg-purple-600 text-white" : "text-gray-400"}`}>
@@ -625,295 +690,478 @@ export default function ContentCalendarPage() {
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "ai" ? "bg-amber-500 text-black" : "text-gray-400"}`}>
                   🤖 AI Generate
                 </button>
+                <button onClick={() => setActiveTab("preview")}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "preview" ? "bg-blue-600 text-white" : "text-gray-400"}`}>
+                  👁 Preview
+                </button>
               </div>
               <button onClick={() => {
                 setShowCreateModal(false)
                 setMediaFile(null)
                 setMediaPreview(null)
+                setPlatformCaptions({})
+                setUsePlatformCaptions(false)
               }} className="text-gray-500 hover:text-white text-xl">✕</button>
             </div>
 
-            <div className="p-6 space-y-5">
-              {activeTab === "ai" ? (
-                <>
+            {/* AI TAB */}
+            {activeTab === "ai" && (
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="text-sm text-gray-400 mb-2 block font-semibold">What do you want to post about?</label>
+                  <textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="e.g. Create a reel about how AI webinars make sales while you sleep, targeting coaches and consultants..."
+                    rows={4}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-amber-500 transition resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm text-gray-400 mb-2 block font-semibold">What do you want to post about?</label>
-                    <textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder="e.g. Create a reel about how AI webinars make sales while you sleep, targeting coaches and consultants..."
-                      rows={4}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-amber-500 transition resize-none" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-gray-400 mb-2 block">Content Type</label>
-                      <select value={newPost.contentType} onChange={(e) => setNewPost({ ...newPost, contentType: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500">
-                        {CONTENT_TYPES.map((t) => (
-                          <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400 mb-2 block">Schedule Date</label>
-                      <input type="date" value={newPost.date || selectedDate || ""}
-                        onChange={(e) => setNewPost({ ...newPost, date: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500" />
-                    </div>
+                    <label className="text-sm text-gray-400 mb-2 block">Content Type</label>
+                    <select value={newPost.contentType} onChange={(e) => setNewPost({ ...newPost, contentType: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500">
+                      {CONTENT_TYPES.map((t) => (
+                        <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 mb-2 block">
-                      Select Platforms
-                      {connectedPlatforms.length > 0 && <span className="ml-2 text-xs text-green-400">● = connected</span>}
-                    </label>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                      {PLATFORMS.map((platform) => {
-                        const isConn = connectedPlatforms.includes(platform.id)
-                        return (
-                          <button key={platform.id}
-                            onClick={() => {
-                              const current = newPost.platforms || []
-                              setNewPost({
-                                ...newPost,
-                                platforms: current.includes(platform.id)
-                                  ? current.filter((p) => p !== platform.id)
-                                  : [...current, platform.id],
-                              })
-                            }}
-                            className={`flex items-center gap-2 p-2 rounded-xl border text-sm transition ${
-                              newPost.platforms?.includes(platform.id)
-                                ? "border-purple-500 bg-purple-500/10 text-white"
-                                : "border-white/10 bg-white/5 text-gray-400 hover:border-white/30"
-                            }`}>
-                            <span>{platform.icon}</span>
-                            <span className="text-xs">{platform.name}</span>
-                            {isConn
-                              ? <span className="ml-auto text-green-400 text-xs font-bold">●</span>
-                              : <span className="ml-auto text-gray-600 text-xs">○</span>
-                            }
-                          </button>
-                        )
-                      })}
-                    </div>
-                    {connectedPlatforms.length === 0 && (
-                      <div className="mt-2 bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-3 py-2">
-                        <p className="text-xs text-yellow-400">
-                          ⚠️ No platforms connected yet.{" "}
-                          <Link href="/dashboard/settings/social" className="underline font-semibold" onClick={() => setShowCreateModal(false)}>
-                            Connect your accounts →
-                          </Link>
-                        </p>
-                      </div>
-                    )}
+                    <label className="text-sm text-gray-400 mb-2 block">Schedule Date</label>
+                    <input type="date" value={newPost.date || selectedDate || ""}
+                      onChange={(e) => setNewPost({ ...newPost, date: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500" />
                   </div>
-                  <button onClick={handleAIGenerate} disabled={!aiPrompt || aiGenerating}
-                    className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
-                    {aiGenerating ? (
-                      <><div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />Generating...</>
-                    ) : "🤖 Generate & Schedule Post →"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Post Title *</label>
-                    <input type="text" value={newPost.title || ""}
-                      onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                      placeholder="Give your post a title..."
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition" />
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Content *</label>
-                    <textarea value={newPost.content || ""}
-                      onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                      placeholder="Write your post content here..."
-                      rows={4}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition resize-none" />
-                  </div>
-
-                  {/* MEDIA UPLOAD */}
-                  <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Media (Image or Video — optional)</label>
-                    {mediaPreview ? (
-                      <div className="relative rounded-xl overflow-hidden border border-white/10">
-                        {mediaFile?.type.startsWith("video/") ? (
-                          <video src={mediaPreview} controls className="w-full max-h-48 object-cover" />
-                        ) : (
-                          <img src={mediaPreview} alt="preview" className="w-full max-h-48 object-cover" />
-                        )}
-                        <button
-                          onClick={() => { setMediaFile(null); setMediaPreview(null) }}
-                          className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white w-7 h-7 rounded-full flex items-center justify-center text-sm transition"
-                        >✕</button>
-                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-lg">
-                          {mediaFile?.name}
-                        </div>
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 hover:border-purple-500 rounded-xl p-6 cursor-pointer transition group">
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mov,video/avi,video/quicktime"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) {
-                              setMediaFile(file)
-                              const url = URL.createObjectURL(file)
-                              setMediaPreview(url)
-                            }
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400 mb-2 block">
+                    Select Platforms
+                    {connectedPlatforms.length > 0 && <span className="ml-2 text-xs text-green-400">● = connected</span>}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                    {PLATFORMS.map((platform) => {
+                      const isConn = connectedPlatforms.includes(platform.id)
+                      return (
+                        <button key={platform.id}
+                          onClick={() => {
+                            const current = newPost.platforms || []
+                            setNewPost({
+                              ...newPost,
+                              platforms: current.includes(platform.id)
+                                ? current.filter((p) => p !== platform.id)
+                                : [...current, platform.id],
+                            })
                           }}
-                        />
-                        <span className="text-3xl mb-2 group-hover:scale-110 transition">📎</span>
-                        <span className="text-sm text-gray-400 group-hover:text-white transition font-semibold">
-                          Click to upload image or video
-                        </span>
-                        <span className="text-xs text-gray-600 mt-1">JPG, PNG, GIF, WebP, MP4, MOV up to 500MB</span>
-                      </label>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-gray-400 mb-1 block">Date *</label>
-                      <input type="date" value={newPost.date || selectedDate || ""}
-                        onChange={(e) => setNewPost({ ...newPost, date: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400 mb-1 block">Time</label>
-                      <input type="time" value={newPost.time || "09:00"}
-                        onChange={(e) => setNewPost({ ...newPost, time: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Content Type</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {CONTENT_TYPES.map((type) => (
-                        <button key={type.id} onClick={() => setNewPost({ ...newPost, contentType: type.id })}
-                          className={`p-2 rounded-xl border text-center transition ${newPost.contentType === type.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/30"}`}>
-                          <div className="text-xl mb-1">{type.icon}</div>
-                          <div className="text-xs text-gray-400">{type.label}</div>
+                          className={`flex items-center gap-2 p-2 rounded-xl border text-sm transition ${
+                            newPost.platforms?.includes(platform.id)
+                              ? "border-purple-500 bg-purple-500/10 text-white"
+                              : "border-white/10 bg-white/5 text-gray-400 hover:border-white/30"
+                          }`}>
+                          <span>{platform.icon}</span>
+                          <span className="text-xs">{platform.name}</span>
+                          {isConn ? <span className="ml-auto text-green-400 text-xs font-bold">●</span> : <span className="ml-auto text-gray-600 text-xs">○</span>}
                         </button>
-                      ))}
+                      )
+                    })}
+                  </div>
+                </div>
+                <button onClick={handleAIGenerate} disabled={!aiPrompt || aiGenerating}
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+                  {aiGenerating ? (
+                    <><div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />Generating...</>
+                  ) : "🤖 Generate & Schedule Post →"}
+                </button>
+              </div>
+            )}
+
+            {/* CREATE TAB */}
+            {activeTab === "create" && (
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Post Title *</label>
+                  <input type="text" value={newPost.title || ""}
+                    onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                    placeholder="Give your post a title..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition" />
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Default Caption *</label>
+                  <textarea value={newPost.content || ""}
+                    onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                    placeholder="Write your post content here — this will be used for all platforms unless you customize per platform below..."
+                    rows={4}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition resize-none" />
+                </div>
+
+                {/* PER-PLATFORM CAPTION TOGGLE */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="font-semibold text-white text-sm">Customize Caption Per Platform</p>
+                      <p className="text-xs text-gray-500">Each platform has different audiences, character limits, and best practices</p>
                     </div>
+                    <button
+                      onClick={() => setUsePlatformCaptions(!usePlatformCaptions)}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${usePlatformCaptions ? "bg-purple-600" : "bg-white/20"}`}>
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${usePlatformCaptions ? "translate-x-7" : "translate-x-1"}`} />
+                    </button>
                   </div>
 
-                  <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Category</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {CATEGORIES.map((cat) => (
-                        <button key={cat.id} onClick={() => setNewPost({ ...newPost, category: cat.id })}
-                          className={`p-2 rounded-xl border text-center transition ${newPost.category === cat.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/30"}`}>
-                          <div className="text-lg mb-1">{cat.icon}</div>
-                          <div className="text-xs text-gray-400">{cat.label}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-gray-400 mb-2 block">
-                      Platforms *
-                      {connectedPlatforms.length > 0 && <span className="ml-2 text-xs text-green-400">● = connected</span>}
-                    </label>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                      {PLATFORMS.map((platform) => {
-                        const isConn = connectedPlatforms.includes(platform.id)
+                  {usePlatformCaptions && (
+                    <div className="space-y-3 mt-4">
+                      {(newPost.platforms || []).map((pid) => {
+                        const platform = PLATFORMS.find((p) => p.id === pid)
+                        const spec = PLATFORM_SPECS[pid]
+                        if (!platform || !spec) return null
+                        const caption = platformCaptions[pid] || ""
+                        const count = caption.length
+                        const over = spec.maxChars > 0 && count > spec.maxChars
                         return (
-                          <button key={platform.id}
-                            onClick={() => {
-                              const current = newPost.platforms || []
-                              setNewPost({
-                                ...newPost,
-                                platforms: current.includes(platform.id)
-                                  ? current.filter((p) => p !== platform.id)
-                                  : [...current, platform.id],
-                              })
-                            }}
-                            className={`flex items-center gap-2 p-2 rounded-xl border text-sm transition ${
-                              newPost.platforms?.includes(platform.id)
-                                ? "border-purple-500 bg-purple-500/10 text-white"
-                                : "border-white/10 bg-white/5 text-gray-400 hover:border-white/30"
-                            }`}>
-                            <span>{platform.icon}</span>
-                            <span className="text-xs">{platform.name}</span>
-                            {isConn
-                              ? <span className="ml-auto text-green-400 text-xs font-bold">●</span>
-                              : <span className="ml-auto text-gray-600 text-xs">○</span>
-                            }
-                          </button>
+                          <div key={pid} className="bg-black/30 border border-white/10 rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span>{platform.icon}</span>
+                                <span className="text-sm font-semibold text-white">{platform.name}</span>
+                                <span className="text-xs text-gray-500">{spec.ratioLabel}</span>
+                              </div>
+                              <span className={`text-xs font-mono ${over ? "text-red-400" : "text-gray-500"}`}>
+                                {count}{spec.maxChars > 0 ? `/${spec.maxChars}` : ""}
+                              </span>
+                            </div>
+                            <textarea
+                              value={caption}
+                              onChange={(e) => setPlatformCaptions({ ...platformCaptions, [pid]: e.target.value })}
+                              placeholder={`Caption for ${platform.name} (leave blank to use default)...`}
+                              rows={3}
+                              className={`w-full bg-white/5 border rounded-xl px-3 py-2 text-white placeholder:text-gray-600 focus:outline-none transition resize-none text-sm ${over ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-purple-500"}`}
+                            />
+                            {over && (
+                              <p className="text-xs text-red-400 mt-1">⚠️ Over {platform.name} character limit by {count - spec.maxChars} characters</p>
+                            )}
+                          </div>
                         )
                       })}
+                      {(newPost.platforms || []).length === 0 && (
+                        <p className="text-xs text-gray-500 text-center py-2">Select platforms above to customize captions per platform</p>
+                      )}
                     </div>
-                    {connectedPlatforms.length === 0 && (
-                      <div className="mt-2 bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-3 py-2">
-                        <p className="text-xs text-yellow-400">
-                          ⚠️ No platforms connected yet.{" "}
-                          <Link href="/dashboard/settings/social" className="underline font-semibold" onClick={() => setShowCreateModal(false)}>
-                            Connect your accounts →
-                          </Link>
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  )}
+                </div>
 
-                  <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Hashtags</label>
-                    <div className="flex gap-2 mb-2">
-                      <input type="text" value={hashtagInput}
-                        onChange={(e) => setHashtagInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && hashtagInput) {
-                            const tag = hashtagInput.startsWith("#") ? hashtagInput : `#${hashtagInput}`
-                            setNewPost({ ...newPost, hashtags: [...(newPost.hashtags || []), tag] })
-                            setHashtagInput("")
+                {/* MEDIA UPLOAD */}
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Media (Image or Video — optional)</label>
+                  {mediaPreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-white/10">
+                      {mediaFile?.type.startsWith("video/") ? (
+                        <video src={mediaPreview} controls className="w-full max-h-48 object-cover" />
+                      ) : (
+                        <img src={mediaPreview} alt="preview" className="w-full max-h-48 object-cover" />
+                      )}
+                      <button onClick={() => { setMediaFile(null); setMediaPreview(null) }}
+                        className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white w-7 h-7 rounded-full flex items-center justify-center text-sm transition">✕</button>
+                      <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-lg">{mediaFile?.name}</div>
+                      <button
+                        onClick={() => setActiveTab("preview")}
+                        className="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded-lg font-semibold transition">
+                        👁 Preview
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 hover:border-purple-500 rounded-xl p-6 cursor-pointer transition group">
+                      <input type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mov,video/avi,video/quicktime"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setMediaFile(file)
+                            const url = URL.createObjectURL(file)
+                            setMediaPreview(url)
                           }
                         }}
-                        placeholder="Type hashtag and press Enter..."
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition text-sm" />
-                      <button onClick={() => {
-                        if (hashtagInput) {
+                      />
+                      <span className="text-3xl mb-2 group-hover:scale-110 transition">📎</span>
+                      <span className="text-sm text-gray-400 group-hover:text-white transition font-semibold">Click to upload image or video</span>
+                      <span className="text-xs text-gray-600 mt-1">JPG, PNG, GIF, WebP, MP4, MOV up to 500MB</span>
+                    </label>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Date *</label>
+                    <input type="date" value={newPost.date || selectedDate || ""}
+                      onChange={(e) => setNewPost({ ...newPost, date: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Time</label>
+                    <input type="time" value={newPost.time || "09:00"}
+                      onChange={(e) => setNewPost({ ...newPost, time: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Content Type</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {CONTENT_TYPES.map((type) => (
+                      <button key={type.id} onClick={() => setNewPost({ ...newPost, contentType: type.id })}
+                        className={`p-2 rounded-xl border text-center transition ${newPost.contentType === type.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/30"}`}>
+                        <div className="text-xl mb-1">{type.icon}</div>
+                        <div className="text-xs text-gray-400">{type.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Category</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {CATEGORIES.map((cat) => (
+                      <button key={cat.id} onClick={() => setNewPost({ ...newPost, category: cat.id })}
+                        className={`p-2 rounded-xl border text-center transition ${newPost.category === cat.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/30"}`}>
+                        <div className="text-lg mb-1">{cat.icon}</div>
+                        <div className="text-xs text-gray-400">{cat.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 mb-2 block">
+                    Platforms *
+                    {connectedPlatforms.length > 0 && <span className="ml-2 text-xs text-green-400">● = connected</span>}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                    {PLATFORMS.map((platform) => {
+                      const isConn = connectedPlatforms.includes(platform.id)
+                      return (
+                        <button key={platform.id}
+                          onClick={() => {
+                            const current = newPost.platforms || []
+                            setNewPost({
+                              ...newPost,
+                              platforms: current.includes(platform.id)
+                                ? current.filter((p) => p !== platform.id)
+                                : [...current, platform.id],
+                            })
+                          }}
+                          className={`flex items-center gap-2 p-2 rounded-xl border text-sm transition ${
+                            newPost.platforms?.includes(platform.id)
+                              ? "border-purple-500 bg-purple-500/10 text-white"
+                              : "border-white/10 bg-white/5 text-gray-400 hover:border-white/30"
+                          }`}>
+                          <span>{platform.icon}</span>
+                          <span className="text-xs">{platform.name}</span>
+                          {isConn ? <span className="ml-auto text-green-400 text-xs font-bold">●</span> : <span className="ml-auto text-gray-600 text-xs">○</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {connectedPlatforms.length === 0 && (
+                    <div className="mt-2 bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-3 py-2">
+                      <p className="text-xs text-yellow-400">
+                        ⚠️ No platforms connected yet.{" "}
+                        <Link href="/dashboard/settings/social" className="underline font-semibold" onClick={() => setShowCreateModal(false)}>
+                          Connect your accounts →
+                        </Link>
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Hashtags</label>
+                  <div className="flex gap-2 mb-2">
+                    <input type="text" value={hashtagInput}
+                      onChange={(e) => setHashtagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && hashtagInput) {
                           const tag = hashtagInput.startsWith("#") ? hashtagInput : `#${hashtagInput}`
                           setNewPost({ ...newPost, hashtags: [...(newPost.hashtags || []), tag] })
                           setHashtagInput("")
                         }
-                      }} className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-xl text-sm transition">Add</button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {newPost.hashtags?.map((tag) => (
-                        <span key={tag} onClick={() => setNewPost({ ...newPost, hashtags: newPost.hashtags?.filter((t) => t !== tag) })}
-                          className="text-xs bg-purple-500/20 border border-purple-500/30 text-purple-400 px-2 py-1 rounded-full cursor-pointer hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition">
-                          {tag} ✕
-                        </span>
-                      ))}
+                      }}
+                      placeholder="Type hashtag and press Enter..."
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition text-sm" />
+                    <button onClick={() => {
+                      if (hashtagInput) {
+                        const tag = hashtagInput.startsWith("#") ? hashtagInput : `#${hashtagInput}`
+                        setNewPost({ ...newPost, hashtags: [...(newPost.hashtags || []), tag] })
+                        setHashtagInput("")
+                      }
+                    }} className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-xl text-sm transition">Add</button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {newPost.hashtags?.map((tag) => (
+                      <span key={tag} onClick={() => setNewPost({ ...newPost, hashtags: newPost.hashtags?.filter((t) => t !== tag) })}
+                        className="text-xs bg-purple-500/20 border border-purple-500/30 text-purple-400 px-2 py-1 rounded-full cursor-pointer hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition">
+                        {tag} ✕
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button onClick={() => { setNewPost({ ...newPost, status: "draft" }); handleCreatePost() }}
+                    className="flex-1 border border-white/20 hover:border-white/50 py-3 rounded-xl font-semibold text-sm transition">
+                    Save as Draft
+                  </button>
+                  <button onClick={handleCreatePost}
+                    disabled={!newPost.title || !newPost.content || !newPost.date}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    Schedule Post →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* PREVIEW TAB */}
+            {activeTab === "preview" && (
+              <div className="p-6">
+                <div className="flex flex-col lg:flex-row gap-6">
+
+                  {/* Left — Platform Selector */}
+                  <div className="lg:w-56 flex-shrink-0">
+                    <p className="text-sm text-gray-400 font-semibold mb-3">Preview Platform</p>
+                    <div className="space-y-2">
+                      {(newPost.platforms && newPost.platforms.length > 0 ? newPost.platforms : ["instagram", "instagram_reels", "tiktok", "facebook_personal", "linkedin", "twitter", "youtube"]).map((pid) => {
+                        const platform = PLATFORMS.find((p) => p.id === pid)
+                        const spec = PLATFORM_SPECS[pid]
+                        if (!platform || !spec) return null
+                        return (
+                          <button key={pid}
+                            onClick={() => setPreviewPlatform(pid)}
+                            className={`w-full flex items-center gap-3 p-3 rounded-xl border text-sm transition ${
+                              previewPlatform === pid
+                                ? "border-blue-500 bg-blue-500/10 text-white"
+                                : "border-white/10 bg-white/5 text-gray-400 hover:border-white/30"
+                            }`}>
+                            <span className="text-lg">{platform.icon}</span>
+                            <div className="text-left">
+                              <p className="text-xs font-semibold">{platform.name}</p>
+                              <p className="text-xs text-gray-500">{spec.ratioLabel}</p>
+                            </div>
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
-                    <button onClick={() => {
-                      setNewPost({ ...newPost, status: "draft" })
-                      handleCreatePost()
-                    }}
-                      className="flex-1 border border-white/20 hover:border-white/50 py-3 rounded-xl font-semibold text-sm transition">
-                      Save as Draft
-                    </button>
-                    <button
-                      onClick={handleCreatePost}
-                      disabled={!newPost.title || !newPost.content || !newPost.date}
-                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed">
-                      Schedule Post →
-                    </button>
+                  {/* Right — Preview */}
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-white">
+                        {PLATFORMS.find(p => p.id === previewPlatform)?.icon}{" "}
+                        {PLATFORMS.find(p => p.id === previewPlatform)?.name} Preview
+                        <span className="ml-2 text-xs text-gray-500">{currentPreviewSpec.ratioLabel}</span>
+                      </p>
+                      <span className={`text-xs font-mono px-2 py-1 rounded-lg ${isOverLimit ? "bg-red-500/20 text-red-400" : "bg-white/5 text-gray-400"}`}>
+                        {charCount}{maxChars > 0 ? `/${maxChars}` : ""} chars
+                      </span>
+                    </div>
+
+                    {/* Media Preview with correct ratio */}
+                    <div className={`relative ${currentPreviewSpec.ratio} w-full max-w-xs mx-auto rounded-2xl overflow-hidden ${currentPreviewSpec.bgColor} border border-white/10`}>
+                      {mediaPreview ? (
+                        <>
+                          {mediaFile?.type.startsWith("video/") ? (
+                            <video src={mediaPreview} controls className="absolute inset-0 w-full h-full object-cover" />
+                          ) : (
+                            <img src={mediaPreview} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
+                          )}
+                          {/* Caption overlay for vertical formats */}
+                          {currentPreviewSpec.captionStyle === "overlay" && previewCaption && (
+                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                              <p className="text-white text-xs font-semibold leading-relaxed line-clamp-4">
+                                {previewCaption}
+                              </p>
+                              {newPost.hashtags && newPost.hashtags.length > 0 && (
+                                <p className="text-blue-300 text-xs mt-1 line-clamp-1">
+                                  {newPost.hashtags.join(" ")}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                          <span className="text-5xl opacity-30">
+                            {PLATFORMS.find(p => p.id === previewPlatform)?.icon}
+                          </span>
+                          <p className="text-gray-500 text-xs text-center px-4">Upload media to see preview</p>
+                          <p className="text-gray-600 text-xs">{currentPreviewSpec.ratioLabel}</p>
+                        </div>
+                      )}
+
+                      {/* Platform UI overlay — TikTok/Reels style */}
+                      {(previewPlatform === "tiktok" || previewPlatform === "instagram_reels" || previewPlatform === "youtube_shorts") && (
+                        <div className="absolute right-3 bottom-20 flex flex-col gap-4 items-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm">❤️</div>
+                            <span className="text-white text-xs">12.4K</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm">💬</div>
+                            <span className="text-white text-xs">847</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm">↗️</div>
+                            <span className="text-white text-xs">Share</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Caption below for horizontal/square formats */}
+                    {currentPreviewSpec.captionStyle === "below" && (
+                      <div className="mt-4 max-w-xs mx-auto bg-white/5 border border-white/10 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-xs font-bold">WF</div>
+                          <div>
+                            <p className="text-white text-xs font-bold">WebinarForge AI</p>
+                            <p className="text-gray-500 text-xs">Just now</p>
+                          </div>
+                        </div>
+                        <p className="text-white text-xs leading-relaxed whitespace-pre-wrap line-clamp-6">
+                          {previewCaption || <span className="text-gray-600">Your caption will appear here...</span>}
+                        </p>
+                        {newPost.hashtags && newPost.hashtags.length > 0 && (
+                          <p className="text-blue-400 text-xs mt-2">{newPost.hashtags.join(" ")}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {isOverLimit && (
+                      <div className="mt-3 max-w-xs mx-auto bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
+                        <p className="text-xs text-red-400">
+                          ⚠️ Caption is {charCount - maxChars} characters over the {PLATFORMS.find(p => p.id === previewPlatform)?.name} limit of {maxChars}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Quick action to go back to edit */}
+                    <div className="flex gap-3 mt-4 max-w-xs mx-auto">
+                      <button onClick={() => setActiveTab("create")}
+                        className="flex-1 border border-white/20 hover:border-purple-500 py-2 rounded-xl text-sm font-semibold transition text-gray-400 hover:text-white">
+                        ← Edit Post
+                      </button>
+                      <button onClick={handleCreatePost}
+                        disabled={!newPost.title || !newPost.content || !newPost.date}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl transition text-sm disabled:opacity-50">
+                        Schedule →
+                      </button>
+                    </div>
                   </div>
-                </>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
+      {/* POST DETAIL MODAL */}
       {showPostModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-8">
           <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -938,16 +1186,32 @@ export default function ContentCalendarPage() {
             <div className="p-6 space-y-4">
               {showPostModal.mediaUrl && (
                 <div className="rounded-xl overflow-hidden border border-white/10">
-                  {showPostModal.mediaUrl.includes("video") ? (
-                    <video src={showPostModal.mediaUrl} controls className="w-full max-h-48 object-cover" />
-                  ) : (
+                  {showPostModal.mediaUrl.startsWith("blob") ? (
                     <img src={showPostModal.mediaUrl} alt={showPostModal.title} className="w-full max-h-48 object-cover" />
+                  ) : (
+                    <div className="w-full h-32 bg-white/5 flex items-center justify-center text-2xl">📎 Media attached</div>
                   )}
                 </div>
               )}
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-gray-300 text-sm whitespace-pre-wrap">{showPostModal.content}</p>
               </div>
+              {showPostModal.platformCaptions && Object.keys(showPostModal.platformCaptions).length > 0 && (
+                <div>
+                  <p className="text-gray-500 text-xs mb-2 font-semibold">Platform-Specific Captions</p>
+                  <div className="space-y-2">
+                    {Object.entries(showPostModal.platformCaptions).map(([pid, caption]) => {
+                      const platform = PLATFORMS.find((p) => p.id === pid)
+                      return platform ? (
+                        <div key={pid} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                          <p className="text-xs text-gray-400 mb-1">{platform.icon} {platform.name}</p>
+                          <p className="text-white text-xs">{caption}</p>
+                        </div>
+                      ) : null
+                    })}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-gray-500 text-xs mb-1">Scheduled For</p>
@@ -1012,6 +1276,7 @@ export default function ContentCalendarPage() {
         </div>
       )}
 
+      {/* CALENDAR SYNC MODAL */}
       {showCalendarSync && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center px-4">
           <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl max-w-md w-full">
