@@ -6,23 +6,6 @@ const isProtectedRoute = createRouteMatcher([
   "/onboarding(.*)",
 ]);
 
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/pricing(.*)",
-  "/affiliates(.*)",
-  "/checkout(.*)",
-  "/contact(.*)",
-  "/funnel(.*)",
-  "/content-calendar(.*)",
-  "/forms(.*)",
-  "/demo(.*)",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/api/webhooks(.*)",
-  "/api/billing/checkout",
-  "/api/contact",
-]);
-
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
     await auth.protect();
