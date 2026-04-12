@@ -22,25 +22,29 @@ const automations = [
 
 const quickActions = [
   { label: "➕ Create Webinar", href: "/dashboard/webinars/new" },
-  { label: "🤖 Generate AI Script", href: "/dashboard/webinars/new" },
-  { label: "🎯 Launch Funnel", href: "/funnel" },
+  { label: "🤖 AI Funnel Generator", href: "/funnel/generator" },
+  { label: "📁 Funnel Templates", href: "/funnel/templates" },
+  { label: "🚀 View Funnel Hub", href: "/funnel" },
   { label: "📊 View Analytics", href: "/dashboard/analytics" },
   { label: "📅 Content Calendar", href: "/content-calendar" },
   { label: "📋 Form Builder", href: "/forms" },
 ]
 
 const sidebarLinks = [
-  { label: "🏠 Dashboard", href: "/dashboard" },
-  { label: "🎬 Webinars", href: "/dashboard/webinars" },
-  { label: "🎭 AI Presenters", href: "/dashboard/presenters" },
-  { label: "🚀 Funnels", href: "/funnel" },
-  { label: "📋 Forms", href: "/forms" },
-  { label: "📅 Content Calendar", href: "/content-calendar" },
-  { label: "⚡ Automation", href: "/dashboard/evergreen" },
-  { label: "📊 Analytics", href: "/dashboard/analytics" },
-  { label: "🤝 Affiliates", href: "/dashboard/affiliates" },
-  { label: "💳 Billing", href: "/dashboard/billing" },
-  { label: "⚙️ Settings", href: "/dashboard/settings" },
+  { label: "🏠 Dashboard", href: "/dashboard", group: "" },
+  { label: "🎬 Webinars", href: "/dashboard/webinars", group: "" },
+  { label: "🎭 AI Presenters", href: "/dashboard/presenters", group: "" },
+  { label: "🚀 Funnel Hub", href: "/funnel", group: "FUNNELS" },
+  { label: "🤖 AI Generator", href: "/funnel/generator", group: "FUNNELS" },
+  { label: "📁 Templates", href: "/funnel/templates", group: "FUNNELS" },
+  { label: "📋 Forms", href: "/forms", group: "TOOLS" },
+  { label: "📅 Content Calendar", href: "/content-calendar", group: "TOOLS" },
+  { label: "📤 Bulk Scheduler", href: "/content-calendar/bulk", group: "TOOLS" },
+  { label: "⚡ Automation", href: "/dashboard/evergreen", group: "" },
+  { label: "📊 Analytics", href: "/dashboard/analytics", group: "" },
+  { label: "🤝 Affiliates", href: "/dashboard/affiliates", group: "" },
+  { label: "💳 Billing", href: "/dashboard/billing", group: "" },
+  { label: "⚙️ Settings", href: "/dashboard/settings", group: "" },
 ]
 
 export default function DashboardPage() {
@@ -63,15 +67,27 @@ export default function DashboardPage() {
           </div>
 
           <nav className="space-y-1 flex-1">
-            {sidebarLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="block rounded-xl px-4 py-3 text-gray-300 hover:bg-white/5 hover:text-white transition text-sm font-medium"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {sidebarLinks.map((link, i) => {
+              const prevGroup = i > 0 ? sidebarLinks[i - 1].group : ""
+              const showHeader = link.group && link.group !== prevGroup
+              return (
+                <div key={link.href}>
+                  {showHeader && (
+                    <p className="text-xs text-gray-600 font-bold uppercase px-4 pt-4 pb-1">
+                      {link.group}
+                    </p>
+                  )}
+                  <Link
+                    href={link.href}
+                    className={`block rounded-xl py-2.5 text-gray-300 hover:bg-white/5 hover:text-white transition text-sm font-medium ${
+                      link.group ? "px-6" : "px-4"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                </div>
+              )
+            })}
           </nav>
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -99,6 +115,11 @@ export default function DashboardPage() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <Link href="/funnel/generator">
+                  <button className="rounded-xl border border-purple-500/50 hover:border-purple-500 text-purple-400 px-4 py-2.5 text-sm font-semibold transition">
+                    🤖 AI Generator
+                  </button>
+                </Link>
                 <Link href="/funnel">
                   <button className="rounded-xl border border-white/20 hover:border-white/50 px-4 py-2.5 text-sm font-semibold transition">
                     🚀 View Funnel
@@ -129,15 +150,15 @@ export default function DashboardPage() {
             {/* Tool Cards */}
             <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {[
-                { icon: "🚀", title: "Funnel Builder", desc: "Build and manage your sales funnels", href: "/funnel", color: "purple" },
-                { icon: "📋", title: "Form Builder", desc: "Create A2P compliant lead capture forms", href: "/forms", color: "blue" },
-                { icon: "📅", title: "Content Calendar", desc: "Schedule posts across all platforms", href: "/content-calendar", color: "green" },
-                { icon: "📤", title: "Bulk Scheduler", desc: "Upload and schedule hundreds of posts", href: "/content-calendar/bulk", color: "orange" },
-              ].map(({ icon, title, desc, href, color }) => (
+                { icon: "🤖", title: "AI Funnel Generator", desc: "Generate a complete funnel for any niche in minutes", href: "/funnel/generator" },
+                { icon: "📁", title: "Funnel Templates", desc: "17+ proven templates across 10 niches", href: "/funnel/templates" },
+                { icon: "📋", title: "Form Builder", desc: "Create A2P compliant lead capture forms", href: "/forms" },
+                { icon: "📅", title: "Content Calendar", desc: "Schedule posts across all platforms", href: "/content-calendar" },
+              ].map(({ icon, title, desc, href }) => (
                 <Link key={href} href={href}>
-                  <div className={`rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-5 cursor-pointer transition h-full`}>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-purple-500/50 p-5 cursor-pointer transition h-full">
                     <div className="text-3xl mb-3">{icon}</div>
-                    <h3 className="font-bold mb-1">{title}</h3>
+                    <h3 className="font-bold mb-1 text-sm">{title}</h3>
                     <p className="text-gray-400 text-xs">{desc}</p>
                   </div>
                 </Link>
@@ -242,16 +263,16 @@ export default function DashboardPage() {
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                   <h2 className="mb-2 text-xl font-bold">AI Assistant</h2>
                   <p className="mb-4 text-sm text-gray-400">
-                    Generate your next webinar script or funnel idea instantly.
+                    Generate a complete funnel for any niche in minutes.
                   </p>
                   <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4 mb-4">
                     <p className="text-sm text-gray-300">
-                      "Want me to generate a webinar for coaches selling a high-ticket offer?"
+                      "Want me to generate a webinar funnel for coaches selling a high-ticket offer?"
                     </p>
                   </div>
                   <Link href="/funnel/generator">
                     <button className="w-full rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold hover:bg-purple-700 transition">
-                      Generate With AI →
+                      🤖 Open AI Funnel Generator →
                     </button>
                   </Link>
                 </div>
