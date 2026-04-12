@@ -51,6 +51,22 @@ const CALENDAR_APPS = [
   { id: "trello", name: "Trello", icon: "📋", color: "blue" },
 ]
 
+// Maps Zernio platform IDs to all matching Content Calendar platform IDs
+const ZERNIO_PLATFORM_MAP: Record<string, string[]> = {
+  facebook: ["facebook_personal", "facebook_page", "facebook_group"],
+  instagram: ["instagram", "instagram_reels", "instagram_stories"],
+  linkedin: ["linkedin", "linkedin_page"],
+  tiktok: ["tiktok"],
+  youtube: ["youtube", "youtube_shorts"],
+  twitter: ["twitter"],
+  pinterest: ["pinterest"],
+  threads: ["threads"],
+  reddit: ["reddit"],
+  bluesky: ["bluesky"],
+  googlebusiness: ["googlebusiness"],
+  telegram: ["telegram"],
+}
+
 type Post = {
   id: string
   title: string
@@ -185,12 +201,14 @@ export default function ContentCalendarPage() {
   })
   const [hashtagInput, setHashtagInput] = useState("")
 
-  // Fetch connected platforms from Zernio
+  // Fetch connected platforms from Zernio and expand to all matching IDs
   useEffect(() => {
     fetch("/api/social/status")
       .then((r) => r.json())
       .then((data) => {
-        setConnectedPlatforms(data.connected?.map((s: any) => s.platform) || [])
+        const rawPlatforms: string[] = data.connected?.map((s: any) => s.platform) || []
+        const expanded = rawPlatforms.flatMap((p) => ZERNIO_PLATFORM_MAP[p] || [p])
+        setConnectedPlatforms(expanded)
       })
       .catch(() => {})
   }, [])
@@ -213,7 +231,7 @@ export default function ContentCalendarPage() {
     const generated: Post = {
       id: Date.now().toString(),
       title: `AI: ${aiPrompt.slice(0, 40)}...`,
-      content: `🤖 AI Generated: ${aiPrompt}\n\nHere is an engaging post about this topic that is designed to drive maximum engagement and conversions for your audience. The AI has optimized this for your selected platforms and content type.\n\n#AIContent #WebinarForgeAI`,
+      content: `🤖 AI Generated: ${aiPrompt}\n\nHere is an engaging post about this topic designed to drive maximum engagement and conversions for your audience.\n\n#AIContent #WebinarForgeAI`,
       date: selectedDate || new Date().toISOString().split("T")[0],
       time: "10:00",
       platforms: ["instagram", "facebook_personal", "linkedin", "twitter"],
@@ -250,9 +268,12 @@ export default function ContentCalendarPage() {
   }
 
   const handlePublishNow = async (post: Post) => {
-    const platformsToPost = post.platforms.filter((p) => connectedPlatforms.includes(p))
+    // Map calendar platform IDs back to Zernio IDs for posting
+    const zernioIds = Object.entries(ZERNIO_PLATFORM_MAP)
+      .filter(([, calIds]) => post.platforms.some((p) => calIds.includes(p)))
+      .map(([zernioId]) => zernioId)
 
-    if (platformsToPost.length === 0) {
+    if (zernioIds.length === 0) {
       setPostError("No connected platforms selected. Connect your accounts in Social Settings first.")
       setTimeout(() => setPostError(""), 5000)
       setShowPostModal(null)
@@ -267,7 +288,7 @@ export default function ContentCalendarPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          platforms: platformsToPost,
+          platforms: zernioIds,
           content: post.content,
           hashtags: post.hashtags,
         }),
@@ -275,7 +296,7 @@ export default function ContentCalendarPage() {
       const data = await res.json()
       if (data.success) {
         setPosts(posts.map((p) => p.id === post.id ? { ...p, status: "published" } : p))
-        setPostSuccess(`✅ Published to ${platformsToPost.length} platform${platformsToPost.length > 1 ? "s" : ""}!`)
+        setPostSuccess(`✅ Published to ${zernioIds.length} platform${zernioIds.length > 1 ? "s" : ""}!`)
         setTimeout(() => setPostSuccess(""), 4000)
       } else {
         setPostError(data.error || "Failed to publish. Please try again.")
@@ -319,8 +340,6 @@ export default function ContentCalendarPage() {
               <p className="text-gray-400">Schedule, generate, and publish to all platforms in one place</p>
             </div>
             <div className="flex flex-wrap gap-3">
-
-              {/* Connected platforms indicator */}
               <div className="flex items-center gap-2 border border-white/10 rounded-xl px-3 py-2">
                 {connectedPlatforms.length > 0 ? (
                   <>
@@ -336,7 +355,6 @@ export default function ContentCalendarPage() {
                   </>
                 )}
               </div>
-
               <Link href="/dashboard/settings/social">
                 <button className="flex items-center gap-2 border border-white/20 hover:border-purple-500 px-4 py-2 rounded-xl text-sm font-semibold transition">
                   🔗 Connect Accounts
@@ -348,9 +366,7 @@ export default function ContentCalendarPage() {
               >
                 📅 Sync Calendar
                 {syncedCalendars.length > 0 && (
-                  <span className="bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full">
-                    {syncedCalendars.length}
-                  </span>
+                  <span className="bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full">{syncedCalendars.length}</span>
                 )}
               </button>
               <Link href="/content-calendar/bulk">
@@ -373,7 +389,6 @@ export default function ContentCalendarPage() {
             </div>
           </div>
 
-          {/* Alerts */}
           {postSuccess && (
             <div className="mt-4 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-green-400 text-sm font-semibold">
               {postSuccess}
@@ -383,14 +398,11 @@ export default function ContentCalendarPage() {
             <div className="mt-4 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm font-semibold flex items-center justify-between">
               <span>❌ {postError}</span>
               {postError.includes("Connect") && (
-                <Link href="/dashboard/settings/social" className="text-xs underline text-red-300 ml-2">
-                  Connect accounts →
-                </Link>
+                <Link href="/dashboard/settings/social" className="text-xs underline text-red-300 ml-2">Connect accounts →</Link>
               )}
             </div>
           )}
 
-          {/* STATS */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
             {[
               { label: "Total Posts", value: posts.length, color: "text-white" },
@@ -417,31 +429,22 @@ export default function ContentCalendarPage() {
               { id: "list", label: "📋 List" },
               { id: "grid", label: "⊞ Grid" },
             ].map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => setView(id as any)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${view === id ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"}`}
-              >
+              <button key={id} onClick={() => setView(id as any)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${view === id ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"}`}>
                 {label}
               </button>
             ))}
           </div>
           <div className="flex flex-wrap gap-3">
-            <select
-              value={filterPlatform}
-              onChange={(e) => setFilterPlatform(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-            >
+            <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500">
               <option value="all">All Platforms</option>
               {PLATFORMS.map((p) => (
                 <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
               ))}
             </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-            >
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500">
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
               <option value="scheduled">Scheduled</option>
@@ -456,21 +459,15 @@ export default function ContentCalendarPage() {
       {view === "calendar" && (
         <section className="px-6 py-6 max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
-            <button
-              onClick={() => {
-                if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1) }
-                else setCurrentMonth(currentMonth - 1)
-              }}
-              className="p-2 hover:bg-white/10 rounded-xl transition"
-            >←</button>
+            <button onClick={() => {
+              if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1) }
+              else setCurrentMonth(currentMonth - 1)
+            }} className="p-2 hover:bg-white/10 rounded-xl transition">←</button>
             <h2 className="text-xl font-bold">{MONTHS[currentMonth]} {currentYear}</h2>
-            <button
-              onClick={() => {
-                if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(currentYear + 1) }
-                else setCurrentMonth(currentMonth + 1)
-              }}
-              className="p-2 hover:bg-white/10 rounded-xl transition"
-            >→</button>
+            <button onClick={() => {
+              if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(currentYear + 1) }
+              else setCurrentMonth(currentMonth + 1)
+            }} className="p-2 hover:bg-white/10 rounded-xl transition">→</button>
           </div>
           <div className="grid grid-cols-7 gap-2 mb-2">
             {DAYS.map((day) => (
@@ -487,33 +484,24 @@ export default function ContentCalendarPage() {
               const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
               const isToday = new Date().toISOString().split("T")[0] === dateStr
               return (
-                <div
-                  key={day}
+                <div key={day}
                   onClick={() => { setSelectedDate(dateStr); setShowCreateModal(true) }}
-                  className={`h-28 rounded-xl border p-2 cursor-pointer transition hover:border-purple-500 ${
-                    isToday ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:bg-white/10"
-                  }`}
+                  className={`h-28 rounded-xl border p-2 cursor-pointer transition hover:border-purple-500 ${isToday ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
                 >
                   <div className={`text-sm font-bold mb-1 ${isToday ? "text-purple-400" : "text-gray-400"}`}>{day}</div>
                   <div className="space-y-1 overflow-hidden">
                     {dayPosts.slice(0, 2).map((post) => {
                       const platform = PLATFORMS.find((p) => post.platforms[0] === p.id)
                       return (
-                        <div
-                          key={post.id}
+                        <div key={post.id}
                           onClick={(e) => { e.stopPropagation(); setShowPostModal(post) }}
-                          className={`text-xs px-2 py-0.5 rounded-full truncate border ${colorMap[platform?.color || "gray"]}`}
-                        >
+                          className={`text-xs px-2 py-0.5 rounded-full truncate border ${colorMap[platform?.color || "gray"]}`}>
                           {post.title.slice(0, 15)}...
                         </div>
                       )
                     })}
-                    {dayPosts.length > 2 && (
-                      <div className="text-xs text-gray-500 pl-1">+{dayPosts.length - 2} more</div>
-                    )}
-                    {dayPosts.length === 0 && (
-                      <div className="text-xs text-gray-700 pl-1">+ Add</div>
-                    )}
+                    {dayPosts.length > 2 && <div className="text-xs text-gray-500 pl-1">+{dayPosts.length - 2} more</div>}
+                    {dayPosts.length === 0 && <div className="text-xs text-gray-700 pl-1">+ Add</div>}
                   </div>
                 </div>
               )
@@ -535,11 +523,8 @@ export default function ContentCalendarPage() {
               filteredPosts
                 .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                 .map((post) => (
-                  <div
-                    key={post.id}
-                    onClick={() => setShowPostModal(post)}
-                    className="bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-2xl p-5 cursor-pointer transition flex items-start gap-4"
-                  >
+                  <div key={post.id} onClick={() => setShowPostModal(post)}
+                    className="bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-2xl p-5 cursor-pointer transition flex items-start gap-4">
                     <div className="flex-shrink-0 text-center">
                       <div className="text-xs text-gray-500">{MONTHS[parseInt(post.date.split("-")[1]) - 1].slice(0, 3)}</div>
                       <div className="text-2xl font-black text-white">{post.date.split("-")[2]}</div>
@@ -579,11 +564,8 @@ export default function ContentCalendarPage() {
         <section className="px-6 py-6 max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredPosts.map((post) => (
-              <div
-                key={post.id}
-                onClick={() => setShowPostModal(post)}
-                className="bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-2xl p-5 cursor-pointer transition"
-              >
+              <div key={post.id} onClick={() => setShowPostModal(post)}
+                className="bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-2xl p-5 cursor-pointer transition">
                 <div className="flex items-center justify-between mb-3">
                   <span className={`text-xs border px-2 py-0.5 rounded-full ${statusColors[post.status]}`}>{post.status}</span>
                   <span className="text-xl">{CONTENT_TYPES.find((c) => c.id === post.contentType)?.icon}</span>
@@ -599,20 +581,15 @@ export default function ContentCalendarPage() {
                     const platform = PLATFORMS.find((p) => p.id === pid)
                     const isConn = connectedPlatforms.includes(pid)
                     return platform ? (
-                      <span key={pid} className={`text-sm ${isConn ? "relative" : "opacity-60"}`}>
-                        {platform.icon}
-                        {isConn && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-400 rounded-full border border-black" />}
-                      </span>
+                      <span key={pid} className={`text-sm ${isConn ? "" : "opacity-50"}`}>{platform.icon}</span>
                     ) : null
                   })}
                   {post.platforms.length > 3 && <span className="text-xs text-gray-500">+{post.platforms.length - 3}</span>}
                 </div>
               </div>
             ))}
-            <div
-              onClick={() => setShowCreateModal(true)}
-              className="border-2 border-dashed border-white/10 hover:border-purple-500 rounded-2xl p-5 cursor-pointer transition flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-white min-h-[200px]"
-            >
+            <div onClick={() => setShowCreateModal(true)}
+              className="border-2 border-dashed border-white/10 hover:border-purple-500 rounded-2xl p-5 cursor-pointer transition flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-white min-h-[200px]">
               <span className="text-4xl">+</span>
               <span className="text-sm font-semibold">Create New Post</span>
             </div>
@@ -626,16 +603,12 @@ export default function ContentCalendarPage() {
           <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#0a0a0a]">
               <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
-                <button
-                  onClick={() => setActiveTab("create")}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "create" ? "bg-purple-600 text-white" : "text-gray-400"}`}
-                >
+                <button onClick={() => setActiveTab("create")}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "create" ? "bg-purple-600 text-white" : "text-gray-400"}`}>
                   ✏️ Create Post
                 </button>
-                <button
-                  onClick={() => setActiveTab("ai")}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "ai" ? "bg-amber-500 text-black" : "text-gray-400"}`}
-                >
+                <button onClick={() => setActiveTab("ai")}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "ai" ? "bg-amber-500 text-black" : "text-gray-400"}`}>
                   🤖 AI Generate
                 </button>
               </div>
@@ -647,22 +620,16 @@ export default function ContentCalendarPage() {
                 <>
                   <div>
                     <label className="text-sm text-gray-400 mb-2 block font-semibold">What do you want to post about?</label>
-                    <textarea
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
+                    <textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)}
                       placeholder="e.g. Create a reel about how AI webinars make sales while you sleep, targeting coaches and consultants..."
                       rows={4}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-amber-500 transition resize-none"
-                    />
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-amber-500 transition resize-none" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-400 mb-2 block">Content Type</label>
-                      <select
-                        value={newPost.contentType}
-                        onChange={(e) => setNewPost({ ...newPost, contentType: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500"
-                      >
+                      <select value={newPost.contentType} onChange={(e) => setNewPost({ ...newPost, contentType: e.target.value })}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500">
                         {CONTENT_TYPES.map((t) => (
                           <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
                         ))}
@@ -670,27 +637,21 @@ export default function ContentCalendarPage() {
                     </div>
                     <div>
                       <label className="text-sm text-gray-400 mb-2 block">Schedule Date</label>
-                      <input
-                        type="date"
-                        value={newPost.date || selectedDate || ""}
+                      <input type="date" value={newPost.date || selectedDate || ""}
                         onChange={(e) => setNewPost({ ...newPost, date: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500"
-                      />
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500" />
                     </div>
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 mb-2 block">
                       Select Platforms
-                      {connectedPlatforms.length > 0 && (
-                        <span className="ml-2 text-xs text-green-400">● = connected</span>
-                      )}
+                      {connectedPlatforms.length > 0 && <span className="ml-2 text-xs text-green-400">● = connected</span>}
                     </label>
                     <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                       {PLATFORMS.map((platform) => {
                         const isConn = connectedPlatforms.includes(platform.id)
                         return (
-                          <button
-                            key={platform.id}
+                          <button key={platform.id}
                             onClick={() => {
                               const current = newPost.platforms || []
                               setNewPost({
@@ -727,11 +688,8 @@ export default function ContentCalendarPage() {
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={handleAIGenerate}
-                    disabled={!aiPrompt || aiGenerating}
-                    className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
+                  <button onClick={handleAIGenerate} disabled={!aiPrompt || aiGenerating}
+                    className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
                     {aiGenerating ? (
                       <><div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />Generating...</>
                     ) : "🤖 Generate & Schedule Post →"}
@@ -741,55 +699,39 @@ export default function ContentCalendarPage() {
                 <>
                   <div>
                     <label className="text-sm text-gray-400 mb-1 block">Post Title *</label>
-                    <input
-                      type="text"
-                      value={newPost.title || ""}
+                    <input type="text" value={newPost.title || ""}
                       onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
                       placeholder="Give your post a title..."
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition"
-                    />
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition" />
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 mb-1 block">Content *</label>
-                    <textarea
-                      value={newPost.content || ""}
+                    <textarea value={newPost.content || ""}
                       onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
                       placeholder="Write your post content here..."
                       rows={5}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition resize-none"
-                    />
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition resize-none" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-400 mb-1 block">Date *</label>
-                      <input
-                        type="date"
-                        value={newPost.date || selectedDate || ""}
+                      <input type="date" value={newPost.date || selectedDate || ""}
                         onChange={(e) => setNewPost({ ...newPost, date: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
-                      />
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
                     </div>
                     <div>
                       <label className="text-sm text-gray-400 mb-1 block">Time</label>
-                      <input
-                        type="time"
-                        value={newPost.time || "09:00"}
+                      <input type="time" value={newPost.time || "09:00"}
                         onChange={(e) => setNewPost({ ...newPost, time: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
-                      />
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
                     </div>
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 mb-1 block">Content Type</label>
                     <div className="grid grid-cols-4 gap-2">
                       {CONTENT_TYPES.map((type) => (
-                        <button
-                          key={type.id}
-                          onClick={() => setNewPost({ ...newPost, contentType: type.id })}
-                          className={`p-2 rounded-xl border text-center transition ${
-                            newPost.contentType === type.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/30"
-                          }`}
-                        >
+                        <button key={type.id} onClick={() => setNewPost({ ...newPost, contentType: type.id })}
+                          className={`p-2 rounded-xl border text-center transition ${newPost.contentType === type.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/30"}`}>
                           <div className="text-xl mb-1">{type.icon}</div>
                           <div className="text-xs text-gray-400">{type.label}</div>
                         </button>
@@ -800,13 +742,8 @@ export default function ContentCalendarPage() {
                     <label className="text-sm text-gray-400 mb-1 block">Category</label>
                     <div className="grid grid-cols-4 gap-2">
                       {CATEGORIES.map((cat) => (
-                        <button
-                          key={cat.id}
-                          onClick={() => setNewPost({ ...newPost, category: cat.id })}
-                          className={`p-2 rounded-xl border text-center transition ${
-                            newPost.category === cat.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/30"
-                          }`}
-                        >
+                        <button key={cat.id} onClick={() => setNewPost({ ...newPost, category: cat.id })}
+                          className={`p-2 rounded-xl border text-center transition ${newPost.category === cat.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/30"}`}>
                           <div className="text-lg mb-1">{cat.icon}</div>
                           <div className="text-xs text-gray-400">{cat.label}</div>
                         </button>
@@ -816,16 +753,13 @@ export default function ContentCalendarPage() {
                   <div>
                     <label className="text-sm text-gray-400 mb-2 block">
                       Platforms *
-                      {connectedPlatforms.length > 0 && (
-                        <span className="ml-2 text-xs text-green-400">● = connected</span>
-                      )}
+                      {connectedPlatforms.length > 0 && <span className="ml-2 text-xs text-green-400">● = connected</span>}
                     </label>
                     <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                       {PLATFORMS.map((platform) => {
                         const isConn = connectedPlatforms.includes(platform.id)
                         return (
-                          <button
-                            key={platform.id}
+                          <button key={platform.id}
                             onClick={() => {
                               const current = newPost.platforms || []
                               setNewPost({
@@ -865,9 +799,7 @@ export default function ContentCalendarPage() {
                   <div>
                     <label className="text-sm text-gray-400 mb-1 block">Hashtags</label>
                     <div className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={hashtagInput}
+                      <input type="text" value={hashtagInput}
                         onChange={(e) => setHashtagInput(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && hashtagInput) {
@@ -877,8 +809,7 @@ export default function ContentCalendarPage() {
                           }
                         }}
                         placeholder="Type hashtag and press Enter..."
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition text-sm"
-                      />
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition text-sm" />
                       <button
                         onClick={() => {
                           if (hashtagInput) {
@@ -887,18 +818,15 @@ export default function ContentCalendarPage() {
                             setHashtagInput("")
                           }
                         }}
-                        className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-xl text-sm transition"
-                      >
+                        className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-xl text-sm transition">
                         Add
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {newPost.hashtags?.map((tag) => (
-                        <span
-                          key={tag}
+                        <span key={tag}
                           onClick={() => setNewPost({ ...newPost, hashtags: newPost.hashtags?.filter((t) => t !== tag) })}
-                          className="text-xs bg-purple-500/20 border border-purple-500/30 text-purple-400 px-2 py-1 rounded-full cursor-pointer hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition"
-                        >
+                          className="text-xs bg-purple-500/20 border border-purple-500/30 text-purple-400 px-2 py-1 rounded-full cursor-pointer hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition">
                           {tag} ✕
                         </span>
                       ))}
@@ -907,15 +835,12 @@ export default function ContentCalendarPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={() => { handleCreatePost(); setNewPost({ ...newPost, status: "draft" }) }}
-                      className="flex-1 border border-white/20 hover:border-white/50 py-3 rounded-xl font-semibold text-sm transition"
-                    >
+                      className="flex-1 border border-white/20 hover:border-white/50 py-3 rounded-xl font-semibold text-sm transition">
                       Save as Draft
                     </button>
-                    <button
-                      onClick={handleCreatePost}
+                    <button onClick={handleCreatePost}
                       disabled={!newPost.title || !newPost.content || !newPost.date}
-                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50"
-                    >
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50">
                       Schedule Post →
                     </button>
                   </div>
@@ -994,27 +919,20 @@ export default function ContentCalendarPage() {
                   <p className="text-gray-500 text-xs mb-2">Hashtags</p>
                   <div className="flex flex-wrap gap-2">
                     {showPostModal.hashtags.map((tag) => (
-                      <span key={tag} className="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-1 rounded-full">
-                        {tag}
-                      </span>
+                      <span key={tag} className="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-1 rounded-full">{tag}</span>
                     ))}
                   </div>
                 </div>
               )}
               <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => handlePublishNow(showPostModal)}
-                  disabled={posting}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-                >
+                <button onClick={() => handlePublishNow(showPostModal)} disabled={posting}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                   {posting ? (
                     <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Publishing...</>
                   ) : "🚀 Publish Now"}
                 </button>
-                <button
-                  onClick={() => handleDeletePost(showPostModal.id)}
-                  className="flex-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30 font-semibold py-3 rounded-xl transition text-sm"
-                >
+                <button onClick={() => handleDeletePost(showPostModal.id)}
+                  className="flex-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30 font-semibold py-3 rounded-xl transition text-sm">
                   Delete
                 </button>
               </div>
@@ -1039,14 +957,12 @@ export default function ContentCalendarPage() {
                     <span className="text-2xl">{app.icon}</span>
                     <span className="font-semibold">{app.name}</span>
                   </div>
-                  <button
-                    onClick={() => handleSyncCalendar(app.id)}
+                  <button onClick={() => handleSyncCalendar(app.id)}
                     className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
                       syncedCalendars.includes(app.id)
                         ? "bg-green-600/20 text-green-400 border border-green-600/30"
                         : "bg-purple-600 hover:bg-purple-700 text-white"
-                    }`}
-                  >
+                    }`}>
                     {syncedCalendars.includes(app.id) ? "✅ Connected" : "Connect"}
                   </button>
                 </div>
