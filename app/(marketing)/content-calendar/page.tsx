@@ -51,7 +51,6 @@ const CALENDAR_APPS = [
   { id: "trello", name: "Trello", icon: "📋", color: "blue" },
 ]
 
-// Maps Zernio platform IDs to all matching Content Calendar platform IDs
 const ZERNIO_PLATFORM_MAP: Record<string, string[]> = {
   facebook: ["facebook_personal", "facebook_page", "facebook_group"],
   instagram: ["instagram", "instagram_reels", "instagram_stories"],
@@ -201,12 +200,20 @@ export default function ContentCalendarPage() {
   })
   const [hashtagInput, setHashtagInput] = useState("")
 
-  // Fetch connected platforms from Zernio and expand to all matching IDs
+  // Fetch connected platforms — handles both profile-based and direct connection models
   useEffect(() => {
     fetch("/api/social/status")
       .then((r) => r.json())
       .then((data) => {
-        const rawPlatforms: string[] = data.connected?.map((s: any) => s.platform) || []
+        // Use expandedPlatforms if the new status route returns it
+        if (data.expandedPlatforms && data.expandedPlatforms.length > 0) {
+          setConnectedPlatforms(data.expandedPlatforms)
+          return
+        }
+        // Fall back to mapping from connected array
+        const rawPlatforms: string[] = data.connected?.map((s: any) =>
+          (s.platform || s.network || s.type || "").toLowerCase()
+        ).filter(Boolean) || []
         const expanded = rawPlatforms.flatMap((p) => ZERNIO_PLATFORM_MAP[p] || [p])
         setConnectedPlatforms(expanded)
       })
@@ -268,7 +275,6 @@ export default function ContentCalendarPage() {
   }
 
   const handlePublishNow = async (post: Post) => {
-    // Map calendar platform IDs back to Zernio IDs for posting
     const zernioIds = Object.entries(ZERNIO_PLATFORM_MAP)
       .filter(([, calIds]) => post.platforms.some((p) => calIds.includes(p)))
       .map(([zernioId]) => zernioId)
@@ -331,7 +337,6 @@ export default function ContentCalendarPage() {
   return (
     <main className="min-h-screen bg-black text-white">
 
-      {/* HEADER */}
       <section className="py-12 px-6 border-b border-white/10">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -360,10 +365,8 @@ export default function ContentCalendarPage() {
                   🔗 Connect Accounts
                 </button>
               </Link>
-              <button
-                onClick={() => setShowCalendarSync(true)}
-                className="flex items-center gap-2 border border-white/20 hover:border-purple-500 px-4 py-2 rounded-xl text-sm font-semibold transition"
-              >
+              <button onClick={() => setShowCalendarSync(true)}
+                className="flex items-center gap-2 border border-white/20 hover:border-purple-500 px-4 py-2 rounded-xl text-sm font-semibold transition">
                 📅 Sync Calendar
                 {syncedCalendars.length > 0 && (
                   <span className="bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full">{syncedCalendars.length}</span>
@@ -374,16 +377,12 @@ export default function ContentCalendarPage() {
                   📤 Bulk Upload
                 </button>
               </Link>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl text-sm font-bold transition"
-              >
+              <button onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl text-sm font-bold transition">
                 + Create Post
               </button>
-              <button
-                onClick={() => { setShowCreateModal(true); setActiveTab("ai") }}
-                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-xl text-sm font-bold transition"
-              >
+              <button onClick={() => { setShowCreateModal(true); setActiveTab("ai") }}
+                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-xl text-sm font-bold transition">
                 🤖 AI Generate
               </button>
             </div>
@@ -420,7 +419,6 @@ export default function ContentCalendarPage() {
         </div>
       </section>
 
-      {/* CONTROLS */}
       <section className="px-6 py-4 border-b border-white/10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
@@ -455,7 +453,6 @@ export default function ContentCalendarPage() {
         </div>
       </section>
 
-      {/* CALENDAR VIEW */}
       {view === "calendar" && (
         <section className="px-6 py-6 max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
@@ -484,17 +481,14 @@ export default function ContentCalendarPage() {
               const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
               const isToday = new Date().toISOString().split("T")[0] === dateStr
               return (
-                <div key={day}
-                  onClick={() => { setSelectedDate(dateStr); setShowCreateModal(true) }}
-                  className={`h-28 rounded-xl border p-2 cursor-pointer transition hover:border-purple-500 ${isToday ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
-                >
+                <div key={day} onClick={() => { setSelectedDate(dateStr); setShowCreateModal(true) }}
+                  className={`h-28 rounded-xl border p-2 cursor-pointer transition hover:border-purple-500 ${isToday ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:bg-white/10"}`}>
                   <div className={`text-sm font-bold mb-1 ${isToday ? "text-purple-400" : "text-gray-400"}`}>{day}</div>
                   <div className="space-y-1 overflow-hidden">
                     {dayPosts.slice(0, 2).map((post) => {
                       const platform = PLATFORMS.find((p) => post.platforms[0] === p.id)
                       return (
-                        <div key={post.id}
-                          onClick={(e) => { e.stopPropagation(); setShowPostModal(post) }}
+                        <div key={post.id} onClick={(e) => { e.stopPropagation(); setShowPostModal(post) }}
                           className={`text-xs px-2 py-0.5 rounded-full truncate border ${colorMap[platform?.color || "gray"]}`}>
                           {post.title.slice(0, 15)}...
                         </div>
@@ -510,7 +504,6 @@ export default function ContentCalendarPage() {
         </section>
       )}
 
-      {/* LIST VIEW */}
       {view === "list" && (
         <section className="px-6 py-6 max-w-7xl mx-auto">
           <div className="space-y-3">
@@ -559,7 +552,6 @@ export default function ContentCalendarPage() {
         </section>
       )}
 
-      {/* GRID VIEW */}
       {view === "grid" && (
         <section className="px-6 py-6 max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -597,7 +589,6 @@ export default function ContentCalendarPage() {
         </section>
       )}
 
-      {/* CREATE / AI POST MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-8 overflow-y-auto">
           <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -665,8 +656,7 @@ export default function ContentCalendarPage() {
                               newPost.platforms?.includes(platform.id)
                                 ? "border-purple-500 bg-purple-500/10 text-white"
                                 : "border-white/10 bg-white/5 text-gray-400 hover:border-white/30"
-                            }`}
-                          >
+                            }`}>
                             <span>{platform.icon}</span>
                             <span className="text-xs">{platform.name}</span>
                             {isConn
@@ -773,8 +763,7 @@ export default function ContentCalendarPage() {
                               newPost.platforms?.includes(platform.id)
                                 ? "border-purple-500 bg-purple-500/10 text-white"
                                 : "border-white/10 bg-white/5 text-gray-400 hover:border-white/30"
-                            }`}
-                          >
+                            }`}>
                             <span>{platform.icon}</span>
                             <span className="text-xs">{platform.name}</span>
                             {isConn
@@ -810,22 +799,17 @@ export default function ContentCalendarPage() {
                         }}
                         placeholder="Type hashtag and press Enter..."
                         className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition text-sm" />
-                      <button
-                        onClick={() => {
-                          if (hashtagInput) {
-                            const tag = hashtagInput.startsWith("#") ? hashtagInput : `#${hashtagInput}`
-                            setNewPost({ ...newPost, hashtags: [...(newPost.hashtags || []), tag] })
-                            setHashtagInput("")
-                          }
-                        }}
-                        className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-xl text-sm transition">
-                        Add
-                      </button>
+                      <button onClick={() => {
+                        if (hashtagInput) {
+                          const tag = hashtagInput.startsWith("#") ? hashtagInput : `#${hashtagInput}`
+                          setNewPost({ ...newPost, hashtags: [...(newPost.hashtags || []), tag] })
+                          setHashtagInput("")
+                        }
+                      }} className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-xl text-sm transition">Add</button>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {newPost.hashtags?.map((tag) => (
-                        <span key={tag}
-                          onClick={() => setNewPost({ ...newPost, hashtags: newPost.hashtags?.filter((t) => t !== tag) })}
+                        <span key={tag} onClick={() => setNewPost({ ...newPost, hashtags: newPost.hashtags?.filter((t) => t !== tag) })}
                           className="text-xs bg-purple-500/20 border border-purple-500/30 text-purple-400 px-2 py-1 rounded-full cursor-pointer hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition">
                           {tag} ✕
                         </span>
@@ -833,8 +817,7 @@ export default function ContentCalendarPage() {
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <button
-                      onClick={() => { handleCreatePost(); setNewPost({ ...newPost, status: "draft" }) }}
+                    <button onClick={() => { handleCreatePost(); setNewPost({ ...newPost, status: "draft" }) }}
                       className="flex-1 border border-white/20 hover:border-white/50 py-3 rounded-xl font-semibold text-sm transition">
                       Save as Draft
                     </button>
@@ -851,7 +834,6 @@ export default function ContentCalendarPage() {
         </div>
       )}
 
-      {/* POST DETAIL MODAL */}
       {showPostModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-8">
           <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -941,7 +923,6 @@ export default function ContentCalendarPage() {
         </div>
       )}
 
-      {/* CALENDAR SYNC MODAL */}
       {showCalendarSync && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center px-4">
           <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl max-w-md w-full">
