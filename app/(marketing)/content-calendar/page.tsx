@@ -190,6 +190,8 @@ export default function ContentCalendarPage() {
   const [posting, setPosting] = useState(false)
   const [postSuccess, setPostSuccess] = useState("")
   const [postError, setPostError] = useState("")
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
 
   const [newPost, setNewPost] = useState<Partial<Post>>({
     platforms: [],
@@ -200,17 +202,14 @@ export default function ContentCalendarPage() {
   })
   const [hashtagInput, setHashtagInput] = useState("")
 
-  // Fetch connected platforms — handles both profile-based and direct connection models
   useEffect(() => {
     fetch("/api/social/status")
       .then((r) => r.json())
       .then((data) => {
-        // Use expandedPlatforms if the new status route returns it
         if (data.expandedPlatforms && data.expandedPlatforms.length > 0) {
           setConnectedPlatforms(data.expandedPlatforms)
           return
         }
-        // Fall back to mapping from connected array
         const rawPlatforms: string[] = data.connected?.map((s: any) =>
           (s.platform || s.network || s.type || "").toLowerCase()
         ).filter(Boolean) || []
@@ -222,13 +221,23 @@ export default function ContentCalendarPage() {
 
   const getDaysInMonth = (month: number, year: number) => new Date(year, month + 1, 0).getDate()
   const getFirstDayOfMonth = (month: number, year: number) => new Date(year, month, 1).getDay()
-
   const daysInMonth = getDaysInMonth(currentMonth, currentYear)
   const firstDay = getFirstDayOfMonth(currentMonth, currentYear)
 
   const getPostsForDate = (day: number) => {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
     return posts.filter((p) => p.date === dateStr)
+  }
+
+  const normalizeDate = (date: string): string => {
+    if (!date) return ""
+    if (date.includes("/")) {
+      const parts = date.split("/")
+      if (parts.length === 3) {
+        return `${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`
+      }
+    }
+    return date
   }
 
   const handleAIGenerate = async () => {
@@ -260,17 +269,20 @@ export default function ContentCalendarPage() {
       id: Date.now().toString(),
       title: newPost.title || "",
       content: newPost.content || "",
-      date: newPost.date || new Date().toISOString().split("T")[0],
+      date: normalizeDate(newPost.date),
       time: newPost.time || "09:00",
       platforms: newPost.platforms || [],
       contentType: newPost.contentType || "post",
       category: newPost.category || "educational",
       status: "scheduled",
       hashtags: newPost.hashtags || [],
+      mediaUrl: mediaPreview || undefined,
       aiGenerated: false,
     }
     setPosts([...posts, post])
     setShowCreateModal(false)
+    setMediaFile(null)
+    setMediaPreview(null)
     setNewPost({ platforms: [], contentType: "post", category: "educational", status: "draft", hashtags: [] })
   }
 
@@ -297,6 +309,7 @@ export default function ContentCalendarPage() {
           platforms: zernioIds,
           content: post.content,
           hashtags: post.hashtags,
+          mediaUrl: post.mediaUrl,
         }),
       })
       const data = await res.json()
@@ -530,6 +543,7 @@ export default function ContentCalendarPage() {
                           <span className="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-full">🤖 AI</span>
                         )}
                         <span className={`text-xs border px-2 py-0.5 rounded-full ${statusColors[post.status]}`}>{post.status}</span>
+                        {post.mediaUrl && <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">📎 Media</span>}
                       </div>
                       <p className="text-gray-400 text-sm truncate mb-2">{post.content}</p>
                       <div className="flex flex-wrap gap-1">
@@ -558,6 +572,15 @@ export default function ContentCalendarPage() {
             {filteredPosts.map((post) => (
               <div key={post.id} onClick={() => setShowPostModal(post)}
                 className="bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-2xl p-5 cursor-pointer transition">
+                {post.mediaUrl && (
+                  <div className="mb-3 rounded-xl overflow-hidden">
+                    {post.mediaUrl.includes("video") ? (
+                      <video src={post.mediaUrl} className="w-full h-32 object-cover" />
+                    ) : (
+                      <img src={post.mediaUrl} alt={post.title} className="w-full h-32 object-cover" />
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center justify-between mb-3">
                   <span className={`text-xs border px-2 py-0.5 rounded-full ${statusColors[post.status]}`}>{post.status}</span>
                   <span className="text-xl">{CONTENT_TYPES.find((c) => c.id === post.contentType)?.icon}</span>
@@ -603,7 +626,11 @@ export default function ContentCalendarPage() {
                   🤖 AI Generate
                 </button>
               </div>
-              <button onClick={() => setShowCreateModal(false)} className="text-gray-500 hover:text-white text-xl">✕</button>
+              <button onClick={() => {
+                setShowCreateModal(false)
+                setMediaFile(null)
+                setMediaPreview(null)
+              }} className="text-gray-500 hover:text-white text-xl">✕</button>
             </div>
 
             <div className="p-6 space-y-5">
@@ -694,14 +721,58 @@ export default function ContentCalendarPage() {
                       placeholder="Give your post a title..."
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition" />
                   </div>
+
                   <div>
                     <label className="text-sm text-gray-400 mb-1 block">Content *</label>
                     <textarea value={newPost.content || ""}
                       onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
                       placeholder="Write your post content here..."
-                      rows={5}
+                      rows={4}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition resize-none" />
                   </div>
+
+                  {/* MEDIA UPLOAD */}
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Media (Image or Video — optional)</label>
+                    {mediaPreview ? (
+                      <div className="relative rounded-xl overflow-hidden border border-white/10">
+                        {mediaFile?.type.startsWith("video/") ? (
+                          <video src={mediaPreview} controls className="w-full max-h-48 object-cover" />
+                        ) : (
+                          <img src={mediaPreview} alt="preview" className="w-full max-h-48 object-cover" />
+                        )}
+                        <button
+                          onClick={() => { setMediaFile(null); setMediaPreview(null) }}
+                          className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white w-7 h-7 rounded-full flex items-center justify-center text-sm transition"
+                        >✕</button>
+                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-lg">
+                          {mediaFile?.name}
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 hover:border-purple-500 rounded-xl p-6 cursor-pointer transition group">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mov,video/avi,video/quicktime"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              setMediaFile(file)
+                              const url = URL.createObjectURL(file)
+                              setMediaPreview(url)
+                            }
+                          }}
+                        />
+                        <span className="text-3xl mb-2 group-hover:scale-110 transition">📎</span>
+                        <span className="text-sm text-gray-400 group-hover:text-white transition font-semibold">
+                          Click to upload image or video
+                        </span>
+                        <span className="text-xs text-gray-600 mt-1">JPG, PNG, GIF, WebP, MP4, MOV up to 500MB</span>
+                      </label>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-400 mb-1 block">Date *</label>
@@ -716,6 +787,7 @@ export default function ContentCalendarPage() {
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
                     </div>
                   </div>
+
                   <div>
                     <label className="text-sm text-gray-400 mb-1 block">Content Type</label>
                     <div className="grid grid-cols-4 gap-2">
@@ -728,6 +800,7 @@ export default function ContentCalendarPage() {
                       ))}
                     </div>
                   </div>
+
                   <div>
                     <label className="text-sm text-gray-400 mb-1 block">Category</label>
                     <div className="grid grid-cols-4 gap-2">
@@ -740,6 +813,7 @@ export default function ContentCalendarPage() {
                       ))}
                     </div>
                   </div>
+
                   <div>
                     <label className="text-sm text-gray-400 mb-2 block">
                       Platforms *
@@ -785,6 +859,7 @@ export default function ContentCalendarPage() {
                       </div>
                     )}
                   </div>
+
                   <div>
                     <label className="text-sm text-gray-400 mb-1 block">Hashtags</label>
                     <div className="flex gap-2 mb-2">
@@ -816,14 +891,19 @@ export default function ContentCalendarPage() {
                       ))}
                     </div>
                   </div>
+
                   <div className="flex gap-3">
-                    <button onClick={() => { handleCreatePost(); setNewPost({ ...newPost, status: "draft" }) }}
+                    <button onClick={() => {
+                      setNewPost({ ...newPost, status: "draft" })
+                      handleCreatePost()
+                    }}
                       className="flex-1 border border-white/20 hover:border-white/50 py-3 rounded-xl font-semibold text-sm transition">
                       Save as Draft
                     </button>
-                    <button onClick={handleCreatePost}
+                    <button
+                      onClick={handleCreatePost}
                       disabled={!newPost.title || !newPost.content || !newPost.date}
-                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50">
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed">
                       Schedule Post →
                     </button>
                   </div>
@@ -856,6 +936,15 @@ export default function ContentCalendarPage() {
               <button onClick={() => setShowPostModal(null)} className="text-gray-500 hover:text-white text-xl ml-4">✕</button>
             </div>
             <div className="p-6 space-y-4">
+              {showPostModal.mediaUrl && (
+                <div className="rounded-xl overflow-hidden border border-white/10">
+                  {showPostModal.mediaUrl.includes("video") ? (
+                    <video src={showPostModal.mediaUrl} controls className="w-full max-h-48 object-cover" />
+                  ) : (
+                    <img src={showPostModal.mediaUrl} alt={showPostModal.title} className="w-full max-h-48 object-cover" />
+                  )}
+                </div>
+              )}
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-gray-300 text-sm whitespace-pre-wrap">{showPostModal.content}</p>
               </div>
