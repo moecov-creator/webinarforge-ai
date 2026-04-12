@@ -4,7 +4,11 @@ import { currentUser } from "@clerk/nextjs/server"
 export async function GET(req: NextRequest) {
   try {
     const user = await currentUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    // If not logged in return empty — no error
+    if (!user) {
+      return NextResponse.json({ connected: [], profileExists: false })
+    }
 
     const profileId = `wf-${user.id}`
 
@@ -19,13 +23,14 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await res.json()
+
     return NextResponse.json({
       profileExists: true,
-      connected: data.socialSets || [],
+      connected: data.socialSets || data.connections || [],
       profile: data,
     })
   } catch (err) {
     console.error(err)
-    return NextResponse.json({ error: "Failed to get status" }, { status: 500 })
+    return NextResponse.json({ connected: [], profileExists: false })
   }
 }
