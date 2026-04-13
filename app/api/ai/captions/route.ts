@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import Anthropic from "@anthropic-ai/sdk"
-
-const client = new Anthropic()
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,17 +25,27 @@ Respond with ONLY this JSON:
   "strategy": { ${platforms.map((p: any) => `"${p.pid}": "why this works"`).join(", ")} }
 }`
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY!,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      }),
     })
 
-    const text = message.content[0].type === "text" ? message.content[0].text : ""
+    const data = await response.json()
+    const text = data.content?.[0]?.text || ""
     const clean = text.replace(/```json|```/g, "").trim()
     const parsed = JSON.parse(clean)
     return NextResponse.json(parsed)
+
   } catch (err) {
     console.error("AI captions error:", err)
     return NextResponse.json({ error: "Failed to generate captions" }, { status: 500 })
