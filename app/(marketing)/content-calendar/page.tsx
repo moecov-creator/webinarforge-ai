@@ -354,13 +354,14 @@ export default function ContentCalendarPage() {
   }
 
   const handleCreatePost = () => {
-    if (!newPost.title || !newPost.content || !newPost.date) return
+    const resolvedDate = newPost.date || selectedDate || ""
+    if (!newPost.title || !newPost.content || !resolvedDate) return
     const post: Post = {
       id: Date.now().toString(),
       title: newPost.title || "",
       content: newPost.content || "",
       platformCaptions: usePlatformCaptions ? platformCaptions : {},
-      date: normalizeDate(newPost.date),
+      date: normalizeDate(resolvedDate),
       time: newPost.time || "09:00",
       platforms: newPost.platforms || [],
       contentType: newPost.contentType || "post",
@@ -999,9 +1000,9 @@ export default function ContentCalendarPage() {
 
                 <div className="flex gap-3 sticky bottom-0 bg-[#0a0a0a] py-4 border-t border-white/10 -mx-6 px-6 mt-4">
                   <button onClick={() => { setNewPost({ ...newPost, status: "draft" }); handleCreatePost() }} className="flex-1 border border-white/20 hover:border-white/50 py-3 rounded-xl font-semibold text-sm transition">Save as Draft</button>
-                  <button onClick={handleCreatePost} disabled={!newPost.title || !newPost.content || !newPost.date}
+                  <button onClick={handleCreatePost} disabled={!newPost.title || !newPost.content || !(newPost.date || selectedDate)}
                     className="flex-2 flex-grow-[2] bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                    {!newPost.date ? "⚠️ Select a date to schedule" : "Schedule Post →"}
+                    {!(newPost.date || selectedDate) ? "⚠️ Select a date to schedule" : "Schedule Post →"}
                   </button>
                 </div>
               </div>
