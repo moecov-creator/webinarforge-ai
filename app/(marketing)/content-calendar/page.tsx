@@ -869,46 +869,56 @@ export default function ContentCalendarPage() {
                   )}
                 </div>
 
-                {/* Media Upload */}
-                <div>
-                  <label className="text-sm text-gray-400 mb-1 block">Media (Image or Video — optional)</label>
-                  {mediaPreview ? (
-                    <div className="relative rounded-xl overflow-hidden border border-white/10">
-                      {mediaFile?.type.startsWith("video/") ? (
-                        <video src={mediaPreview} controls className="w-full max-h-48 object-cover" />
-                      ) : (
-                        <img src={mediaPreview} alt="preview" className="w-full max-h-48 object-cover" />
-                      )}
-                      <button onClick={() => { setMediaFile(null); setMediaPreview(null) }}
-                        className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white w-7 h-7 rounded-full flex items-center justify-center text-sm transition">✕</button>
-                      <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-lg">{mediaFile?.name}</div>
-                      <button onClick={() => setActiveTab("preview")}
-                        className="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded-lg font-semibold transition">👁 Preview</button>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/20 hover:border-purple-500 rounded-xl p-6 cursor-pointer transition group">
-                      <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mov,video/avi,video/quicktime" className="hidden"
-                        onChange={(e) => { const file = e.target.files?.[0]; if (file) { setMediaFile(file); setMediaPreview(URL.createObjectURL(file)) } }} />
-                      <span className="text-3xl mb-2 group-hover:scale-110 transition">📎</span>
-                      <span className="text-sm text-gray-400 group-hover:text-white transition font-semibold">Click to upload image or video</span>
-                      <span className="text-xs text-gray-600 mt-1">JPG, PNG, GIF, WebP, MP4, MOV up to 500MB</span>
-                    </label>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                {/* DATE / TIME — always visible at top of form */}
+                <div className="grid grid-cols-2 gap-4 bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Date *</label>
+                    <label className="text-sm text-purple-400 mb-1 block font-semibold">📅 Date *</label>
                     <input type="date" value={newPost.date || selectedDate || ""}
                       onChange={(e) => setNewPost({ ...newPost, date: e.target.value })}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Time</label>
+                    <label className="text-sm text-purple-400 mb-1 block font-semibold">⏰ Time</label>
                     <input type="time" value={newPost.time || "09:00"}
                       onChange={(e) => setNewPost({ ...newPost, time: e.target.value })}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
                   </div>
+                </div>
+
+                {/* Media Upload — compact thumbnail when loaded */}
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Media (Image or Video — optional)</label>
+                  {mediaPreview ? (
+                    <div className="rounded-xl border border-white/10 bg-black/40 p-3 flex items-center gap-3">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-black">
+                        {mediaFile?.type.startsWith("video/") ? (
+                          <video src={mediaPreview} className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={mediaPreview} alt="preview" className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-semibold truncate">{mediaFile?.name}</p>
+                        <p className="text-gray-500 text-xs mt-0.5">{mediaFile?.type.startsWith("video/") ? "🎬 Video" : "🖼️ Image"} · Ready to post</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button onClick={() => setActiveTab("preview")}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-lg font-semibold transition">👁 Preview</button>
+                        <button onClick={() => { setMediaFile(null); setMediaPreview(null) }}
+                          className="bg-red-500/20 hover:bg-red-500/40 text-red-400 w-8 h-8 rounded-lg flex items-center justify-center text-sm transition">✕</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex items-center gap-3 border-2 border-dashed border-white/20 hover:border-purple-500 rounded-xl p-4 cursor-pointer transition group">
+                      <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mov,video/avi,video/quicktime" className="hidden"
+                        onChange={(e) => { const file = e.target.files?.[0]; if (file) { setMediaFile(file); setMediaPreview(URL.createObjectURL(file)) } }} />
+                      <span className="text-2xl group-hover:scale-110 transition">📎</span>
+                      <div>
+                        <p className="text-sm text-gray-400 group-hover:text-white transition font-semibold">Click to upload image or video</p>
+                        <p className="text-xs text-gray-600">JPG, PNG, GIF, WebP, MP4, MOV up to 500MB</p>
+                      </div>
+                    </label>
+                  )}
                 </div>
 
                 <div>
@@ -987,11 +997,11 @@ export default function ContentCalendarPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 sticky bottom-0 bg-[#0a0a0a] py-4 border-t border-white/10 -mx-6 px-6 mt-4">
                   <button onClick={() => { setNewPost({ ...newPost, status: "draft" }); handleCreatePost() }} className="flex-1 border border-white/20 hover:border-white/50 py-3 rounded-xl font-semibold text-sm transition">Save as Draft</button>
                   <button onClick={handleCreatePost} disabled={!newPost.title || !newPost.content || !newPost.date}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed">
-                    Schedule Post →
+                    className="flex-2 flex-grow-[2] bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    {!newPost.date ? "⚠️ Select a date to schedule" : "Schedule Post →"}
                   </button>
                 </div>
               </div>
