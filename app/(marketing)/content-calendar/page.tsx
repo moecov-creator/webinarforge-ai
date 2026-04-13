@@ -271,7 +271,7 @@ export default function ContentCalendarPage() {
     setNewPost({ ...newPost, content: current.substring(0, start) + formatted + current.substring(end) })
   }
 
-  // AI Caption Generator using Anthropic API
+  // AI Caption Generator — calls internal API route (keeps API key secure)
   const handleAIGenerateCaptions = async () => {
     if (!aiTopic) return
     setAiGenerating(true)
@@ -289,57 +289,27 @@ export default function ContentCalendarPage() {
         return { pid, name: platform?.name || pid, algoKey, maxChars: spec?.maxChars || 2200 }
       })
 
-      const systemPrompt = `You are an elite social media growth strategist who has helped creators reach top 1% status on every major platform. You understand each platform's algorithm deeply and know exactly what makes content go viral. You write captions that stop the scroll, drive massive engagement, and get pushed by the algorithm.
-
-You must respond ONLY with a valid JSON object. No explanation, no markdown, no extra text. Just raw JSON.`
-
-      const userPrompt = `Generate platform-optimized viral captions for this content:
-
-TOPIC/VIDEO CONTEXT: ${aiTopic}
-NICHE: ${aiNiche || "online business, marketing, entrepreneurship"}
-CONTENT TYPE: ${newPost.contentType || "video"}
-CATEGORY: ${newPost.category || "educational"}
-
-Generate a unique, viral caption for EACH platform below. Each caption must follow that platform's EXACT algorithm rules for top 1% reach.
-
-${platformList.map(p => {
-  const algoPrompt = ALGORITHM_PROMPTS[p.algoKey] || ALGORITHM_PROMPTS["instagram"]
-  return `PLATFORM: ${p.name} (id: ${p.pid})
-ALGORITHM RULES: ${algoPrompt}
-MAX CHARS: ${p.maxChars > 0 ? p.maxChars : "unlimited"}`
-}).join("\n\n")}
-
-Respond with ONLY this JSON structure:
-{
-  "captions": {
-    ${platformList.map(p => `"${p.pid}": "full caption text here"`).join(",\n    ")}
-  },
-  "hashtags": {
-    ${platformList.map(p => `"${p.pid}": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"]`).join(",\n    ")}
-  },
-  "viralScore": {
-    ${platformList.map(p => `"${p.pid}": 95`).join(",\n    ")}
-  },
-  "strategy": {
-    ${platformList.map(p => `"${p.pid}": "one sentence explaining why this caption will perform"`).join(",\n    ")}
-  }
-}`
-
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/ai/captions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }],
+          topic: aiTopic,
+          niche: aiNiche,
+          contentType: newPost.contentType,
+          category: newPost.category,
+          platforms: platformList,
+          algorithmPrompts: ALGORITHM_PROMPTS,
         }),
       })
 
-      const data = await response.json()
-      const text = data.content?.[0]?.text || ""
-      const clean = text.replace(/```json|```/g, "").trim()
-      const parsed = JSON.parse(clean)
+      if (!response.ok) {
+        const errData = await response.json()
+        throw new Error(errData.error || "API request failed")
+      }
+
+      const parsed = await response.json()
+
+      if (parsed.error) throw new Error(parsed.error)
 
       setAiCaptions(parsed.captions || {})
       setAiHashtags(parsed.hashtags || {})
@@ -347,12 +317,15 @@ Respond with ONLY this JSON structure:
 
       // Auto-select first platform caption
       const firstPid = platformList[0]?.pid
-      if (firstPid && parsed.captions[firstPid]) {
+      if (firstPid && parsed.captions?.[firstPid]) {
         setSelectedAiCaption(firstPid)
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI generation failed:", err)
+      // Show error to user
+      setPostError(`AI generation failed: ${err.message || "Please try again."}`)
+      setTimeout(() => setPostError(""), 5000)
     }
 
     setAiGenerating(false)
