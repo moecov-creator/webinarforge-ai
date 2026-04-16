@@ -117,20 +117,113 @@ function VideoPlayer() {
   )
 }
 
-// ─── CTA Button ───────────────────────────────────────────────────────────────
-function CTAButton({ size = "lg" }: { size?: "lg" | "md" }) {
+// ─── Order Bump ───────────────────────────────────────────────────────────────
+function OrderBump({
+  checked,
+  onToggle,
+}: {
+  checked: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div
+      onClick={onToggle}
+      className={`w-full max-w-xl mx-auto cursor-pointer rounded-2xl border-2 border-dashed transition-all duration-200 p-5 ${
+        checked
+          ? "border-amber-500 bg-amber-50"
+          : "border-gray-300 bg-gray-50 hover:border-amber-400 hover:bg-amber-50/50"
+      }`}
+    >
+      <div className="flex items-start gap-4">
+        {/* Checkbox */}
+        <div
+          className={`w-6 h-6 rounded-md border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${
+            checked
+              ? "bg-amber-500 border-amber-500"
+              : "border-gray-300 bg-white"
+          }`}
+        >
+          {checked && (
+            <svg className="w-3.5 h-3.5 text-white fill-none stroke-white" strokeWidth="3" viewBox="0 0 12 12">
+              <polyline points="1.5,6 4.5,9 10.5,3" />
+            </svg>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+              ⚡ Special One-Time Offer
+            </span>
+          </div>
+          <h4 className="text-base font-black text-gray-900 mb-1">
+            Add AI Webinar Templates Pack{" "}
+            <span className="text-amber-600">+$47</span>
+          </h4>
+          <p className="text-sm text-gray-600 leading-relaxed mb-2">
+            Get 10+ proven webinar scripts and frameworks — coach, SaaS, agency,
+            and course creator niches — so you can launch faster with copy that
+            already converts.
+          </p>
+          <ul className="space-y-1">
+            {[
+              "10+ done-for-you webinar scripts",
+              "High-converting hook frameworks",
+              "Proven close sequences",
+              "Instant download — use immediately",
+            ].map((item) => (
+              <li key={item} className="flex items-center gap-2 text-xs text-gray-600">
+                <span className="text-green-500 font-black flex-shrink-0">✔</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Price */}
+        <div className="text-right flex-shrink-0">
+          <div className="text-xs text-gray-400 line-through">$97</div>
+          <div className="text-xl font-black text-amber-600">$47</div>
+        </div>
+      </div>
+
+      {checked && (
+        <div className="mt-3 pt-3 border-t border-amber-200 text-center">
+          <p className="text-xs font-semibold text-amber-700">
+            ✔ Added to your order — you're getting the Templates Pack!
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── CTA Button — bump-aware ──────────────────────────────────────────────────
+function CTAButton({
+  size = "lg",
+  bumpChecked = false,
+}: {
+  size?: "lg" | "md"
+  bumpChecked?: boolean
+}) {
   const { isSignedIn, isLoaded } = useAuth()
   const [loading, setLoading] = useState(false)
+  const total = bumpChecked ? 96 : 49
 
   const handleClick = async () => {
     if (!isLoaded) return
     setLoading(true)
+
     if (isSignedIn) {
       try {
         const res = await fetch("/api/billing/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planKey: "EARLY_BIRD" }),
+          body: JSON.stringify({
+            planKey: "EARLY_BIRD",
+            includeBump: bumpChecked, // ← separate flag, not a different planKey
+          }),
         })
         const data = await res.json()
         if (data.url) {
@@ -143,6 +236,7 @@ function CTAButton({ size = "lg" }: { size?: "lg" | "md" }) {
       }
     } else {
       sessionStorage.setItem("checkout_intent", "EARLY_BIRD")
+      sessionStorage.setItem("checkout_bump", bumpChecked ? "true" : "false")
       window.location.href = "/sign-up"
     }
   }
@@ -152,7 +246,9 @@ function CTAButton({ size = "lg" }: { size?: "lg" | "md" }) {
       <button
         onClick={handleClick}
         disabled={loading}
-        className={`relative w-full max-w-xl flex items-center justify-center gap-3 font-black rounded-2xl transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden bg-green-500 hover:bg-green-400 text-white group ${size === "lg" ? "py-5 px-8 text-xl md:text-2xl" : "py-4 px-6 text-lg"}`}
+        className={`relative w-full max-w-xl flex items-center justify-center gap-3 font-black rounded-2xl transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden bg-green-500 hover:bg-green-400 text-white group ${
+          size === "lg" ? "py-5 px-8 text-xl md:text-2xl" : "py-4 px-6 text-lg"
+        }`}
         style={{ boxShadow: "0 4px 20px rgba(34,197,94,0.4)" }}
       >
         <span className="absolute inset-0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
@@ -165,7 +261,7 @@ function CTAButton({ size = "lg" }: { size?: "lg" | "md" }) {
             Processing...
           </>
         ) : (
-          "YES! GET INSTANT ACCESS FOR $49 →"
+          `YES! GET INSTANT ACCESS FOR $${total} →`
         )}
       </button>
       <p className="text-gray-500 text-xs text-center">
@@ -206,6 +302,7 @@ function Section({ children, className = "" }: { children: React.ReactNode; clas
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function EarlyBirdPage() {
   const remaining = TOTAL_SPOTS - CLAIMED_SPOTS
+  const [bumpChecked, setBumpChecked] = useState(false)
 
   return (
     <main className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
@@ -309,12 +406,16 @@ export default function EarlyBirdPage() {
                 <div className="text-center mb-4">
                   <p className="text-gray-500 text-sm line-through mb-0.5">Regular Price: $97/month</p>
                   <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-5xl font-black text-gray-900">$49</span>
+                    <span className="text-5xl font-black text-gray-900">${bumpChecked ? 96 : 49}</span>
                     <span className="text-gray-500 text-sm">one-time</span>
                   </div>
                   <p className="text-green-600 text-xs font-bold mt-1">No monthly fees. Ever.</p>
                 </div>
-                <CTAButton size="md" />
+                {/* Order bump */}
+                <div className="mb-4">
+                  <OrderBump checked={bumpChecked} onToggle={() => setBumpChecked(!bumpChecked)} />
+                </div>
+                <CTAButton size="md" bumpChecked={bumpChecked} />
               </div>
             </div>
 
@@ -394,7 +495,7 @@ export default function EarlyBirdPage() {
           ))}
         </div>
         <div className="flex justify-center">
-          <CTAButton size="lg" />
+          <CTAButton size="lg" bumpChecked={bumpChecked} />
         </div>
       </Section>
 
@@ -443,7 +544,7 @@ export default function EarlyBirdPage() {
           </div>
 
           <div className="flex justify-center">
-            <CTAButton size="lg" />
+            <CTAButton size="lg" bumpChecked={bumpChecked} />
           </div>
         </div>
       </Section>
@@ -536,7 +637,7 @@ export default function EarlyBirdPage() {
           </div>
 
           <div className="mb-8">
-            <CTAButton size="lg" />
+            <CTAButton size="lg" bumpChecked={bumpChecked} />
           </div>
 
           <div className="flex flex-wrap justify-center gap-5 text-sm text-gray-400 mb-8">
