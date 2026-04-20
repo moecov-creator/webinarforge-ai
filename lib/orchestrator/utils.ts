@@ -1,7 +1,8 @@
 // lib/orchestrator/utils.ts
 
 import { nanoid } from "nanoid"
-import type { AnalyticsInsight, InsightSeverity } from "./types"
+import type { AnalyticsInsight, InsightSeverity, FunnelMetrics } from "./types"
+import { THRESHOLDS } from "./optimizationEngine"
 
 export function generateLaunchId(): string {
   return `launch_${nanoid(10)}`
@@ -11,45 +12,67 @@ export function getCurrentTimestamp(): string {
   return new Date().toISOString()
 }
 
-// ─── Analytics insight engine ─────────────────────────────────────────────────
-// Each insight now carries a fixAction field that maps to an OptimizationActionType.
-// The InsightCard component reads fixAction to render the correct "Fix This For Me" button.
-
-export interface WebinarMetrics {
-  registrationRate: number
-  showUpRate: number
-  ctaClickRate: number
-  conversionRate: number
-  avgWatchTime: number
-  dropOffPoint: number
+// ─── Legacy type alias ────────────────────────────────────────────────────────
+// Kept for backward compat with existing UI components that import WebinarMetrics
+export type WebinarMetrics = FunnelMetrics & {
+  // legacy field names used in existing dashboard mock data
+  registrationRate?: number
+  showUpRate?: number
+  ctaClickRate?: number
+  conversionRate?: number
+  avgWatchTime?: number
+  dropOffPoint?: number
   emailOpenRate?: number
   replayWatchRate?: number
 }
 
-export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
+// ─── Normalize metrics ────────────────────────────────────────────────────────
+// Converts legacy camelCase field names to the canonical snake_case FunnelMetrics shape
+
+export function normalizeFunnelMetrics(raw: WebinarMetrics): FunnelMetrics {
+  return {
+    registration_rate:        raw.registration_rate        ?? raw.registrationRate        ?? 0,
+    attendance_rate:          raw.attendance_rate          ?? raw.showUpRate              ?? 0,
+    watch_time_percent:       raw.watch_time_percent       ?? (raw.avgWatchTime ? Math.round(raw.avgWatchTime / 60 * 100) : 0),
+    cta_click_rate:           raw.cta_click_rate           ?? raw.ctaClickRate            ?? 0,
+    sales_conversion_rate:    raw.sales_conversion_rate    ?? raw.conversionRate          ?? 0,
+    checkout_completion_rate: raw.checkout_completion_rate ?? 0,
+    follow_up_open_rate:      raw.follow_up_open_rate      ?? raw.emailOpenRate           ?? 0,
+    follow_up_click_rate:     raw.follow_up_click_rate     ?? 0,
+  }
+}
+
+// ─── Analytics insight engine ─────────────────────────────────────────────────
+// Generates InsightCard data for the dashboard panel.
+// Each insight carries a fixAction that maps to an OptimizationActionType.
+// Covers all 8 tracked metrics.
+
+export function generateInsights(rawMetrics: WebinarMetrics): AnalyticsInsight[] {
+  const metrics = normalizeFunnelMetrics(rawMetrics)
   const insights: AnalyticsInsight[] = []
 
-  // ── Registration rate ─────────────────────────────────────────────────────
-  if (metrics.registrationRate >= 40) {
+  // ── 1. Registration rate ──────────────────────────────────────────────────
+  const { healthy: regH, warning: regW } = THRESHOLDS.registration_rate
+  if (metrics.registration_rate >= regH) {
     insights.push({
-      id: "reg-strong",
+      id: "reg-healthy",
       severity: "positive",
       metric: "registration_rate",
       title: "Registration rate is strong",
-      description: `${metrics.registrationRate}% of visitors are registering — above the 40% benchmark.`,
-      recommendation: "Maintain current landing page copy. Consider A/B testing the headline for further gains.",
+      description: `${metrics.registration_rate}% of visitors are registering — above the ${regH}% benchmark.`,
+      recommendation: "Maintain current landing page. A/B test headline variations for further gains.",
     })
-  } else if (metrics.registrationRate >= 25) {
+  } else if (metrics.registration_rate >= regW) {
     insights.push({
-      id: "reg-average",
+      id: "reg-warning",
       severity: "warning",
       metric: "registration_rate",
       title: "Registration rate has room to improve",
-      description: `${metrics.registrationRate}% registration rate is below the 40% target.`,
+      description: `${metrics.registration_rate}% registration rate is below the ${regH}% target.`,
       recommendation: "Test a stronger headline, reduce form fields to 2, and add social proof near the CTA.",
       actionLabel: "Edit Landing Page",
       actionHref: "/dashboard/funnels/editor",
-      fixAction: "fix_landing_page",
+      fixAction: "rewrite_landing_page",
     })
   } else {
     insights.push({
@@ -57,135 +80,170 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       severity: "critical",
       metric: "registration_rate",
       title: "Registration rate needs immediate attention",
-      description: `${metrics.registrationRate}% registration rate is significantly below benchmark.`,
-      recommendation: "Landing page may have a weak hook or mismatched audience. Rewrite headline and test a new traffic source.",
+      description: `${metrics.registration_rate}% registration rate is critically below the ${regH}% benchmark.`,
+      recommendation: "Rewrite landing page headline with specific outcome + audience. Remove all friction from registration form.",
       actionLabel: "Regenerate Landing Page",
       actionHref: "/dashboard/funnels/generator",
-      fixAction: "fix_landing_page",
+      fixAction: "rewrite_landing_page",
     })
   }
 
-  // ── Show-up rate ──────────────────────────────────────────────────────────
-  if (metrics.showUpRate >= 40) {
+  // ── 2. Attendance rate ────────────────────────────────────────────────────
+  const { healthy: attH, warning: attW } = THRESHOLDS.attendance_rate
+  if (metrics.attendance_rate >= attH) {
     insights.push({
-      id: "showup-strong",
+      id: "att-healthy",
       severity: "positive",
-      metric: "show_up_rate",
-      title: "Show-up rate is healthy",
-      description: `${metrics.showUpRate}% of registrants are attending — above the 35% benchmark.`,
-      recommendation: "Your reminder sequence is working. Keep the current email + reminder cadence.",
+      metric: "attendance_rate",
+      title: "Attendance rate is healthy",
+      description: `${metrics.attendance_rate}% of registrants are attending — above the ${attH}% benchmark.`,
+      recommendation: "Your reminder sequence is working. Keep the current cadence.",
     })
-  } else if (metrics.showUpRate < 25) {
+  } else if (metrics.attendance_rate < attH) {
     insights.push({
-      id: "showup-weak",
-      severity: "warning",
-      metric: "show_up_rate",
-      title: "Low show-up rate — follow-up automation may help",
-      description: `Only ${metrics.showUpRate}% of registrants are attending. Industry benchmark is 35%.`,
-      recommendation: "Add a 1-hour SMS reminder, increase email frequency, and improve the confirmation page.",
-      actionLabel: "Upgrade Automation",
+      id: metrics.attendance_rate < attW ? "att-weak" : "att-warning",
+      severity: metrics.attendance_rate < attW ? "critical" : "warning",
+      metric: "attendance_rate",
+      title: metrics.attendance_rate < attW
+        ? "Critical: most registrants are not showing up"
+        : "Low show-up rate — reminders need improvement",
+      description: `Only ${metrics.attendance_rate}% of registrants are attending. Benchmark is ${attH}%.`,
+      recommendation: "Add a 1-hour SMS reminder. Rewrite email reminders with curiosity hook and attendee-exclusive bonus.",
+      actionLabel: "Fix Reminders",
       actionHref: "/dashboard/automation",
-      fixAction: "fix_email_sequence",
+      fixAction: "rewrite_reminder_sequence",
     })
   }
 
-  // ── CTA click rate ────────────────────────────────────────────────────────
-  if (metrics.ctaClickRate < 15) {
+  // ── 3. Watch time percent ─────────────────────────────────────────────────
+  const { healthy: wtH, warning: wtW } = THRESHOLDS.watch_time_percent
+  if (metrics.watch_time_percent >= wtH) {
     insights.push({
-      id: "cta-weak",
-      severity: "critical",
-      metric: "cta_click_rate",
-      title: "CTA clicks are underperforming",
-      description: `${metrics.ctaClickRate}% CTA click rate is below the 15% target.`,
-      recommendation: "Strengthen the offer transition. Add more urgency and stack value before revealing the price.",
-      actionLabel: "Edit Webinar Script",
-      actionHref: "/dashboard/webinars",
-      fixAction: "fix_cta",
+      id: "watch-healthy",
+      severity: "positive",
+      metric: "watch_time_percent",
+      title: "Watch time is strong",
+      description: `Attendees are watching ${metrics.watch_time_percent}% of your webinar on average.`,
+      recommendation: "Strong retention. Consider moving CTA earlier to capture high-intent viewers.",
     })
-  } else if (metrics.ctaClickRate >= 20) {
+  } else if (metrics.watch_time_percent < wtH) {
     insights.push({
-      id: "cta-strong",
+      id: metrics.watch_time_percent < wtW ? "watch-weak" : "watch-warning",
+      severity: metrics.watch_time_percent < wtW ? "critical" : "warning",
+      metric: "watch_time_percent",
+      title: "Drop-off may indicate a weak hook or slow intro",
+      description: `Attendees watch only ${metrics.watch_time_percent}% of your webinar on average. Most are leaving before the offer.`,
+      recommendation: "Open with visual proof within the first 45 seconds. Add a minute-48 commitment device early in the webinar.",
+      actionLabel: "Fix Webinar Hook",
+      actionHref: "/dashboard/webinars",
+      fixAction: "improve_webinar_hook",
+    })
+  }
+
+  // ── 4. CTA click rate ─────────────────────────────────────────────────────
+  const { healthy: ctaH, warning: ctaW } = THRESHOLDS.cta_click_rate
+  if (metrics.cta_click_rate >= ctaH) {
+    insights.push({
+      id: "cta-healthy",
       severity: "positive",
       metric: "cta_click_rate",
       title: "CTA engagement is strong",
-      description: `${metrics.ctaClickRate}% of attendees clicked the CTA — above the 15% benchmark.`,
-      recommendation: "Focus optimization on the order page to convert more clickers into buyers.",
+      description: `${metrics.cta_click_rate}% of attendees clicked the CTA — above the ${ctaH}% benchmark.`,
+      recommendation: "Strong CTA performance. Focus optimization on the order page to convert more clickers.",
     })
-  }
-
-  // ── Conversion rate ───────────────────────────────────────────────────────
-  if (metrics.conversionRate < 3) {
+  } else if (metrics.cta_click_rate < ctaH) {
     insights.push({
-      id: "conv-critical",
-      severity: "critical",
-      metric: "conversion_rate",
-      title: "Conversion rate suggests your offer needs stronger urgency",
-      description: `${metrics.conversionRate}% conversion rate is below the 5% minimum target.`,
-      recommendation: "Add a deadline, bonus stack, or payment plan. Test a lower entry price or tripwire offer.",
-      actionLabel: "Improve Offer",
-      actionHref: "/dashboard/funnels",
-      fixAction: "increase_conversions",
-    })
-  } else if (metrics.conversionRate >= 10) {
-    insights.push({
-      id: "conv-excellent",
-      severity: "positive",
-      metric: "conversion_rate",
-      title: "Excellent conversion rate",
-      description: `${metrics.conversionRate}% conversion rate is above the 10% benchmark. This funnel is performing.`,
-      recommendation: "Scale traffic immediately — this funnel is converting.",
-    })
-  }
-
-  // ── Watch time / drop-off ─────────────────────────────────────────────────
-  if (metrics.avgWatchTime < 20) {
-    insights.push({
-      id: "dropoff-early",
-      severity: "critical",
-      metric: "avg_watch_time",
-      title: "Early drop-off may indicate a weak hook or transition",
-      description: `Average watch time is ${metrics.avgWatchTime} minutes. Most people leave before the offer.`,
-      recommendation: "Rewrite the first 10 minutes. Your hook or story may not be holding attention.",
-      actionLabel: "Edit Script",
+      id: metrics.cta_click_rate < ctaW ? "cta-weak" : "cta-warning",
+      severity: metrics.cta_click_rate < ctaW ? "critical" : "warning",
+      metric: "cta_click_rate",
+      title: "CTA clicks are underperforming",
+      description: `${metrics.cta_click_rate}% CTA click rate is below the ${ctaH}% target.`,
+      recommendation: "Add urgency trigger, social proof counter, and risk reversal immediately before the CTA button.",
+      actionLabel: "Fix My CTA",
       actionHref: "/dashboard/webinars",
-      fixAction: "fix_webinar_hook",
-    })
-  } else if (metrics.dropOffPoint > 0 && metrics.dropOffPoint < 40) {
-    insights.push({
-      id: "dropoff-mid",
-      severity: "warning",
-      metric: "drop_off_point",
-      title: `Drop-off spike at minute ${metrics.dropOffPoint}`,
-      description: `Significant drop-off at minute ${metrics.dropOffPoint}, before the offer is made.`,
-      recommendation: "Add a pattern interrupt, case study, or re-engagement hook at this point.",
-      fixAction: "fix_webinar_hook",
+      fixAction: "rewrite_cta_section",
     })
   }
 
-  // ── Email performance ─────────────────────────────────────────────────────
-  if (metrics.emailOpenRate && metrics.emailOpenRate < 20) {
+  // ── 5. Sales conversion rate ──────────────────────────────────────────────
+  const { healthy: convH, warning: convW } = THRESHOLDS.sales_conversion_rate
+  if (metrics.sales_conversion_rate >= convH) {
     insights.push({
-      id: "email-weak",
-      severity: "warning",
-      metric: "email_open_rate",
-      title: "Email open rate is low",
-      description: `${metrics.emailOpenRate}% open rate is below the 25% benchmark.`,
-      recommendation: "Test new subject lines with curiosity or urgency hooks. Check sender reputation.",
-      actionLabel: "Edit Email Sequence",
+      id: "conv-healthy",
+      severity: "positive",
+      metric: "sales_conversion_rate",
+      title: "Excellent conversion rate",
+      description: `${metrics.sales_conversion_rate}% conversion rate is above the ${convH}% benchmark. Scale traffic.`,
+      recommendation: "This funnel is converting well. Increase ad spend or affiliate traffic immediately.",
+    })
+  } else if (metrics.sales_conversion_rate < convH) {
+    insights.push({
+      id: metrics.sales_conversion_rate < convW ? "conv-weak" : "conv-warning",
+      severity: metrics.sales_conversion_rate < convW ? "critical" : "warning",
+      metric: "sales_conversion_rate",
+      title: "Conversion rate suggests offer needs strengthening",
+      description: `${metrics.sales_conversion_rate}% conversion rate is below the ${convH}% target.`,
+      recommendation: "Itemize value stack with dollar anchors. Add 3 result-specific testimonials before price reveal. Strengthen guarantee language.",
+      actionLabel: "Optimize Offer",
+      actionHref: "/dashboard/funnels",
+      fixAction: "optimize_offer_stack",
+    })
+  }
+
+  // ── 6. Checkout completion rate ───────────────────────────────────────────
+  const { healthy: coH, warning: coW } = THRESHOLDS.checkout_completion_rate
+  if (metrics.checkout_completion_rate > 0 && metrics.checkout_completion_rate < coH) {
+    insights.push({
+      id: metrics.checkout_completion_rate < coW ? "checkout-weak" : "checkout-warning",
+      severity: metrics.checkout_completion_rate < coW ? "critical" : "warning",
+      metric: "checkout_completion_rate",
+      title: "Checkout abandonment is too high",
+      description: `${metrics.checkout_completion_rate}% of people who start checkout are completing it. Benchmark is ${coH}%.`,
+      recommendation: "Add security badges and SSL seal above the payment form. Simplify form fields. Add PayPal as alternative.",
+      actionLabel: "Fix Checkout",
+      actionHref: "/dashboard/funnels",
+      fixAction: "improve_checkout_flow",
+    })
+  } else if (metrics.checkout_completion_rate >= coH) {
+    insights.push({
+      id: "checkout-healthy",
+      severity: "positive",
+      metric: "checkout_completion_rate",
+      title: "Checkout completion is strong",
+      description: `${metrics.checkout_completion_rate}% checkout completion rate — above the ${coH}% benchmark.`,
+      recommendation: "Checkout is converting well. Test an order bump to increase average order value.",
+    })
+  }
+
+  // ── 7. Follow-up open rate ────────────────────────────────────────────────
+  const { healthy: foH, warning: foW } = THRESHOLDS.follow_up_open_rate
+  if (metrics.follow_up_open_rate > 0 && metrics.follow_up_open_rate < foH) {
+    insights.push({
+      id: metrics.follow_up_open_rate < foW ? "followup-open-weak" : "followup-open-warning",
+      severity: metrics.follow_up_open_rate < foW ? "critical" : "warning",
+      metric: "follow_up_open_rate",
+      title: "Follow-up email open rate is low",
+      description: `${metrics.follow_up_open_rate}% open rate is below the ${foH}% benchmark.`,
+      recommendation: "Rewrite subject lines with curiosity hooks. Avoid spam-trigger words. Test 'did you watch the replay?' angle.",
+      actionLabel: "Fix Email Sequence",
       actionHref: "/dashboard/automation",
-      fixAction: "fix_email_sequence",
+      fixAction: "rewrite_follow_up_sequence",
     })
   }
 
-  // ── Replay engagement ─────────────────────────────────────────────────────
-  if (metrics.replayWatchRate !== undefined && metrics.replayWatchRate > 30) {
+  // ── 8. Follow-up click rate ───────────────────────────────────────────────
+  const { healthy: fcH, warning: fcW } = THRESHOLDS.follow_up_click_rate
+  if (metrics.follow_up_click_rate > 0 && metrics.follow_up_click_rate < fcH) {
     insights.push({
-      id: "replay-strong",
-      severity: "info",
-      metric: "replay_watch_rate",
-      title: "Replay is driving significant engagement",
-      description: `${metrics.replayWatchRate}% of registrants are watching the replay.`,
-      recommendation: "Add a replay-specific urgency message and separate CTA to maximize replay conversions.",
+      id: metrics.follow_up_click_rate < fcW ? "followup-click-weak" : "followup-click-warning",
+      severity: metrics.follow_up_click_rate < fcW ? "critical" : "warning",
+      metric: "follow_up_click_rate",
+      title: "Follow-up email click rate is low",
+      description: `${metrics.follow_up_click_rate}% click rate is below the ${fcH}% target.`,
+      recommendation: "Use a single CTA per email. Add replay expiry deadline. Use a PS line with a direct link.",
+      actionLabel: "Fix Email CTAs",
+      actionHref: "/dashboard/automation",
+      fixAction: "rewrite_follow_up_sequence",
     })
   }
 
@@ -194,13 +252,13 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
 }
 
 export function getOverallHealth(
-  metrics: WebinarMetrics
+  rawMetrics: WebinarMetrics
 ): "excellent" | "good" | "needs_work" | "critical" {
-  const insights = generateInsights(metrics)
+  const insights = generateInsights(rawMetrics)
   const criticals = insights.filter((i) => i.severity === "critical").length
   const positives = insights.filter((i) => i.severity === "positive").length
   if (criticals >= 2) return "critical"
   if (criticals === 1) return "needs_work"
-  if (positives >= 3) return "excellent"
+  if (positives >= 4) return "excellent"
   return "good"
 }
