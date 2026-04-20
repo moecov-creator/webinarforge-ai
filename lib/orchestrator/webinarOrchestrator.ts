@@ -9,18 +9,17 @@
 import type {
   LaunchRequest,
   LaunchSummary,
-  WebinarAssets,
-  FunnelAssets,
-  PresenterAssignment,
-  AutomationConfig,
-  AnalyticsInit,
-  LaunchStatus,
 } from "./types"
-import { generateWebinarAssets } from "./services/webinarGenerator"
-import { generateFunnelAssets } from "./services/funnelGenerator"
-import { assignPresenter } from "./services/presenterService"
-import { configureAutomation } from "./services/automationService"
-import { initAnalytics } from "./services/analyticsService"
+
+// All services live in a single file — no separate service files needed
+import {
+  generateWebinarAssets,
+  generateFunnelAssets,
+  assignPresenter,
+  configureAutomation,
+  initAnalytics,
+} from "./services/index"
+
 import { generateLaunchId, getCurrentTimestamp } from "./utils"
 
 // ─── Main orchestrator entry point ───────────────────────────────────────────
