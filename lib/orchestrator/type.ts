@@ -34,13 +34,11 @@ export type ToneStyle =
 // ─── User Launch Request ──────────────────────────────────────────────────────
 export interface LaunchRequest {
   userId: string
-  // Offer
   offerDescription: string
   offerPrice: string
   targetAudience: string
   biggestPainPoint: string
   desiredTransformation: string
-  // Webinar config
   webinarGoal: WebinarGoal
   toneStyle: ToneStyle
   presenterId?: string
@@ -55,13 +53,13 @@ export interface WebinarAssets {
   outline: WebinarOutlineSection[]
   fullScript: string
   ctaSection: string
-  suggestedCtaTiming: number // minutes into webinar
+  suggestedCtaTiming: number
 }
 
 export interface WebinarOutlineSection {
   order: number
   title: string
-  duration: number // minutes
+  duration: number
   keyPoints: string[]
   type: "intro" | "content" | "story" | "proof" | "offer" | "close"
 }
@@ -103,7 +101,7 @@ export interface RegistrationFormCopy {
 
 export interface EmailMessage {
   order: number
-  triggerDelay: string // e.g. "immediately", "1 day after", "3 days after"
+  triggerDelay: string
   subject: string
   previewText: string
   bodyOutline: string
@@ -143,7 +141,7 @@ export interface AnalyticsInit {
   }
 }
 
-// ─── Launch Summary — the full output object ──────────────────────────────────
+// ─── Launch Summary ───────────────────────────────────────────────────────────
 export interface LaunchSummary {
   id: string
   userId: string
@@ -160,7 +158,7 @@ export interface LaunchSummary {
   nextSteps: string[]
 }
 
-// ─── Insight Cards for Analytics UI ──────────────────────────────────────────
+// ─── Insight Cards ────────────────────────────────────────────────────────────
 export type InsightSeverity = "positive" | "warning" | "critical" | "info"
 
 export interface AnalyticsInsight {
@@ -172,4 +170,74 @@ export interface AnalyticsInsight {
   recommendation: string
   actionLabel?: string
   actionHref?: string
+  // NEW — fix action config
+  fixAction?: OptimizationActionType
+}
+
+// ─── Optimization Engine Types (NEW) ─────────────────────────────────────────
+
+export type OptimizationActionType =
+  | "fix_cta"
+  | "fix_landing_page"
+  | "fix_offer"
+  | "fix_email_sequence"
+  | "fix_webinar_hook"
+  | "increase_conversions"
+
+export type OptimizationStatus =
+  | "idle"
+  | "running"
+  | "applied"
+  | "failed"
+
+export interface OptimizationResult {
+  actionType: OptimizationActionType
+  funnelId: string
+  status: OptimizationStatus
+  appliedAt: string | null
+  before: Record<string, string>
+  after: Record<string, string>
+  summary: string
+  error?: string
+}
+
+export interface OptimizationAction {
+  id: string
+  type: OptimizationActionType
+  label: string
+  description: string
+  proOnly: boolean
+  insightIds: string[]  // which insight IDs trigger this action
+}
+
+export interface AutoOptimizeConfig {
+  enabled: boolean
+  userId: string
+  funnelId: string
+  thresholds: {
+    minRegistrationRate: number   // default 30
+    minShowUpRate: number         // default 25
+    minCtaClickRate: number       // default 12
+    minConversionRate: number     // default 5
+  }
+  lastRunAt: string | null
+  actionsApplied: OptimizationResult[]
+}
+
+export interface AutoRunResult {
+  success: boolean
+  stepsCompleted: string[]
+  stepsFailed: string[]
+  summary: string
+  launchSummary?: LaunchSummary
+}
+
+// ─── Plan gating ──────────────────────────────────────────────────────────────
+export type UserPlan = "starter" | "pro" | "enterprise"
+
+export interface PlanFeatureGate {
+  feature: string
+  requiredPlan: UserPlan
+  upgradeMessage: string
+  upgradeHref: string
 }
