@@ -1,6 +1,7 @@
 // lib/orchestrator/types.ts
-// WebinarForge AI — Central Orchestrator Types
-// All structured data contracts for the launch workflow
+// WebinarForge AI — Complete Type System
+
+// ─── Launch types ─────────────────────────────────────────────────────────────
 
 export type LaunchStatus =
   | "draft"
@@ -31,7 +32,6 @@ export type ToneStyle =
   | "educational"
   | "storytelling"
 
-// ─── User Launch Request ──────────────────────────────────────────────────────
 export interface LaunchRequest {
   userId: string
   offerDescription: string
@@ -46,16 +46,6 @@ export interface LaunchRequest {
   followUpPreference: FollowUpPreference
 }
 
-// ─── Generated Webinar Assets ─────────────────────────────────────────────────
-export interface WebinarAssets {
-  title: string
-  hook: string
-  outline: WebinarOutlineSection[]
-  fullScript: string
-  ctaSection: string
-  suggestedCtaTiming: number
-}
-
 export interface WebinarOutlineSection {
   order: number
   title: string
@@ -64,13 +54,13 @@ export interface WebinarOutlineSection {
   type: "intro" | "content" | "story" | "proof" | "offer" | "close"
 }
 
-// ─── Generated Funnel Assets ──────────────────────────────────────────────────
-export interface FunnelAssets {
-  structure: FunnelStep[]
-  landingPageCopy: LandingPageCopy
-  registrationFormCopy: RegistrationFormCopy
-  emailSequence: EmailMessage[]
-  optimizationRecommendations: string[]
+export interface WebinarAssets {
+  title: string
+  hook: string
+  outline: WebinarOutlineSection[]
+  fullScript: string
+  ctaSection: string
+  suggestedCtaTiming: number
 }
 
 export interface FunnelStep {
@@ -109,7 +99,14 @@ export interface EmailMessage {
   ctaUrl: string
 }
 
-// ─── Presenter Assignment ─────────────────────────────────────────────────────
+export interface FunnelAssets {
+  structure: FunnelStep[]
+  landingPageCopy: LandingPageCopy
+  registrationFormCopy: RegistrationFormCopy
+  emailSequence: EmailMessage[]
+  optimizationRecommendations: string[]
+}
+
 export interface PresenterAssignment {
   presenterId: string
   presenterName: string
@@ -118,7 +115,6 @@ export interface PresenterAssignment {
   assignedAt: string
 }
 
-// ─── Automation Config ────────────────────────────────────────────────────────
 export interface AutomationConfig {
   emailSequenceEnabled: boolean
   smsEnabled: boolean
@@ -128,7 +124,6 @@ export interface AutomationConfig {
   replayEnabled: boolean
 }
 
-// ─── Analytics Init ───────────────────────────────────────────────────────────
 export interface AnalyticsInit {
   trackingId: string
   funnelId: string
@@ -141,7 +136,6 @@ export interface AnalyticsInit {
   }
 }
 
-// ─── Launch Summary ───────────────────────────────────────────────────────────
 export interface LaunchSummary {
   id: string
   userId: string
@@ -158,7 +152,8 @@ export interface LaunchSummary {
   nextSteps: string[]
 }
 
-// ─── Insight Cards ────────────────────────────────────────────────────────────
+// ─── Insight types ────────────────────────────────────────────────────────────
+
 export type InsightSeverity = "positive" | "warning" | "critical" | "info"
 
 export interface AnalyticsInsight {
@@ -170,13 +165,52 @@ export interface AnalyticsInsight {
   recommendation: string
   actionLabel?: string
   actionHref?: string
-  // NEW — fix action config
   fixAction?: OptimizationActionType
 }
 
-// ─── Optimization Engine Types (NEW) ─────────────────────────────────────────
+// ─── Funnel metrics ───────────────────────────────────────────────────────────
+// All 8 tracked metrics — pass this object everywhere metrics are needed
+
+export interface FunnelMetrics {
+  registration_rate: number         // % of page visitors who registered
+  attendance_rate: number           // % of registrants who attended
+  watch_time_percent: number        // % of webinar duration watched on average
+  cta_click_rate: number            // % of attendees who clicked CTA
+  sales_conversion_rate: number     // % of attendees who purchased
+  checkout_completion_rate: number  // % of checkout starters who completed
+  follow_up_open_rate: number       // % of follow-up emails opened
+  follow_up_click_rate: number      // % of follow-up emails clicked
+}
+
+// ─── Metric evaluation ────────────────────────────────────────────────────────
+
+export type MetricStatus = "healthy" | "warning" | "critical"
+
+export type MetricKey = keyof FunnelMetrics
+
+export interface MetricEvaluation {
+  metric: MetricKey
+  value: number
+  status: MetricStatus
+  threshold: {
+    healthy: number
+    warning: number
+  }
+  delta: number  // how far from healthy threshold (negative = below)
+}
+
+// ─── Optimization action types ────────────────────────────────────────────────
 
 export type OptimizationActionType =
+  | "rewrite_landing_page"
+  | "reduce_form_friction"
+  | "rewrite_reminder_sequence"
+  | "improve_webinar_hook"
+  | "rewrite_cta_section"
+  | "optimize_offer_stack"
+  | "improve_checkout_flow"
+  | "rewrite_follow_up_sequence"
+  // legacy aliases kept for backward compatibility with existing UI
   | "fix_cta"
   | "fix_landing_page"
   | "fix_offer"
@@ -184,13 +218,42 @@ export type OptimizationActionType =
   | "fix_webinar_hook"
   | "increase_conversions"
 
-export type OptimizationStatus =
-  | "idle"
-  | "running"
-  | "applied"
-  | "failed"
+// ─── Optimization recommendation ─────────────────────────────────────────────
+
+export type RecommendationSeverity = "critical" | "warning"
+
+export interface OptimizationRecommendation {
+  id: string
+  type: OptimizationActionType
+  title: string
+  reason: string
+  severity: RecommendationSeverity
+  impactedMetric: MetricKey
+  recommendedAction: string
+  autoApplicable: boolean    // safe to apply without confirmation
+  requiresPro: boolean       // gated behind Pro plan
+  priority: number           // lower = higher priority (1 = most urgent)
+}
+
+// ─── Funnel optimization report ───────────────────────────────────────────────
+
+export type ReportStatus = "healthy" | "needs_attention" | "critical"
+
+export interface FunnelOptimizationReport {
+  funnelId: string
+  evaluatedAt: string
+  status: ReportStatus
+  evaluations: MetricEvaluation[]
+  recommendations: OptimizationRecommendation[]
+  topPriorityRecommendation: OptimizationRecommendation | null
+}
+
+// ─── Optimization result (execution output) ───────────────────────────────────
+
+export type OptimizationStatus = "idle" | "running" | "applied" | "failed" | "reverted"
 
 export interface OptimizationResult {
+  id: string
   actionType: OptimizationActionType
   funnelId: string
   status: OptimizationStatus
@@ -198,8 +261,14 @@ export interface OptimizationResult {
   before: Record<string, string>
   after: Record<string, string>
   summary: string
+  autoApplicable: boolean
   error?: string
+  // version tracking
+  version: number
+  revertableUntil: string | null  // ISO timestamp — null if not revertable
 }
+
+// ─── Action definition (UI metadata) ─────────────────────────────────────────
 
 export interface OptimizationAction {
   id: string
@@ -207,22 +276,46 @@ export interface OptimizationAction {
   label: string
   description: string
   proOnly: boolean
-  insightIds: string[]  // which insight IDs trigger this action
+  insightIds: string[]
+  autoApplicable: boolean
+  confirmationRequired: boolean
 }
+
+// ─── Cooldown tracking ────────────────────────────────────────────────────────
+
+export interface CooldownRecord {
+  actionType: OptimizationActionType
+  funnelId: string
+  lastAppliedAt: string    // ISO timestamp
+  cooldownHours: number    // default 72
+  nextAllowedAt: string    // ISO timestamp
+}
+
+// ─── Auto optimize config ─────────────────────────────────────────────────────
 
 export interface AutoOptimizeConfig {
   enabled: boolean
   userId: string
   funnelId: string
   thresholds: {
-    minRegistrationRate: number   // default 30
-    minShowUpRate: number         // default 25
-    minCtaClickRate: number       // default 12
-    minConversionRate: number     // default 5
+    minRegistrationRate: number
+    minShowUpRate: number       // kept for legacy compat
+    minCtaClickRate: number
+    minConversionRate: number
+    // new full set
+    minAttendanceRate: number
+    minWatchTimePercent: number
+    minCheckoutCompletionRate: number
+    minFollowUpOpenRate: number
+    minFollowUpClickRate: number
   }
+  maxConcurrentOptimizations: number  // default 3
   lastRunAt: string | null
   actionsApplied: OptimizationResult[]
+  cooldowns: CooldownRecord[]
 }
+
+// ─── Auto run ─────────────────────────────────────────────────────────────────
 
 export interface AutoRunResult {
   success: boolean
@@ -233,6 +326,7 @@ export interface AutoRunResult {
 }
 
 // ─── Plan gating ──────────────────────────────────────────────────────────────
+
 export type UserPlan = "starter" | "pro" | "enterprise"
 
 export interface PlanFeatureGate {
@@ -240,4 +334,19 @@ export interface PlanFeatureGate {
   requiredPlan: UserPlan
   upgradeMessage: string
   upgradeHref: string
+}
+
+// ─── Optimization history entry ───────────────────────────────────────────────
+
+export interface OptimizationHistoryEntry {
+  id: string
+  funnelId: string
+  userId: string
+  actionType: OptimizationActionType
+  status: OptimizationStatus
+  appliedAt: string
+  summary: string
+  version: number
+  reverted: boolean
+  revertedAt: string | null
 }
