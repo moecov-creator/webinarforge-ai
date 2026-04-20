@@ -1,20 +1,21 @@
 // app/api/optimize/route.ts
-// POST /api/optimize        — execute a single Fix This For Me action
-// POST /api/optimize/auto   — run the full Auto Optimize pass
-// GET  /api/optimize?funnelId=xxx — fetch optimization history for a funnel
+// POST /api/optimize          — single fix action or auto-optimize pass
+// GET  /api/optimize?funnelId — fetch report + history for a funnel
 
 import { auth } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import {
   executeOptimization,
   runAutoOptimize,
+  buildOptimizationReport,
   defaultAutoOptimizeConfig,
   isActionAllowed,
+  getUpgradePrompt,
 } from "@/lib/orchestrator/optimizationEngine"
-import type { OptimizationActionType, AutoOptimizeConfig } from "@/lib/orchestrator/types"
+import { normalizeFunnelMetrics } from "@/lib/orchestrator/utils"
+import type { OptimizationActionType, FunnelMetrics } from "@/lib/orchestrator/types"
 
 // ─── POST /api/optimize ───────────────────────────────────────────────────────
-// Execute a single optimization action ("Fix This For Me")
 export async function POST(req: Request) {
   try {
     const { userId } = await auth()
@@ -23,47 +24,82 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { actionType, funnelId, mode } = body
+    const { mode, actionType, funnelId, metrics: rawMetrics } = body
 
-    // ── Auto optimize mode ────────────────────────────────────────────────
-    if (mode === "auto") {
-      const { metrics } = body
-      if (!metrics || !funnelId) {
-        return NextResponse.json({ error: "Missing metrics or funnelId" }, { status: 400 })
-      }
-
-      // TODO: Load user's AutoOptimizeConfig from DB
-      // const config = await db.autoOptimizeConfig.findFirst({ where: { userId, funnelId } })
-      const config = defaultAutoOptimizeConfig(userId, funnelId)
-
-      const results = await runAutoOptimize(config, metrics)
-
-      // TODO: Save results to DB
-      // await db.optimizationLog.createMany({ data: results.map(r => ({ ...r, userId })) })
-
-      return NextResponse.json({ results, count: results.length })
-    }
-
-    // ── Single action mode ────────────────────────────────────────────────
-    if (!actionType || !funnelId) {
-      return NextResponse.json({ error: "Missing actionType or funnelId" }, { status: 400 })
+    if (!funnelId) {
+      return NextResponse.json({ error: "Missing funnelId" }, { status: 400 })
     }
 
     // TODO: Get real user plan from DB
-    // const user = await db.user.findUnique({ where: { clerkId: userId } })
-    const userPlan = "pro" as const // stub — replace with real plan check
+    // const user = await db.user.findFirst({ where: { clerkId: userId } })
+    const userPlan = "pro" as const
+
+    // ── Mode: report — evaluate metrics and return typed report ──────────
+    if (mode === "report") {
+      if (!rawMetrics) {
+        return NextResponse.json({ error: "Missing metrics for report mode" }, { status: 400 })
+      }
+      const metrics: FunnelMetrics = normalizeFunnelMetrics(rawMetrics)
+      const report = buildOptimizationReport(funnelId, metrics)
+      return NextResponse.json(report)
+    }
+
+    // ── Mode: auto — run full auto-optimize pass ──────────────────────────
+    if (mode === "auto") {
+      if (!rawMetrics) {
+        return NextResponse.json({ error: "Missing metrics for auto mode" }, { status: 400 })
+      }
+
+      if (userPlan === "starter") {
+        return NextResponse.json(
+          { error: "upgrade_required", plan: "pro", message: "Auto Optimize requires a Pro plan" },
+          { status: 403 }
+        )
+      }
+
+      const metrics: FunnelMetrics = normalizeFunnelMetrics(rawMetrics)
+
+      // TODO: Load real config from DB
+      // const config = await db.autoOptimizeConfig.findFirst({ where: { userId, funnelId } })
+      const config = defaultAutoOptimizeConfig(userId, funnelId)
+
+      const { report, results } = await runAutoOptimize(config, metrics)
+
+      // TODO: Persist results to DB
+      // await db.optimizationLog.createMany({ data: results.map(r => ({ ...r, userId })) })
+      // await db.autoOptimizeConfig.update({ where: { userId, funnelId }, data: { lastRunAt: new Date() } })
+
+      return NextResponse.json({
+        report,
+        results,
+        count: results.length,
+        summary: `${results.length} optimization${results.length !== 1 ? "s" : ""} applied automatically`,
+      })
+    }
+
+    // ── Mode: single action (default) ─────────────────────────────────────
+    if (!actionType) {
+      return NextResponse.json({ error: "Missing actionType" }, { status: 400 })
+    }
 
     if (!isActionAllowed(actionType as OptimizationActionType, userPlan)) {
       return NextResponse.json(
-        { error: "upgrade_required", plan: "pro", message: "This feature requires a Pro plan" },
+        {
+          error: "upgrade_required",
+          plan: "pro",
+          message: getUpgradePrompt(actionType as OptimizationActionType),
+        },
         { status: 403 }
       )
     }
 
-    const result = await executeOptimization(actionType as OptimizationActionType, funnelId)
+    // TODO: Load cooldown config from DB
+    const config = defaultAutoOptimizeConfig(userId, funnelId)
+    const result = await executeOptimization(actionType as OptimizationActionType, funnelId, config)
 
-    // TODO: Persist result to DB
+    // TODO: Persist result + update cooldown in DB
     // await db.optimizationLog.create({ data: { ...result, userId } })
+    // await db.cooldownRecord.upsert({ ... })
 
     return NextResponse.json(result)
 
@@ -74,7 +110,6 @@ export async function POST(req: Request) {
 }
 
 // ─── GET /api/optimize?funnelId=xxx ──────────────────────────────────────────
-// Fetch optimization history for a funnel
 export async function GET(req: Request) {
   try {
     const { userId } = await auth()
@@ -92,12 +127,18 @@ export async function GET(req: Request) {
     // TODO: Fetch from DB
     // const history = await db.optimizationLog.findMany({
     //   where: { funnelId, userId },
-    //   orderBy: { appliedAt: "desc" }
+    //   orderBy: { appliedAt: "desc" },
+    //   take: 50,
     // })
+    // const config = await db.autoOptimizeConfig.findFirst({ where: { userId, funnelId } })
 
-    return NextResponse.json({ history: [], funnelId })
+    return NextResponse.json({
+      history: [],
+      config: defaultAutoOptimizeConfig(userId, funnelId),
+      funnelId,
+    })
   } catch (error) {
     console.error("Optimization fetch error:", error)
-    return NextResponse.json({ error: "Failed to fetch history" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch optimization data" }, { status: 500 })
   }
 }
