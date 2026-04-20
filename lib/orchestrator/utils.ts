@@ -3,7 +3,6 @@
 import { nanoid } from "nanoid"
 import type { AnalyticsInsight, InsightSeverity } from "./types"
 
-// ─── ID and timestamp helpers ─────────────────────────────────────────────────
 export function generateLaunchId(): string {
   return `launch_${nanoid(10)}`
 }
@@ -13,17 +12,16 @@ export function getCurrentTimestamp(): string {
 }
 
 // ─── Analytics insight engine ─────────────────────────────────────────────────
-// Rules-based interpretation layer — compatible with future AI-generated insights.
-// To upgrade to AI: replace the rules below with an AI API call.
-// The return type and interface stay identical — no UI changes needed.
+// Each insight now carries a fixAction field that maps to an OptimizationActionType.
+// The InsightCard component reads fixAction to render the correct "Fix This For Me" button.
 
 export interface WebinarMetrics {
-  registrationRate: number   // % of page visitors who registered
-  showUpRate: number         // % of registrants who attended
-  ctaClickRate: number       // % of attendees who clicked CTA
-  conversionRate: number     // % of attendees who purchased
-  avgWatchTime: number       // minutes
-  dropOffPoint: number       // minute where most people leave
+  registrationRate: number
+  showUpRate: number
+  ctaClickRate: number
+  conversionRate: number
+  avgWatchTime: number
+  dropOffPoint: number
   emailOpenRate?: number
   replayWatchRate?: number
 }
@@ -51,6 +49,7 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       recommendation: "Test a stronger headline, reduce form fields to 2, and add social proof near the CTA.",
       actionLabel: "Edit Landing Page",
       actionHref: "/dashboard/funnels/editor",
+      fixAction: "fix_landing_page",
     })
   } else {
     insights.push({
@@ -62,6 +61,7 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       recommendation: "Landing page may have a weak hook or mismatched audience. Rewrite headline and test a new traffic source.",
       actionLabel: "Regenerate Landing Page",
       actionHref: "/dashboard/funnels/generator",
+      fixAction: "fix_landing_page",
     })
   }
 
@@ -85,6 +85,7 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       recommendation: "Add a 1-hour SMS reminder, increase email frequency, and improve the confirmation page.",
       actionLabel: "Upgrade Automation",
       actionHref: "/dashboard/automation",
+      fixAction: "fix_email_sequence",
     })
   }
 
@@ -99,6 +100,7 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       recommendation: "Strengthen the offer transition. Add more urgency and stack value before revealing the price.",
       actionLabel: "Edit Webinar Script",
       actionHref: "/dashboard/webinars",
+      fixAction: "fix_cta",
     })
   } else if (metrics.ctaClickRate >= 20) {
     insights.push({
@@ -122,6 +124,7 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       recommendation: "Add a deadline, bonus stack, or payment plan. Test a lower entry price or tripwire offer.",
       actionLabel: "Improve Offer",
       actionHref: "/dashboard/funnels",
+      fixAction: "increase_conversions",
     })
   } else if (metrics.conversionRate >= 10) {
     insights.push({
@@ -145,6 +148,7 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       recommendation: "Rewrite the first 10 minutes. Your hook or story may not be holding attention.",
       actionLabel: "Edit Script",
       actionHref: "/dashboard/webinars",
+      fixAction: "fix_webinar_hook",
     })
   } else if (metrics.dropOffPoint > 0 && metrics.dropOffPoint < 40) {
     insights.push({
@@ -154,6 +158,7 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       title: `Drop-off spike at minute ${metrics.dropOffPoint}`,
       description: `Significant drop-off at minute ${metrics.dropOffPoint}, before the offer is made.`,
       recommendation: "Add a pattern interrupt, case study, or re-engagement hook at this point.",
+      fixAction: "fix_webinar_hook",
     })
   }
 
@@ -168,6 +173,7 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       recommendation: "Test new subject lines with curiosity or urgency hooks. Check sender reputation.",
       actionLabel: "Edit Email Sequence",
       actionHref: "/dashboard/automation",
+      fixAction: "fix_email_sequence",
     })
   }
 
@@ -183,7 +189,6 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
     })
   }
 
-  // Sort: critical first, then warning, then positive, then info
   const order: Record<InsightSeverity, number> = { critical: 0, warning: 1, positive: 2, info: 3 }
   return insights.sort((a, b) => order[a.severity] - order[b.severity])
 }
