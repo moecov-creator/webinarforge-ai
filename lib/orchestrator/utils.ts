@@ -1,6 +1,9 @@
 // lib/orchestrator/utils.ts
-import { nanoid } from "nanoid"
 
+import { nanoid } from "nanoid"
+import type { AnalyticsInsight, InsightSeverity } from "./types"
+
+// ─── ID and timestamp helpers ─────────────────────────────────────────────────
 export function generateLaunchId(): string {
   return `launch_${nanoid(10)}`
 }
@@ -9,30 +12,18 @@ export function getCurrentTimestamp(): string {
   return new Date().toISOString()
 }
 
-// ─── Re-export services so orchestrator can import from one place ─────────────
-export {
-  generateWebinarAssets,
-  generateFunnelAssets,
-  assignPresenter,
-  configureAutomation,
-  initAnalytics,
-} from "./services/index"
-
-
-// lib/analytics/insightEngine.ts
-// Rules-based analytics interpretation layer
-// Architecture is compatible with future AI-generated insights
-// Replace the rules with AI calls when ready — same interface
-
-import type { AnalyticsInsight } from "./types"
+// ─── Analytics insight engine ─────────────────────────────────────────────────
+// Rules-based interpretation layer — compatible with future AI-generated insights.
+// To upgrade to AI: replace the rules below with an AI API call.
+// The return type and interface stay identical — no UI changes needed.
 
 export interface WebinarMetrics {
-  registrationRate: number      // % of page visitors who registered
-  showUpRate: number            // % of registrants who attended
-  ctaClickRate: number          // % of attendees who clicked CTA
-  conversionRate: number        // % of attendees who purchased
-  avgWatchTime: number          // minutes
-  dropOffPoint: number          // minute where most people leave
+  registrationRate: number   // % of page visitors who registered
+  showUpRate: number         // % of registrants who attended
+  ctaClickRate: number       // % of attendees who clicked CTA
+  conversionRate: number     // % of attendees who purchased
+  avgWatchTime: number       // minutes
+  dropOffPoint: number       // minute where most people leave
   emailOpenRate?: number
   replayWatchRate?: number
 }
@@ -40,7 +31,7 @@ export interface WebinarMetrics {
 export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
   const insights: AnalyticsInsight[] = []
 
-  // ── Registration rate ────────────────────────────────────────────────────
+  // ── Registration rate ─────────────────────────────────────────────────────
   if (metrics.registrationRate >= 40) {
     insights.push({
       id: "reg-strong",
@@ -48,7 +39,7 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       metric: "registration_rate",
       title: "Registration rate is strong",
       description: `${metrics.registrationRate}% of visitors are registering — above the 40% benchmark.`,
-      recommendation: "Maintain current landing page copy. Consider A/B testing headline for further gains.",
+      recommendation: "Maintain current landing page copy. Consider A/B testing the headline for further gains.",
     })
   } else if (metrics.registrationRate >= 25) {
     insights.push({
@@ -74,14 +65,14 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
     })
   }
 
-  // ── Show-up rate ─────────────────────────────────────────────────────────
+  // ── Show-up rate ──────────────────────────────────────────────────────────
   if (metrics.showUpRate >= 40) {
     insights.push({
       id: "showup-strong",
       severity: "positive",
       metric: "show_up_rate",
       title: "Show-up rate is healthy",
-      description: `${metrics.showUpRate}% of registrants are attending — well above the 35% benchmark.`,
+      description: `${metrics.showUpRate}% of registrants are attending — above the 35% benchmark.`,
       recommendation: "Your reminder sequence is working. Keep the current email + reminder cadence.",
     })
   } else if (metrics.showUpRate < 25) {
@@ -91,21 +82,21 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       metric: "show_up_rate",
       title: "Low show-up rate — follow-up automation may help",
       description: `Only ${metrics.showUpRate}% of registrants are attending. Industry benchmark is 35%.`,
-      recommendation: "Add a 1-hour SMS reminder, increase email frequency before the webinar, and improve the confirmation page excitement.",
+      recommendation: "Add a 1-hour SMS reminder, increase email frequency, and improve the confirmation page.",
       actionLabel: "Upgrade Automation",
       actionHref: "/dashboard/automation",
     })
   }
 
-  // ── CTA click rate ───────────────────────────────────────────────────────
+  // ── CTA click rate ────────────────────────────────────────────────────────
   if (metrics.ctaClickRate < 15) {
     insights.push({
       id: "cta-weak",
       severity: "critical",
       metric: "cta_click_rate",
       title: "CTA clicks are underperforming",
-      description: `${metrics.ctaClickRate}% CTA click rate is below the 15% target. The offer may not be landing.`,
-      recommendation: "Strengthen the offer transition. Add more urgency and stack the value more clearly before revealing the price.",
+      description: `${metrics.ctaClickRate}% CTA click rate is below the 15% target.`,
+      recommendation: "Strengthen the offer transition. Add more urgency and stack value before revealing the price.",
       actionLabel: "Edit Webinar Script",
       actionHref: "/dashboard/webinars",
     })
@@ -120,7 +111,7 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
     })
   }
 
-  // ── Conversion rate ──────────────────────────────────────────────────────
+  // ── Conversion rate ───────────────────────────────────────────────────────
   if (metrics.conversionRate < 3) {
     insights.push({
       id: "conv-critical",
@@ -138,20 +129,20 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       severity: "positive",
       metric: "conversion_rate",
       title: "Excellent conversion rate",
-      description: `${metrics.conversionRate}% conversion rate is well above the 10% benchmark. This funnel is performing.`,
-      recommendation: "Scale traffic immediately. This funnel is converting — put more eyeballs on it.",
+      description: `${metrics.conversionRate}% conversion rate is above the 10% benchmark. This funnel is performing.`,
+      recommendation: "Scale traffic immediately — this funnel is converting.",
     })
   }
 
-  // ── Watch time / drop-off ────────────────────────────────────────────────
+  // ── Watch time / drop-off ─────────────────────────────────────────────────
   if (metrics.avgWatchTime < 20) {
     insights.push({
       id: "dropoff-early",
       severity: "critical",
       metric: "avg_watch_time",
       title: "Early drop-off may indicate a weak hook or transition",
-      description: `Average watch time is ${metrics.avgWatchTime} minutes. Most people are leaving before the offer.`,
-      recommendation: "Rewrite the first 10 minutes. Your hook, story, or content transition may not be holding attention.",
+      description: `Average watch time is ${metrics.avgWatchTime} minutes. Most people leave before the offer.`,
+      recommendation: "Rewrite the first 10 minutes. Your hook or story may not be holding attention.",
       actionLabel: "Edit Script",
       actionHref: "/dashboard/webinars",
     })
@@ -161,26 +152,26 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
       severity: "warning",
       metric: "drop_off_point",
       title: `Drop-off spike at minute ${metrics.dropOffPoint}`,
-      description: `There is a significant drop-off at minute ${metrics.dropOffPoint}, before the offer is made.`,
-      recommendation: "Review the content at this timestamp. Add a pattern interrupt, case study, or re-engagement hook at this point.",
+      description: `Significant drop-off at minute ${metrics.dropOffPoint}, before the offer is made.`,
+      recommendation: "Add a pattern interrupt, case study, or re-engagement hook at this point.",
     })
   }
 
-  // ── Email performance ────────────────────────────────────────────────────
+  // ── Email performance ─────────────────────────────────────────────────────
   if (metrics.emailOpenRate && metrics.emailOpenRate < 20) {
     insights.push({
       id: "email-weak",
       severity: "warning",
       metric: "email_open_rate",
       title: "Email open rate is low",
-      description: `${metrics.emailOpenRate}% open rate is below the 25% benchmark for follow-up sequences.`,
-      recommendation: "Test new subject lines. Use curiosity or urgency hooks. Check sender reputation.",
+      description: `${metrics.emailOpenRate}% open rate is below the 25% benchmark.`,
+      recommendation: "Test new subject lines with curiosity or urgency hooks. Check sender reputation.",
       actionLabel: "Edit Email Sequence",
       actionHref: "/dashboard/automation",
     })
   }
 
-  // ── Replay engagement ────────────────────────────────────────────────────
+  // ── Replay engagement ─────────────────────────────────────────────────────
   if (metrics.replayWatchRate !== undefined && metrics.replayWatchRate > 30) {
     insights.push({
       id: "replay-strong",
@@ -193,14 +184,16 @@ export function generateInsights(metrics: WebinarMetrics): AnalyticsInsight[] {
   }
 
   // Sort: critical first, then warning, then positive, then info
-  const order: Record<string, number> = { critical: 0, warning: 1, positive: 2, info: 3 }
+  const order: Record<InsightSeverity, number> = { critical: 0, warning: 1, positive: 2, info: 3 }
   return insights.sort((a, b) => order[a.severity] - order[b.severity])
 }
 
-// Benchmark helper used by dashboard
-export function getOverallHealth(metrics: WebinarMetrics): "excellent" | "good" | "needs_work" | "critical" {
-  const criticals = generateInsights(metrics).filter(i => i.severity === "critical").length
-  const positives = generateInsights(metrics).filter(i => i.severity === "positive").length
+export function getOverallHealth(
+  metrics: WebinarMetrics
+): "excellent" | "good" | "needs_work" | "critical" {
+  const insights = generateInsights(metrics)
+  const criticals = insights.filter((i) => i.severity === "critical").length
+  const positives = insights.filter((i) => i.severity === "positive").length
   if (criticals >= 2) return "critical"
   if (criticals === 1) return "needs_work"
   if (positives >= 3) return "excellent"
