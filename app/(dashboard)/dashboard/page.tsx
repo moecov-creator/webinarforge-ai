@@ -5,7 +5,6 @@ import Link from "next/link"
 import GetFirstSale from "@/components/GetFirstSale"
 import { InsightPanel, HealthBadge } from "@/components/InsightCards"
 import { generateInsights, getOverallHealth } from "@/lib/orchestrator/utils"
-import type { AnalyticsInsight } from "@/lib/orchestrator/types"
 
 // ─── Mock data — replace with real API calls ──────────────────────────────────
 const MOCK_STATS = {
@@ -23,7 +22,6 @@ const MOCK_WEBINARS = [
   { id: "3", name: "SaaS Demo-to-Trial Converter", status: "draft", registrations: 0, clicks: 0 },
 ]
 
-// Generate insights from mock metrics
 const MOCK_METRICS = {
   registrationRate: 38,
   showUpRate: 29,
@@ -33,6 +31,10 @@ const MOCK_METRICS = {
   dropOffPoint: 0,
   emailOpenRate: 28,
 }
+
+// TODO: Replace with real user plan from Clerk/DB
+const USER_PLAN = "pro" as "starter" | "pro" | "enterprise"
+const ACTIVE_FUNNEL_ID = "funnel_demo_001"
 
 const QUICK_ACTIONS = [
   { icon: "🚀", label: "Launch My Webinar Funnel", desc: "Full AI-powered launch in minutes", href: "/dashboard/launch", accent: "border-amber-500/40 hover:border-amber-500 bg-amber-500/5" },
@@ -51,7 +53,6 @@ const STATUS_STYLES: Record<string, string> = {
   paused: "bg-amber-500/15 text-amber-400 border-amber-500/30",
 }
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, delta, color, icon }: {
   label: string; value: string | number; delta?: string; color: string; icon: string;
 }) {
@@ -67,14 +68,13 @@ function StatCard({ label, value, delta, color, icon }: {
   )
 }
 
-// ─── Main dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const insights = generateInsights(MOCK_METRICS)
   const health = getOverallHealth(MOCK_METRICS)
 
   // TODO: Replace with real user data
   const isNewUser = false
-  const completedOnboardingSteps: string[] = ["offer"] // simulate 1 step done
+  const completedOnboardingSteps: string[] = ["offer"]
 
   return (
     <main className="min-h-screen bg-[#080812] text-white">
@@ -83,12 +83,8 @@ export default function DashboardPage() {
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">
-              Welcome back 👋
-            </h1>
-            <p className="text-gray-500 text-sm">
-              Manage your webinars, funnels, and automations from one place.
-            </p>
+            <h1 className="text-3xl font-bold text-white mb-1">Welcome back 👋</h1>
+            <p className="text-gray-500 text-sm">Manage your webinars, funnels, and automations from one place.</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <Link href="/dashboard/funnels/generator">
@@ -109,9 +105,17 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Get First Sale (new users / incomplete onboarding) ──────────── */}
+        {/* ── Get First Sale ──────────────────────────────────────────────── */}
         {(isNewUser || completedOnboardingSteps.length < 6) && (
-          <GetFirstSale completedSteps={completedOnboardingSteps} />
+          <GetFirstSale
+            completedSteps={completedOnboardingSteps}
+            userPlan={USER_PLAN}
+            launchContext={{
+              offerDescription: "High-ticket coaching program",
+              targetAudience: "coaches and consultants",
+              webinarGoal: "book_calls",
+            }}
+          />
         )}
 
         {/* ── Stats ──────────────────────────────────────────────────────── */}
@@ -122,7 +126,7 @@ export default function DashboardPage() {
           <StatCard label="Conversion Rate" value={`${MOCK_STATS.conversionRate}%`} delta="Healthy performance" color="text-purple-400" icon="💰" />
         </div>
 
-        {/* ── Quick Actions grid ──────────────────────────────────────────── */}
+        {/* ── Quick Actions ───────────────────────────────────────────────── */}
         <div>
           <h2 className="text-base font-semibold text-white mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -130,9 +134,7 @@ export default function DashboardPage() {
               <Link key={a.label} href={a.href}>
                 <div className={`border rounded-2xl p-4 cursor-pointer transition-all group ${a.accent}`}>
                   <div className="text-xl mb-2">{a.icon}</div>
-                  <div className="text-sm font-semibold text-white group-hover:text-white leading-tight mb-0.5">
-                    {a.label}
-                  </div>
+                  <div className="text-sm font-semibold text-white group-hover:text-white leading-tight mb-0.5">{a.label}</div>
                   <div className="text-[11px] text-gray-500 leading-tight">{a.desc}</div>
                 </div>
               </Link>
@@ -140,7 +142,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Main content: webinars + insights + quick links ─────────────── */}
+        {/* ── Main content ────────────────────────────────────────────────── */}
         <div className="grid md:grid-cols-[1fr_340px] gap-6">
 
           {/* Recent webinars */}
@@ -154,15 +156,12 @@ export default function DashboardPage() {
                 View all →
               </Link>
             </div>
-
-            {/* Table header */}
             <div className="grid grid-cols-12 gap-3 px-5 py-3 border-b border-white/5 text-[10px] text-gray-600 font-semibold uppercase tracking-wider">
               <div className="col-span-5">Webinar</div>
               <div className="col-span-2">Status</div>
               <div className="col-span-3 text-right">Registrations</div>
               <div className="col-span-2 text-right">CTA Clicks</div>
             </div>
-
             {MOCK_WEBINARS.map((w) => (
               <Link key={w.id} href={`/dashboard/webinars/${w.id}`}>
                 <div className="grid grid-cols-12 gap-3 px-5 py-4 border-b border-white/5 hover:bg-white/3 transition-colors items-center cursor-pointer last:border-0">
@@ -177,24 +176,10 @@ export default function DashboardPage() {
                 </div>
               </Link>
             ))}
-
-            {/* Empty prompt if no live webinars */}
-            {MOCK_WEBINARS.every(w => w.status !== "live") && (
-              <div className="px-5 py-6 text-center">
-                <p className="text-sm text-gray-500 mb-3">No live webinars yet.</p>
-                <Link href="/dashboard/launch">
-                  <button className="text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-lg transition">
-                    Get My First Webinar Live →
-                  </button>
-                </Link>
-              </div>
-            )}
           </div>
 
           {/* Quick links + upgrade */}
           <div className="space-y-4">
-
-            {/* Quick actions panel */}
             <div className="bg-[#0d0d1a] border border-white/8 rounded-2xl p-5">
               <h3 className="font-semibold text-sm mb-4">Quick Actions</h3>
               <div className="space-y-2">
@@ -207,7 +192,9 @@ export default function DashboardPage() {
                   { icon: "📝", label: "Form Builder", href: "/dashboard/forms" },
                 ].map((a) => (
                   <Link key={a.label} href={a.href}>
-                    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${a.highlight ? "bg-purple-600/15 border border-purple-500/30 hover:bg-purple-600/25" : "hover:bg-white/5"}`}>
+                    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                      a.highlight ? "bg-purple-600/15 border border-purple-500/30 hover:bg-purple-600/25" : "hover:bg-white/5"
+                    }`}>
                       <span className="text-sm">{a.icon}</span>
                       <span className={`text-sm ${a.highlight ? "text-purple-300 font-medium" : "text-gray-300"}`}>{a.label}</span>
                     </div>
@@ -216,32 +203,32 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Upgrade card */}
-            <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/20 border border-purple-500/25 rounded-2xl p-5">
-              <div className="text-sm font-bold text-white mb-1">Scale With Pro</div>
-              <p className="text-xs text-gray-400 leading-relaxed mb-4">
-                More funnels, advanced automation, higher conversion support, and priority AI tools. Built for scaling.
-              </p>
-              <div className="space-y-1.5 mb-4">
-                {["Unlimited funnels", "Advanced multi-channel automation", "Priority AI generation", "Conversion optimization tools"].map((f) => (
-                  <div key={f} className="flex items-center gap-2 text-xs text-gray-300">
-                    <span className="text-purple-400 flex-shrink-0">✔</span>{f}
-                  </div>
-                ))}
+            {/* Upgrade card — shown to starter users */}
+            {USER_PLAN === "starter" && (
+              <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/20 border border-purple-500/25 rounded-2xl p-5">
+                <div className="text-sm font-bold text-white mb-1">Unlock Auto-Fix & Auto-Optimize</div>
+                <p className="text-xs text-gray-400 leading-relaxed mb-4">
+                  Pro users can fix CTA issues, optimize landing pages, and run their entire launch automatically — with one click.
+                </p>
+                <div className="space-y-1.5 mb-4">
+                  {["⚡ Fix This For Me buttons", "🔄 Auto Optimize mode", "🚀 Run All Steps Automatically", "📊 Advanced analytics insights"].map((f) => (
+                    <div key={f} className="text-xs text-gray-300">{f}</div>
+                  ))}
+                </div>
+                <Link href="/dashboard/billing">
+                  <button className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-xl text-sm transition">
+                    Upgrade to Pro — $297/mo →
+                  </button>
+                </Link>
               </div>
-              <Link href="/dashboard/billing">
-                <button className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-xl text-sm transition">
-                  Upgrade to Pro — $297/mo →
-                </button>
-              </Link>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* ── Funnel Performance + Insights ──────────────────────────────── */}
+        {/* ── Performance + Insights ───────────────────────────────────────── */}
         <div className="grid md:grid-cols-2 gap-6">
 
-          {/* Performance mini-chart */}
+          {/* Performance chart */}
           <div className="bg-[#0d0d1a] border border-white/8 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -252,7 +239,6 @@ export default function DashboardPage() {
                 Full analytics →
               </Link>
             </div>
-            {/* Simplified bar chart */}
             <div className="flex items-end gap-2 h-28">
               {[24, 18, 35, 28, 42, 38, 47].map((v, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
@@ -261,15 +247,13 @@ export default function DashboardPage() {
                     style={{ height: `${(v / 50) * 100}%` }}
                     title={`${v} registrations`}
                   />
-                  <span className="text-[9px] text-gray-600">
-                    {["M","T","W","T","F","S","S"][i]}
-                  </span>
+                  <span className="text-[9px] text-gray-600">{["M","T","W","T","F","S","S"][i]}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Insight cards */}
+          {/* Insight panel — now with Fix This For Me + Auto Optimize */}
           <div className="bg-[#0d0d1a] border border-white/8 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -277,10 +261,15 @@ export default function DashboardPage() {
                   <h3 className="font-semibold text-base">What's Blocking Conversions</h3>
                   <HealthBadge health={health} />
                 </div>
-                <p className="text-xs text-gray-500">AI-interpreted performance insights</p>
+                <p className="text-xs text-gray-500">AI-interpreted insights with one-click fixes</p>
               </div>
             </div>
-            <InsightPanel insights={insights.slice(0, 3)} />
+            <InsightPanel
+              insights={insights.slice(0, 3)}
+              userPlan={USER_PLAN}
+              funnelId={ACTIVE_FUNNEL_ID}
+              metrics={MOCK_METRICS}
+            />
             {insights.length > 3 && (
               <Link href="/dashboard/analytics" className="mt-3 block text-xs text-center text-purple-400 hover:text-purple-300 transition-colors">
                 See all {insights.length} insights →
