@@ -1008,108 +1008,333 @@ export default function ContentCalendarPage() {
               </div>
             )}
 
-            {/* PREVIEW TAB */}
+            {/* PREVIEW TAB — upgraded phone-frame mockups */}
             {activeTab === "preview" && (
-              <div className="p-6">
-                <div className="flex flex-col lg:flex-row gap-6">
-                  <div className="lg:w-56 flex-shrink-0">
-                    <p className="text-sm text-gray-400 font-semibold mb-3">Preview Platform</p>
-                    <div className="space-y-2">
-                      {(newPost.platforms && newPost.platforms.length > 0 ? newPost.platforms : ["instagram", "instagram_reels", "tiktok", "facebook_personal", "linkedin", "twitter"]).map((pid) => {
-                        const platform = PLATFORMS.find((p) => p.id === pid)
-                        const spec = PLATFORM_SPECS[pid]
-                        if (!platform || !spec) return null
-                        return (
-                          <button key={pid} onClick={() => setPreviewPlatform(pid)}
-                            className={`w-full flex items-center gap-3 p-3 rounded-xl border text-sm transition ${previewPlatform === pid ? "border-blue-500 bg-blue-500/10 text-white" : "border-white/10 bg-white/5 text-gray-400 hover:border-white/30"}`}>
-                            <span className="text-lg">{platform.icon}</span>
-                            <div className="text-left">
-                              <p className="text-xs font-semibold">{platform.name}</p>
-                              <p className="text-xs text-gray-500">{spec.ratioLabel}</p>
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
+              <div className="flex h-full min-h-[540px]">
+
+                {/* ── Left: platform selector ── */}
+                <div className="w-48 flex-shrink-0 border-r border-white/10 p-3 overflow-y-auto">
+                  <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider mb-2 px-1">Platform</p>
+                  {(newPost.platforms && newPost.platforms.length > 0
+                    ? newPost.platforms
+                    : ["instagram_reels", "instagram", "tiktok", "facebook_personal", "linkedin", "twitter", "youtube_shorts"]
+                  ).map((pid) => {
+                    const platform = PLATFORMS.find((p) => p.id === pid)
+                    const spec = PLATFORM_SPECS[pid]
+                    if (!platform || !spec) return null
+                    return (
+                      <button key={pid} onClick={() => setPreviewPlatform(pid)}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl border mb-1.5 text-left transition ${
+                          previewPlatform === pid
+                            ? "border-purple-500 bg-purple-500/10"
+                            : "border-white/8 bg-white/3 hover:border-white/20 hover:bg-white/5"
+                        }`}>
+                        <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm flex-shrink-0">{platform.icon}</div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">{platform.name}</p>
+                          <p className="text-[10px] text-gray-500">{spec.ratioLabel}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* ── Right: phone mockup + caption ── */}
+                <div className="flex-1 flex flex-col items-center justify-start gap-4 p-5 bg-[#050508] overflow-y-auto">
+
+                  {/* Platform label + char count */}
+                  <div className="w-full flex items-center justify-between">
+                    <p className="text-sm font-semibold text-white flex items-center gap-2">
+                      <span>{PLATFORMS.find(p => p.id === previewPlatform)?.icon}</span>
+                      <span>{PLATFORMS.find(p => p.id === previewPlatform)?.name}</span>
+                      <span className="text-xs text-gray-500 font-normal">{currentPreviewSpec.ratioLabel}</span>
+                    </p>
+                    <span className={`text-xs font-mono px-2 py-1 rounded-lg ${isOverLimit ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-white/5 text-gray-500"}`}>
+                      {charCount}{maxChars > 0 ? `/${maxChars}` : ""} chars
+                    </span>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-sm font-semibold text-white">
-                        {PLATFORMS.find(p => p.id === previewPlatform)?.icon}{" "}
-                        {PLATFORMS.find(p => p.id === previewPlatform)?.name} Preview
-                        <span className="ml-2 text-xs text-gray-500">{currentPreviewSpec.ratioLabel}</span>
-                      </p>
-                      <span className={`text-xs font-mono px-2 py-1 rounded-lg ${isOverLimit ? "bg-red-500/20 text-red-400" : "bg-white/5 text-gray-400"}`}>
-                        {charCount}{maxChars > 0 ? `/${maxChars}` : ""} chars
-                      </span>
-                    </div>
 
-                    <div className={`relative ${currentPreviewSpec.ratio} w-full max-w-xs mx-auto rounded-2xl overflow-hidden ${currentPreviewSpec.bgColor} border border-white/10`}>
-                      {mediaPreview ? (
-                        <>
-                          {mediaFile?.type.startsWith("video/") ? (
-                            <video src={mediaPreview} controls className="absolute inset-0 w-full h-full object-cover" />
-                          ) : (
-                            <img src={mediaPreview} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
-                          )}
-                          {currentPreviewSpec.captionStyle === "overlay" && previewCaption && (
-                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-                              <p className="text-white text-xs font-semibold leading-relaxed line-clamp-4">{previewCaption}</p>
-                              {newPost.hashtags && newPost.hashtags.length > 0 && (
-                                <p className="text-blue-300 text-xs mt-1 line-clamp-1">{newPost.hashtags.join(" ")}</p>
+                  {/* ── VERTICAL formats: IG Reels, TikTok, YT Shorts ── */}
+                  {(previewPlatform === "instagram_reels" || previewPlatform === "tiktok" || previewPlatform === "youtube_shorts" || previewPlatform === "instagram_stories") && (
+                    <div className="flex flex-col items-center gap-3">
+                      {/* Phone frame */}
+                      <div className="relative" style={{ width: 200 }}>
+                        <div className="bg-[#0a0a0a] rounded-[28px] overflow-hidden border-[3px] border-[#1a1a1a]">
+                          {/* Notch */}
+                          <div className="flex justify-center pt-1 pb-0 bg-[#0a0a0a]">
+                            <div className="w-14 h-4 bg-[#0a0a0a] rounded-full" />
+                          </div>
+                          {/* Screen */}
+                          <div className="relative bg-black overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: 240 }}>
+                            {mediaPreview ? (
+                              mediaFile?.type.startsWith("video/") ? (
+                                <video src={mediaPreview} className="absolute inset-0 w-full h-full object-cover" muted autoPlay loop playsInline />
+                              ) : (
+                                <img src={mediaPreview} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
+                              )
+                            ) : (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#111]">
+                                <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </div>
+                                <p className="text-gray-600 text-[9px] text-center px-4">Upload media to preview</p>
+                              </div>
+                            )}
+
+                            {/* Caption overlay */}
+                            {previewCaption && (
+                              <div className="absolute bottom-0 left-0 right-10 p-2" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.75))" }}>
+                                <p className="text-white text-[8px] leading-snug line-clamp-3">{previewCaption}</p>
+                                {newPost.hashtags && newPost.hashtags.length > 0 && (
+                                  <p className="text-blue-300 text-[7px] mt-0.5 truncate">{newPost.hashtags.slice(0, 4).join(" ")}</p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* TikTok / Reels action sidebar */}
+                            <div className="absolute right-2 bottom-8 flex flex-col gap-3 items-center">
+                              {previewPlatform === "tiktok" && (
+                                <div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-[8px] text-white font-bold mb-1">WF</div>
                               )}
+                              {[
+                                { icon: "♥", count: previewPlatform === "tiktok" ? "12k" : "2.4k" },
+                                { icon: "💬", count: "847" },
+                                { icon: "↗", count: previewPlatform === "tiktok" ? "2.1k" : "Share" },
+                              ].map(({ icon, count }) => (
+                                <div key={icon} className="flex flex-col items-center gap-0.5">
+                                  <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center text-[9px] text-white">{icon}</div>
+                                  <span className="text-white text-[7px]">{count}</span>
+                                </div>
+                              ))}
                             </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                          <span className="text-5xl opacity-30">{PLATFORMS.find(p => p.id === previewPlatform)?.icon}</span>
-                          <p className="text-gray-500 text-xs text-center px-4">Upload media to see preview</p>
-                          <p className="text-gray-600 text-xs">{currentPreviewSpec.ratioLabel}</p>
-                        </div>
-                      )}
-                      {(previewPlatform === "tiktok" || previewPlatform === "instagram_reels" || previewPlatform === "youtube_shorts") && (
-                        <div className="absolute right-3 bottom-20 flex flex-col gap-4 items-center">
-                          {[{ icon: "❤️", count: "12.4K" }, { icon: "💬", count: "847" }, { icon: "↗️", count: "Share" }].map(({ icon, count }) => (
-                            <div key={icon} className="flex flex-col items-center gap-1">
-                              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm">{icon}</div>
-                              <span className="text-white text-xs">{count}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
 
-                    {currentPreviewSpec.captionStyle === "below" && (
-                      <div className="mt-4 max-w-xs mx-auto bg-white/5 border border-white/10 rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-xs font-bold">WF</div>
-                          <div>
-                            <p className="text-white text-xs font-bold">WebinarForge AI</p>
-                            <p className="text-gray-500 text-xs">Just now</p>
+                            {/* TikTok bottom bar */}
+                            {previewPlatform === "tiktok" && (
+                              <div className="absolute bottom-1 left-2 right-10">
+                                <p className="text-white text-[8px] font-semibold">@webinarforgeai</p>
+                                <p className="text-white/60 text-[7px]">♪ Original sound</p>
+                              </div>
+                            )}
+                          </div>
+                          {/* Home bar */}
+                          <div className="flex justify-center py-1.5 bg-[#0a0a0a]">
+                            <div className="w-10 h-1 bg-white/30 rounded-full" />
                           </div>
                         </div>
-                        <p className="text-white text-xs leading-relaxed whitespace-pre-wrap line-clamp-6">
-                          {previewCaption || <span className="text-gray-600">Your caption will appear here...</span>}
-                        </p>
+                      </div>
+
+                      {/* Caption box below phone */}
+                      <div className="w-full max-w-[280px] bg-white/5 border border-white/10 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Caption</p>
+                          <button onClick={() => navigator.clipboard.writeText(fullPreviewText)}
+                            className="text-[10px] text-gray-500 hover:text-white border border-white/10 px-2 py-0.5 rounded-lg transition">Copy</button>
+                        </div>
+                        <textarea
+                          value={previewCaption}
+                          onChange={(e) => {
+                            if (usePlatformCaptions) {
+                              setPlatformCaptions({ ...platformCaptions, [previewPlatform]: e.target.value })
+                            } else {
+                              setNewPost({ ...newPost, content: e.target.value })
+                            }
+                          }}
+                          rows={4}
+                          className="w-full bg-transparent text-white text-xs leading-relaxed resize-none outline-none placeholder:text-gray-600"
+                          placeholder="Your caption will appear here..." />
                         {newPost.hashtags && newPost.hashtags.length > 0 && (
-                          <p className="text-blue-400 text-xs mt-2">{newPost.hashtags.join(" ")}</p>
+                          <p className="text-blue-400 text-[10px] mt-1 leading-relaxed">{newPost.hashtags.join(" ")}</p>
                         )}
                       </div>
-                    )}
-
-                    {isOverLimit && (
-                      <div className="mt-3 max-w-xs mx-auto bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
-                        <p className="text-xs text-red-400">⚠️ {charCount - maxChars} chars over the {PLATFORMS.find(p => p.id === previewPlatform)?.name} limit</p>
-                      </div>
-                    )}
-
-                    <div className="flex gap-3 mt-4 max-w-xs mx-auto">
-                      <button onClick={() => setActiveTab("create")} className="flex-1 border border-white/20 hover:border-purple-500 py-2 rounded-xl text-sm font-semibold transition text-gray-400 hover:text-white">← Edit</button>
-                      <button onClick={handleCreatePost} disabled={!newPost.title || !newPost.content || !newPost.date}
-                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl transition text-sm disabled:opacity-50">Schedule →</button>
                     </div>
+                  )}
+
+                  {/* ── SQUARE format: IG Feed, Threads ── */}
+                  {(previewPlatform === "instagram" || previewPlatform === "threads") && (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-[260px] bg-white/4 border border-white/10 rounded-2xl overflow-hidden">
+                        {/* Profile row */}
+                        <div className="flex items-center gap-2 p-3">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">WF</div>
+                          <div>
+                            <p className="text-white text-xs font-semibold">webinarforgeai</p>
+                            <p className="text-gray-500 text-[9px]">Just now</p>
+                          </div>
+                          <div className="ml-auto text-gray-500 text-sm">···</div>
+                        </div>
+                        {/* Image */}
+                        <div className="aspect-square bg-[#111] overflow-hidden flex items-center justify-center">
+                          {mediaPreview ? (
+                            <img src={mediaPreview} alt="preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </div>
+                              <p className="text-gray-600 text-[9px]">1:1 Square</p>
+                            </div>
+                          )}
+                        </div>
+                        {/* Actions */}
+                        <div className="flex gap-3 px-3 py-2">
+                          {["♥", "💬", "↗"].map(icon => (
+                            <span key={icon} className="text-gray-300 text-sm">{icon}</span>
+                          ))}
+                          <span className="ml-auto text-gray-300 text-sm">🔖</span>
+                        </div>
+                        {/* Caption */}
+                        <div className="px-3 pb-3">
+                          <p className="text-white text-[10px] leading-relaxed line-clamp-4">
+                            <span className="font-semibold">webinarforgeai</span>{" "}
+                            {previewCaption || <span className="text-gray-500">Your caption appears here...</span>}
+                          </p>
+                          {newPost.hashtags && newPost.hashtags.length > 0 && (
+                            <p className="text-blue-400 text-[9px] mt-1 line-clamp-1">{newPost.hashtags.join(" ")}</p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Editable caption */}
+                      <div className="w-full max-w-[280px] bg-white/5 border border-white/10 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Edit caption</p>
+                          <button onClick={() => navigator.clipboard.writeText(fullPreviewText)}
+                            className="text-[10px] text-gray-500 hover:text-white border border-white/10 px-2 py-0.5 rounded-lg transition">Copy</button>
+                        </div>
+                        <textarea
+                          value={previewCaption}
+                          onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                          rows={3}
+                          className="w-full bg-transparent text-white text-xs leading-relaxed resize-none outline-none placeholder:text-gray-600"
+                          placeholder="Your caption will appear here..." />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── CARD formats: Facebook, LinkedIn, Twitter ── */}
+                  {(previewPlatform === "facebook_personal" || previewPlatform === "facebook_page" || previewPlatform === "facebook_group" || previewPlatform === "linkedin" || previewPlatform === "linkedin_page" || previewPlatform === "twitter") && (() => {
+                    const isLinkedIn = previewPlatform.startsWith("linkedin")
+                    const isTwitter = previewPlatform === "twitter"
+                    return (
+                      <div className="flex flex-col items-center gap-3 w-full max-w-[300px]">
+                        <div className="w-full bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                          {/* Header */}
+                          <div className="flex items-center gap-2.5 p-3">
+                            <div className={`w-8 h-8 rounded-${isLinkedIn ? "lg" : "full"} flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 ${isLinkedIn ? "bg-[#0F6E56]" : isTwitter ? "bg-gray-800" : "bg-[#534AB7]"}`}>WF</div>
+                            <div>
+                              <p className="text-white text-xs font-semibold">WebinarForge AI</p>
+                              <p className="text-gray-500 text-[9px]">{isLinkedIn ? "AI Operating System for Webinars · Just now" : isTwitter ? "@webinarforgeai" : "Just now · 🌐"}</p>
+                            </div>
+                            {!isTwitter && <div className="ml-auto text-gray-500 text-sm">···</div>}
+                          </div>
+                          {/* Caption */}
+                          <div className="px-3 pb-2">
+                            <p className="text-white text-xs leading-relaxed line-clamp-4">
+                              {previewCaption || <span className="text-gray-500">Your post text will appear here...</span>}
+                            </p>
+                            {newPost.hashtags && newPost.hashtags.length > 0 && (
+                              <p className="text-blue-400 text-[9px] mt-1">{newPost.hashtags.slice(0, 3).join(" ")}</p>
+                            )}
+                          </div>
+                          {/* Media */}
+                          {mediaPreview ? (
+                            <div className="aspect-video overflow-hidden">
+                              {mediaFile?.type.startsWith("video/") ? (
+                                <video src={mediaPreview} className="w-full h-full object-cover" />
+                              ) : (
+                                <img src={mediaPreview} alt="preview" className="w-full h-full object-cover" />
+                              )}
+                            </div>
+                          ) : (
+                            <div className="aspect-video bg-[#111] flex items-center justify-center">
+                              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </div>
+                            </div>
+                          )}
+                          {/* Actions */}
+                          <div className="flex border-t border-white/8 px-2">
+                            {(isTwitter ? ["♥ Like", "💬 Reply", "↗ Retweet"] : isLinkedIn ? ["👍 Like", "💬 Comment", "↗ Share"] : ["👍 Like", "💬 Comment", "↗ Share"]).map(a => (
+                              <div key={a} className="flex-1 text-center py-2 text-[9px] text-gray-500">{a}</div>
+                            ))}
+                          </div>
+                        </div>
+                        {/* Editable caption */}
+                        <div className="w-full bg-white/5 border border-white/10 rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Edit caption</p>
+                            <button onClick={() => navigator.clipboard.writeText(fullPreviewText)}
+                              className="text-[10px] text-gray-500 hover:text-white border border-white/10 px-2 py-0.5 rounded-lg transition">Copy</button>
+                          </div>
+                          <textarea
+                            value={previewCaption}
+                            onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                            rows={3}
+                            className="w-full bg-transparent text-white text-xs leading-relaxed resize-none outline-none placeholder:text-gray-600"
+                            placeholder="Your caption will appear here..." />
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* ── YouTube 16:9 ── */}
+                  {(previewPlatform === "youtube") && (
+                    <div className="flex flex-col items-center gap-3 w-full max-w-[300px]">
+                      <div className="w-full bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                        <div className="aspect-video bg-[#111] overflow-hidden flex items-center justify-center">
+                          {mediaPreview ? (
+                            mediaFile?.type.startsWith("video/")
+                              ? <video src={mediaPreview} className="w-full h-full object-cover" muted />
+                              : <img src={mediaPreview} alt="preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </div>
+                              <p className="text-gray-600 text-[9px]">16:9 YouTube</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <p className="text-white text-xs font-semibold line-clamp-2 mb-1">{newPost.title || "Your video title"}</p>
+                          <p className="text-gray-500 text-[9px]">WebinarForge AI · Just now · 0 views</p>
+                          <p className="text-white text-[10px] leading-relaxed mt-2 line-clamp-3">{previewCaption || <span className="text-gray-500">Description appears here...</span>}</p>
+                        </div>
+                      </div>
+                      <div className="w-full bg-white/5 border border-white/10 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Edit description</p>
+                          <button onClick={() => navigator.clipboard.writeText(fullPreviewText)}
+                            className="text-[10px] text-gray-500 hover:text-white border border-white/10 px-2 py-0.5 rounded-lg transition">Copy</button>
+                        </div>
+                        <textarea
+                          value={previewCaption}
+                          onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                          rows={4}
+                          className="w-full bg-transparent text-white text-xs leading-relaxed resize-none outline-none placeholder:text-gray-600"
+                          placeholder="YouTube description..." />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Over limit warning */}
+                  {isOverLimit && (
+                    <div className="w-full max-w-[300px] bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
+                      <p className="text-xs text-red-400">⚠️ {charCount - maxChars} chars over the {PLATFORMS.find(p => p.id === previewPlatform)?.name} limit</p>
+                    </div>
+                  )}
+
+                  {/* Footer actions */}
+                  <div className="flex gap-3 w-full max-w-[300px]">
+                    <button onClick={() => setActiveTab("create")}
+                      className="flex-1 border border-white/20 hover:border-purple-500 py-2.5 rounded-xl text-sm font-semibold transition text-gray-400 hover:text-white">
+                      ← Edit
+                    </button>
+                    <button onClick={handleCreatePost} disabled={!newPost.title || !newPost.content || !newPost.date}
+                      className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl transition text-sm disabled:opacity-50">
+                      Schedule →
+                    </button>
                   </div>
+
                 </div>
               </div>
             )}
