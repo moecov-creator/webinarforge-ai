@@ -1058,17 +1058,17 @@ export default function ContentCalendarPage() {
                   {(previewPlatform === "instagram_reels" || previewPlatform === "tiktok" || previewPlatform === "youtube_shorts" || previewPlatform === "instagram_stories") && (
                     <div className="flex flex-col items-center gap-3">
                       {/* Phone frame */}
-                      <div className="relative" style={{ width: 200 }}>
+                      <div className="relative" style={{ width: 240 }}>
                         <div className="bg-[#0a0a0a] rounded-[28px] overflow-hidden border-[3px] border-[#1a1a1a]">
                           {/* Notch */}
                           <div className="flex justify-center pt-1 pb-0 bg-[#0a0a0a]">
                             <div className="w-14 h-4 bg-[#0a0a0a] rounded-full" />
                           </div>
                           {/* Screen */}
-                          <div className="relative bg-black overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: 240 }}>
+                          <div className="relative bg-black overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: 300 }}>
                             {mediaPreview ? (
                               mediaFile?.type.startsWith("video/") ? (
-                                <video src={mediaPreview} className="absolute inset-0 w-full h-full object-cover" muted autoPlay loop playsInline />
+                                <video src={mediaPreview} className="absolute inset-0 w-full h-full object-cover" autoPlay loop playsInline controls style={{ zIndex: 2 }} />
                               ) : (
                                 <img src={mediaPreview} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
                               )
@@ -1283,7 +1283,7 @@ export default function ContentCalendarPage() {
                         <div className="aspect-video bg-[#111] overflow-hidden flex items-center justify-center">
                           {mediaPreview ? (
                             mediaFile?.type.startsWith("video/")
-                              ? <video src={mediaPreview} className="w-full h-full object-cover" muted />
+                              ? <video src={mediaPreview} className="w-full h-full object-cover" controls />
                               : <img src={mediaPreview} alt="preview" className="w-full h-full object-cover" />
                           ) : (
                             <div className="flex flex-col items-center gap-2">
