@@ -387,35 +387,58 @@ export default function ContentCalendarPage() {
     const zernioIds = Object.entries(ZERNIO_PLATFORM_MAP)
       .filter(([, calIds]) => post.platforms.some((p) => calIds.includes(p)))
       .map(([zernioId]) => zernioId)
+
     if (zernioIds.length === 0) {
       setPostError("No connected platforms selected. Connect your accounts in Social Settings first.")
-      setTimeout(() => setPostError(""), 5000)
+      setTimeout(() => setPostError(""), 6000)
       setShowPostModal(null)
       return
     }
+
     setPosting(true)
     setShowPostModal(null)
+
     try {
+      // blob: URLs only exist in the browser — Zernio cannot fetch them from their servers
+      const payload: Record<string, any> = {
+        platforms: zernioIds,
+        content: post.content,
+        hashtags: post.hashtags,
+      }
+      if (post.mediaUrl && !post.mediaUrl.startsWith("blob:")) {
+        payload.mediaUrls = [post.mediaUrl]
+      }
+
       const res = await fetch("/api/social/post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platforms: zernioIds, content: post.content, hashtags: post.hashtags, ...(post.mediaUrl && !post.mediaUrl.startsWith("blob:") ? { mediaUrls: [post.mediaUrl] } : {}) }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
+
       if (data.success) {
         setPosts(posts.map((p) => p.id === post.id ? { ...p, status: "published" } : p))
         setPostSuccess(`✅ Published to ${zernioIds.length} platform${zernioIds.length > 1 ? "s" : ""}!`)
-        setTimeout(() => setPostSuccess(""), 4000)
+        setTimeout(() => setPostSuccess(""), 5000)
+        if (post.mediaUrl?.startsWith("blob:")) {
+          setTimeout(() => {
+            setPostError("⚠️ Post published as text only — local files cannot be sent to social platforms. Host your video/image online and paste the URL instead.")
+            setTimeout(() => setPostError(""), 10000)
+          }, 1500)
+        }
       } else {
         const errMsg = data.error || data.message || "Failed to publish. Check your Zernio connection."
+        console.error("Zernio publish error:", data)
         setPostError("❌ " + errMsg)
-        console.error("Zernio error:", data)
         setTimeout(() => setPostError(""), 8000)
         setPosts(posts.map((p) => p.id === post.id ? { ...p, status: "failed" } : p))
-        setPostError(data.error || "Failed to publish.")
-    } catch (err) { console.error("Publish error:", err); setPostError("❌ Network error — could not reach publishing service."); setTimeout(() => setPostError(""), 6000) }
       }
-    } catch { setPostError("Failed to publish."); setTimeout(() => setPostError(""), 4000) }
+    } catch (err) {
+      console.error("Publish network error:", err)
+      setPostError("❌ Network error — could not reach publishing service. Please try again.")
+      setTimeout(() => setPostError(""), 6000)
+    }
+
     setPosting(false)
   }
 
