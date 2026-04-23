@@ -3,7 +3,25 @@ import { currentUser } from "@clerk/nextjs/server"
 
 const ZERNIO_BASE = "https://api.zernio.com/v1"
 
-// Fetch the first active profile ID from Zernio
+// Maps our internal platform IDs to what Zernio actually accepts
+// Zernio uses: facebook, instagram, linkedin, tiktok, youtube, twitter, pinterest
+const PLATFORM_TO_ZERNIO: Record<string, string> = {
+  facebook_personal:  "facebook",
+  facebook_page:      "facebook",
+  facebook_group:     "facebook",
+  instagram:          "instagram",
+  instagram_reels:    "instagram",
+  instagram_stories:  "instagram",
+  linkedin:           "linkedin",
+  linkedin_page:      "linkedin",
+  tiktok:             "tiktok",
+  youtube:            "youtube",
+  youtube_shorts:     "youtube",
+  twitter:            "twitter",
+  pinterest:          "pinterest",
+  threads:            "threads",
+}
+
 async function getZernioProfileId(): Promise<string | null> {
   try {
     const res = await fetch(`${ZERNIO_BASE}/profiles`, {
@@ -12,14 +30,16 @@ async function getZernioProfileId(): Promise<string | null> {
         "Content-Type": "application/json",
       },
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error("Zernio profiles fetch failed:", res.status, await res.text())
+      return null
+    }
     const data = await res.json()
+    console.log("Zernio profiles response:", JSON.stringify(data).slice(0, 300))
 
-    // Handle array response: [{ id, name, ... }]
     if (Array.isArray(data) && data.length > 0) {
       return data[0].id || data[0].profileId || data[0]._id || null
     }
-    // Handle object response: { profiles: [...] } or { data: [...] }
     const list = data.profiles || data.data || data.items || []
     if (list.length > 0) {
       return list[0].id || list[0].profileId || list[0]._id || null
@@ -47,16 +67,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No content provided" }, { status: 400 })
     }
 
-    // Use env var if set, otherwise fetch dynamically from Zernio
-    let profileId = process.env.ZERNIO_PROFILE_ID || null
+    // Convert our platform IDs to Zernio platform names, deduplicate
+    const zernioPlatforms = [...new Set(
+      platforms
+        .map((p: string) => PLATFORM_TO_ZERNIO[p] || p)
+        .filter(Boolean)
+    )]
 
+    if (zernioPlatforms.length === 0) {
+      return NextResponse.json({ error: "No valid Zernio platforms found" }, { status: 400 })
+    }
+
+    // Get profile ID
+    let profileId = process.env.ZERNIO_PROFILE_ID || null
     if (!profileId) {
       profileId = await getZernioProfileId()
     }
-
     if (!profileId) {
       return NextResponse.json(
-        { error: "Could not determine Zernio profile ID. Set ZERNIO_PROFILE_ID in your environment variables." },
+        { error: "Could not get Zernio profile ID. Set ZERNIO_PROFILE_ID in Vercel environment variables." },
         { status: 500 }
       )
     }
@@ -65,23 +94,26 @@ export async function POST(req: NextRequest) {
       ? `${content}\n\n${hashtags.join(" ")}`
       : content
 
+    // Only include real hosted URLs — blob: URLs cannot be fetched externally
+    const hostedMedia = (mediaUrls || []).filter((u: string) => 
+      u && !u.startsWith("blob:") && u.startsWith("http")
+    )
+
     const body: Record<string, any> = {
-      platforms,
+      platforms: zernioPlatforms,
       content: fullContent,
       profileId,
     }
 
-    // Only include real hosted URLs — blob: URLs cannot be fetched by Zernio
-    if (mediaUrls && mediaUrls.length > 0) {
-      const hosted = mediaUrls.filter((u: string) => !u.startsWith("blob:"))
-      if (hosted.length > 0) body.mediaUrls = hosted
+    if (hostedMedia.length > 0) {
+      body.mediaUrls = hostedMedia
     }
 
     if (scheduledAt) {
       body.scheduledAt = scheduledAt
     }
 
-    console.log("Posting to Zernio with profileId:", profileId, "platforms:", platforms)
+    console.log("Zernio POST body:", JSON.stringify(body))
 
     const res = await fetch(`${ZERNIO_BASE}/posts`, {
       method: "POST",
@@ -92,20 +124,22 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(body),
     })
 
-    const data = await res.json()
-    console.log("Zernio response:", res.status, data)
+    const responseText = await res.text()
+    console.log("Zernio response status:", res.status)
+    console.log("Zernio response body:", responseText)
+
+    let data: any = {}
+    try { data = JSON.parse(responseText) } catch { data = { raw: responseText } }
 
     if (!res.ok) {
-      return NextResponse.json(
-        { error: data.message || data.error || `Zernio returned ${res.status}` },
-        { status: res.status }
-      )
+      const errMsg = data.message || data.error || data.raw || `Zernio error ${res.status}`
+      return NextResponse.json({ error: errMsg }, { status: res.status })
     }
 
     return NextResponse.json({ success: true, post: data })
 
   } catch (err) {
-    console.error("Social post error:", err)
-    return NextResponse.json({ error: "Failed to post" }, { status: 500 })
+    console.error("Social post route error:", err)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
