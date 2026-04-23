@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
 import { currentUser } from "@clerk/nextjs/server"
 
-const ZERNIO_BASE = "https://api.zernio.com/v1"
+const ZERNIO_BASE = "https://zernio.com/api/v1"
 
-// Maps our internal platform IDs to what Zernio actually accepts
-// Zernio uses: facebook, instagram, linkedin, tiktok, youtube, twitter, pinterest
-const PLATFORM_TO_ZERNIO: Record<string, string> = {
+// ─── Your Zernio account IDs ──────────────────────────────────────────────────
+// These were found in your Zernio API Code document.
+// Order matches how they appear in your Zernio Connections dashboard:
+// Facebook (Strategic Leverage AI), Instagram (@mauricecovingtonsr),
+// LinkedIn (@Maurice Covington), TikTok (@mauricecovington1), YouTube (@mcmarketinggroup)
+const ZERNIO_ACCOUNTS = {
+  facebook:  "69dc0ab07dea335c2be0b2d9",
+  instagram: "69dc0b357dea335c2be0b4fe",
+  linkedin:  "69dc0b597dea335c2be0b5a2",
+  tiktok:    "69dc0b6a7dea335c2be0b5e7",
+  youtube:   "69dc0bcd7dea335c2be0b775",
+}
+
+// Maps our internal platform IDs → Zernio platform name
+const PLATFORM_TO_ZERNIO: Record<string, keyof typeof ZERNIO_ACCOUNTS> = {
   facebook_personal:  "facebook",
   facebook_page:      "facebook",
   facebook_group:     "facebook",
@@ -17,38 +29,6 @@ const PLATFORM_TO_ZERNIO: Record<string, string> = {
   tiktok:             "tiktok",
   youtube:            "youtube",
   youtube_shorts:     "youtube",
-  twitter:            "twitter",
-  pinterest:          "pinterest",
-  threads:            "threads",
-}
-
-async function getZernioProfileId(): Promise<string | null> {
-  try {
-    const res = await fetch(`${ZERNIO_BASE}/profiles`, {
-      headers: {
-        "Authorization": `Bearer ${process.env.ZERNIO_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-    })
-    if (!res.ok) {
-      console.error("Zernio profiles fetch failed:", res.status, await res.text())
-      return null
-    }
-    const data = await res.json()
-    console.log("Zernio profiles response:", JSON.stringify(data).slice(0, 300))
-
-    if (Array.isArray(data) && data.length > 0) {
-      return data[0].id || data[0].profileId || data[0]._id || null
-    }
-    const list = data.profiles || data.data || data.items || []
-    if (list.length > 0) {
-      return list[0].id || list[0].profileId || list[0]._id || null
-    }
-    return null
-  } catch (err) {
-    console.error("Failed to fetch Zernio profiles:", err)
-    return null
-  }
 }
 
 export async function POST(req: NextRequest) {
@@ -67,26 +47,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No content provided" }, { status: 400 })
     }
 
-    // Convert our platform IDs to Zernio platform names, deduplicate
-    const zernioPlatforms = [...new Set(
-      platforms
-        .map((p: string) => PLATFORM_TO_ZERNIO[p] || p)
-        .filter(Boolean)
-    )]
+    // Build the platforms array with real accountIds, deduplicated
+    const seen = new Set<string>()
+    const platformsWithIds: { platform: string; accountId: string }[] = []
 
-    if (zernioPlatforms.length === 0) {
-      return NextResponse.json({ error: "No valid Zernio platforms found" }, { status: 400 })
+    for (const p of platforms) {
+      const zernioName = PLATFORM_TO_ZERNIO[p]
+      if (!zernioName) continue
+      if (seen.has(zernioName)) continue
+      seen.add(zernioName)
+      platformsWithIds.push({
+        platform: zernioName,
+        accountId: ZERNIO_ACCOUNTS[zernioName],
+      })
     }
 
-    // Get profile ID
-    let profileId = process.env.ZERNIO_PROFILE_ID || null
-    if (!profileId) {
-      profileId = await getZernioProfileId()
-    }
-    if (!profileId) {
+    if (platformsWithIds.length === 0) {
       return NextResponse.json(
-        { error: "Could not get Zernio profile ID. Set ZERNIO_PROFILE_ID in Vercel environment variables." },
-        { status: 500 }
+        { error: "None of the selected platforms are supported. Choose from: Facebook, Instagram, LinkedIn, TikTok, or YouTube." },
+        { status: 400 }
       )
     }
 
@@ -94,23 +73,25 @@ export async function POST(req: NextRequest) {
       ? `${content}\n\n${hashtags.join(" ")}`
       : content
 
-    // Only include real hosted URLs — blob: URLs cannot be fetched externally
-    const hostedMedia = (mediaUrls || []).filter((u: string) => 
-      u && !u.startsWith("blob:") && u.startsWith("http")
-    )
-
     const body: Record<string, any> = {
-      platforms: zernioPlatforms,
       content: fullContent,
-      profileId,
-    }
-
-    if (hostedMedia.length > 0) {
-      body.mediaUrls = hostedMedia
+      platforms: platformsWithIds,
+      publishNow: !scheduledAt,
     }
 
     if (scheduledAt) {
-      body.scheduledAt = scheduledAt
+      body.scheduledFor = scheduledAt
+    }
+
+    // Only include real hosted URLs — blob: URLs cannot be fetched by Zernio
+    const hostedMedia = (mediaUrls || []).filter(
+      (u: string) => u && !u.startsWith("blob:") && u.startsWith("http")
+    )
+    if (hostedMedia.length > 0) {
+      body.mediaItems = hostedMedia.map((url: string) => ({
+        type: "image",
+        url,
+      }))
     }
 
     console.log("Zernio POST body:", JSON.stringify(body))
@@ -125,8 +106,7 @@ export async function POST(req: NextRequest) {
     })
 
     const responseText = await res.text()
-    console.log("Zernio response status:", res.status)
-    console.log("Zernio response body:", responseText)
+    console.log("Zernio response:", res.status, responseText.slice(0, 500))
 
     let data: any = {}
     try { data = JSON.parse(responseText) } catch { data = { raw: responseText } }
