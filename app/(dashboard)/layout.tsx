@@ -3,30 +3,13 @@ import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import {
-  LayoutDashboard,
-  PlayCircle,
-  Library,
-  Users,
-  Globe,
-  BarChart2,
-  CreditCard,
-  Zap,
-  Bot,
-  Link2,
-  Settings,
-  Radio,
+  LayoutDashboard, PlayCircle, Library, Users, Globe,
+  BarChart2, CreditCard, Zap, Bot, Link2, Settings, Radio,
 } from "lucide-react";
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/sign-in");
-  }
+  if (!userId) redirect("/sign-in");
 
   return (
     <div className="min-h-screen bg-[#09090f] text-white flex">
@@ -47,86 +30,24 @@ export default async function DashboardLayout({
         {/* Nav */}
         <nav className="flex-1 py-4 px-3 overflow-y-auto">
           <div className="space-y-0.5">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>Dashboard</span>
-            </Link>
-
-            <Link
-              href="/dashboard/webinars"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
-            >
-              <PlayCircle className="w-4 h-4" />
-              <span>Webinars</span>
-            </Link>
-
-            <Link
-              href="/dashboard/templates"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
-            >
-              <Library className="w-4 h-4" />
-              <span>Templates</span>
-            </Link>
-
-            <Link
-              href="/dashboard/evergreen"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
-            >
-              <Globe className="w-4 h-4" />
-              <span>Evergreen Rooms</span>
-            </Link>
-
-            {/* ── Live Webinars ── */}
-            <Link
-              href="/dashboard/live"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
-            >
-              <Radio className="w-4 h-4" />
-              <span>Live Webinars</span>
-            </Link>
-
-            <Link
-              href="/dashboard/presenters"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
-            >
-              <Bot className="w-4 h-4" />
-              <span>AI Presenters</span>
-            </Link>
-
-            <Link
-              href="/dashboard/analytics"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
-            >
-              <BarChart2 className="w-4 h-4" />
-              <span>Analytics</span>
-            </Link>
-
-            <Link
-              href="/dashboard/affiliates"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
-            >
-              <Users className="w-4 h-4" />
-              <span>Affiliates</span>
-            </Link>
-
-            <Link
-              href="/dashboard/integrations"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
-            >
-              <Link2 className="w-4 h-4" />
-              <span>Integrations</span>
-            </Link>
-
-            <Link
-              href="/dashboard/billing"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition"
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>Billing</span>
-            </Link>
+            {[
+              { href: "/dashboard",                icon: LayoutDashboard, label: "Dashboard" },
+              { href: "/dashboard/webinars",       icon: PlayCircle,      label: "Webinars" },
+              { href: "/dashboard/templates",      icon: Library,         label: "Templates" },
+              { href: "/dashboard/evergreen",      icon: Globe,           label: "Evergreen Rooms" },
+              { href: "/dashboard/live",           icon: Radio,           label: "Live Webinars" },
+              { href: "/dashboard/presenters",     icon: Bot,             label: "AI Presenters" },
+              { href: "/dashboard/analytics",      icon: BarChart2,       label: "Analytics" },
+              { href: "/dashboard/affiliates",     icon: Users,           label: "Affiliates" },
+              { href: "/dashboard/integrations",   icon: Link2,           label: "Integrations" },
+              { href: "/dashboard/billing",        icon: CreditCard,      label: "Billing" },
+            ].map(({ href, icon: Icon, label }) => (
+              <Link key={href} href={href}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition">
+                <Icon className="w-4 h-4" />
+                <span>{label}</span>
+              </Link>
+            ))}
           </div>
         </nav>
 
@@ -142,8 +63,17 @@ export default async function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="ml-60 flex-1 min-h-screen">{children}</main>
+      {/* Main content + footer */}
+      <div className="ml-60 flex-1 flex flex-col min-h-screen">
+        <main className="flex-1">{children}</main>
+
+        {/* Dashboard footer */}
+        <footer className="border-t border-white/5 px-6 py-4 text-center">
+          <p className="text-white/20 text-xs">
+            WebinarForge AI, LLC &nbsp;■&nbsp; All Rights Reserved © 2026 &nbsp;■&nbsp; 19179 Blanco Rd Ste 105 PMB 1036, San Antonio, TX 78258
+          </p>
+        </footer>
+      </div>
     </div>
   );
 }
