@@ -653,6 +653,9 @@ export default function EarlyBirdPage() {
             &nbsp;·&nbsp;
             <Link href="/terms" className="underline hover:text-gray-400 transition-colors">Terms</Link>
           </p>
+          <p className="text-gray-600 text-xs mt-1">
+            WebinarForge AI, LLC &nbsp;■&nbsp; All Rights Reserved © 2026 &nbsp;■&nbsp; 19179 Blanco Rd Ste 105 PMB 1036, San Antonio, TX 78258
+          </p>
           <p className="text-gray-600 text-xs mt-3 max-w-2xl mx-auto leading-relaxed">
             EARNINGS DISCLAIMER: Results mentioned are not typical. Individual results will vary based on effort, experience, and market conditions. WebinarForge AI is a software tool — your results depend on how you use it.
           </p>
