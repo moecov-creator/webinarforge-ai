@@ -43,80 +43,19 @@ function SpotsBar() {
 
 // ─── Video Player ─────────────────────────────────────────────────────────────
 function VideoPlayer() {
-  const [videoUrl, setVideoUrl] = useState("")
-  const [embedSrc, setEmbedSrc] = useState("")
-  const [showInput, setShowInput] = useState(false)
-
-  const handleUrl = (val: string) => {
-    setVideoUrl(val)
-    const yt = val.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)
-    const vm = val.match(/vimeo\.com\/(\d+)/)
-    const lm = val.match(/loom\.com\/share\/([a-z0-9]+)/i)
-    if (yt) setEmbedSrc(`https://www.youtube.com/embed/${yt[1]}?rel=0&autoplay=0`)
-    else if (vm) setEmbedSrc(`https://player.vimeo.com/video/${vm[1]}`)
-    else if (lm) setEmbedSrc(`https://www.loom.com/embed/${lm[1]}`)
-    else if (val.startsWith("http")) setEmbedSrc(val)
-  }
-
   return (
-    <div className="relative">
-      <div className="relative rounded-xl overflow-hidden border-2 border-gray-800 bg-black">
-        {embedSrc ? (
-          <iframe
-            src={embedSrc}
-            className="w-full aspect-video border-none block"
-            allowFullScreen
-            allow="autoplay; encrypted-media"
-          />
-        ) : (
-          <div className="aspect-video flex flex-col items-center justify-center bg-gray-900 gap-3">
-            <button
-              onClick={() => setShowInput(true)}
-              className="w-16 h-16 bg-green-500 hover:bg-green-400 rounded-full flex items-center justify-center transition-all hover:scale-105"
-            >
-              <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </button>
-            <div className="text-center">
-              <p className="text-gray-400 text-xs">Watch This Short Video First</p>
-              <p className="text-green-400 font-bold text-xs mt-1">(This changes everything — 3 mins)</p>
-            </div>
-            {showInput && (
-              <div className="absolute inset-0 bg-black/85 flex items-center justify-center p-6">
-                <div className="bg-white rounded-xl p-5 w-full max-w-sm">
-                  <p className="text-xs text-green-700 font-semibold mb-2 uppercase tracking-widest">
-                    Add Your AI Twin Video
-                  </p>
-                  <input
-                    autoFocus
-                    value={videoUrl}
-                    onChange={(e) => handleUrl(e.target.value)}
-                    placeholder="Paste YouTube, Vimeo, Loom, or HeyGen URL..."
-                    className="w-full text-sm px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 outline-none focus:border-green-500 mb-3"
-                  />
-                  <div className="flex gap-2">
-                    <button onClick={() => setShowInput(false)} className="flex-1 py-2 text-xs rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">Cancel</button>
-                    <button onClick={() => setShowInput(false)} className="flex-1 py-2 text-xs rounded-lg bg-green-500 text-white font-semibold hover:bg-green-400 transition-colors">Apply</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      {embedSrc && (
-        <button
-          onClick={() => { setEmbedSrc(""); setVideoUrl(""); setShowInput(true) }}
-          className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded border border-white/20 hover:bg-black/80 transition-colors"
-        >
-          Replace video
-        </button>
-      )}
+    <div className="relative rounded-xl overflow-hidden border-2 border-gray-800 bg-black">
+      <iframe
+        src="https://www.youtube.com/embed/OwExKY-C_Dg?rel=0&modestbranding=1"
+        className="w-full aspect-video border-none block"
+        allowFullScreen
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        loading="lazy"
+        title="WebinarForge AI — Early Bird Offer"
+      />
     </div>
   )
 }
-
 // ─── Order Bump ───────────────────────────────────────────────────────────────
 function OrderBump({
   checked,
