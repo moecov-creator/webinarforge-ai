@@ -46,10 +46,10 @@ function VideoPlayer() {
   return (
     <div className="relative rounded-xl overflow-hidden border-2 border-gray-800 bg-black">
       <iframe
-        src="https://www.youtube.com/embed/OwExKY-C_Dg?rel=0&modestbranding=1"
+        src="https://player.vimeo.com/video/1187522463?h=b04750c25a&badge=0&autopause=0&player_id=0&app_id=58479"
         className="w-full aspect-video border-none block"
         allowFullScreen
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
         loading="lazy"
         title="WebinarForge AI — Early Bird Offer"
       />
