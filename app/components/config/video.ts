@@ -55,25 +55,25 @@ export const FUNNEL_VIDEOS = {
 
   // Early Bird sales page — main VSL
   earlyBird: makeVideo(
-    "https://www.youtube.com/embed/OwExKY-C_Dg",
+    "https://player.vimeo.com/video/1187522463?h=b04750c25a&badge=0&autopause=0&player_id=0&app_id=58479",
     { title: "WebinarForge AI — Early Bird Offer" }
   ),
 
   // OTO1 Upsell page ($997)
   upsell: makeVideo(
-    "https://www.youtube.com/embed/BfUwIQ876Tc",
+    "https://player.vimeo.com/video/1187522878?h=4438b2dcee&badge=0&autopause=0&player_id=0&app_id=58479",
     { title: "WebinarForge AI — Full System Upgrade" }
   ),
 
   // OTO2 Downsell page ($497)
   downsell: makeVideo(
-    "https://www.youtube.com/embed/lKsMvEgrDn8",
+    "https://player.vimeo.com/video/1187523420?h=79b67427cc&badge=0&autopause=0&player_id=0&app_id=58479",
     { title: "WebinarForge AI — Special Offer" }
   ),
 
   // Thank You / confirmation page
   thankyou: makeVideo(
-    "https://www.youtube.com/embed/tvocap92cGw",
+    "https://player.vimeo.com/video/1187523719?h=02e9c470ea&badge=0&autopause=0&player_id=0&app_id=58479",
     { title: "Welcome to WebinarForge AI — Next Steps" }
   ),
 
