@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 // ─── CONFIGURATION — update these URLs ───────────────────────────────────────
-const COMMUNITY_URL = "https://community.webinarforge.ai"   // ← your community link
+const COMMUNITY_URL = "https://www.skool.com/attract-business-owners-5981"
 const CALENDAR_URL  = "https://calendly.com/webinarforgeai" // ← your booking link
 
 // ─── Vimeo Video ──────────────────────────────────────────────────────────────
