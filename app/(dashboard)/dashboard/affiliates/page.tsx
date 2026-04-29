@@ -330,7 +330,7 @@ function EmailSwipeCard({ email, affiliateLink }: {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AffiliatesPage() {
-  const referralUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://webinarforge.ai"}?ref=${MOCK_AFFILIATE.referralCode}`
+  const referralUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://webinarforge.ai"}/early-bird?ref=${MOCK_AFFILIATE.referralCode}`
   const [linkCopied, setLinkCopied] = useState(false)
 
   const copyLink = () => {
