@@ -1,58 +1,18 @@
 "use client"
 
 import Link from "next/link"
-import { useAuth } from "@clerk/nextjs"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
 
 function EarlyBirdButton({ fullWidth = false }: { fullWidth?: boolean }) {
-  const { isSignedIn, isLoaded } = useAuth()
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-
-  const handleClick = async () => {
-    if (!isLoaded) return
-    setLoading(true)
-
-    if (isSignedIn) {
-      try {
-        const res = await fetch("/api/billing/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planKey: "EARLY_BIRD" }),
-        })
-        const data = await res.json()
-        if (data.url) {
-          window.location.href = data.url
-        } else {
-          setLoading(false)
-        }
-      } catch {
-        setLoading(false)
-      }
-    } else {
-      sessionStorage.setItem("checkout_intent", "EARLY_BIRD")
-      router.push("/sign-up")
-    }
-  }
-
   return (
-    <button
-      onClick={handleClick}
-      disabled={loading}
-      className={`${
-        fullWidth ? "w-full" : "px-10 py-5 text-xl"
-      } bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
-    >
-      {loading ? (
-        <>
-          <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-          Preparing checkout...
-        </>
-      ) : (
-        "Claim My $49 Early Bird Spot →"
-      )}
-    </button>
+    <Link href="/early-bird">
+      <button
+        className={`${
+          fullWidth ? "w-full" : "px-10 py-5 text-xl"
+        } bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-lg transition flex items-center justify-center gap-2`}
+      >
+        Claim My $49 Early Bird Spot →
+      </button>
+    </Link>
   )
 }
 
