@@ -325,11 +325,12 @@ export default function EarlyBirdPage() {
             <div className="border-2 border-gray-900 rounded-2xl overflow-hidden mb-4 bg-white">
               {/* Product header */}
               <div className="bg-gray-900 p-5 text-center">
-                <div className="w-full max-w-[140px] mx-auto aspect-[3/4] bg-gradient-to-br from-yellow-400 to-amber-500 rounded-lg flex flex-col items-center justify-center p-4 mb-3 shadow-xl">
-                  <div className="text-black font-black text-[10px] uppercase tracking-widest mb-1">WebinarForge</div>
-                  <div className="text-black font-black text-3xl leading-none mb-1">AI</div>
-                  <div className="w-full h-px bg-black/30 my-2" />
-                  <div className="text-black text-[8px] font-bold uppercase tracking-wider text-center leading-tight">The AI OS For Evergreen Webinars</div>
+                <div className="w-full mx-auto mb-3">
+                  <img
+                    src="https://i.ibb.co/mFGHpzg0/Gemini-Generated-Image-avcc9oavcc9oavcc.png"
+                    alt="AI Webinar Templates Pack"
+                    className="w-full rounded-lg shadow-xl"
+                  />
                 </div>
                 {/* Stars */}
                 <div className="flex items-center justify-center gap-0.5 mb-1">
