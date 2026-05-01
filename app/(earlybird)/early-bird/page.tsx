@@ -444,7 +444,17 @@ export default function EarlyBirdPage() {
           <h2 className="text-3xl md:text-5xl font-black uppercase mb-4 leading-tight text-gray-900">
             Here's Everything You Get Today
           </h2>
-          <p className="text-gray-500 mb-10">Total value: over $3,285 — yours for just $49 one-time</p>
+          <p className="text-gray-500 mb-8">Total value: over $3,285 — yours for just $49 one-time</p>
+
+          {/* Product image */}
+          <div className="flex justify-center mb-10">
+            <img
+              src="https://raw.githubusercontent.com/moecov-creator/webinarforge-ai/main/webinarforge-product-image.png"
+              alt="WebinarForge AI — AI Webinar Templates Pack and Software"
+              className="w-full max-w-2xl rounded-2xl shadow-2xl"
+            />
+          </div>
+
           <div className="space-y-3 mb-10">
             {[
               { item: "AI Webinar Builder", value: "$997" },
