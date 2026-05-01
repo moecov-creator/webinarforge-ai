@@ -275,11 +275,11 @@ export default function ContentCalendarPage() {
   }
 
   // Cloudinary upload with progress tracking
-  const uploadToCloudinary = (file: File): Promise<string | null> => {
-    return new Promise((resolve) => {
-      setMediaUploading(true)
-      setMediaUploadProgress(0)
+  const uploadToCloudinary = async (file: File): Promise<string | null> => {
+    setMediaUploading(true)
+    setMediaUploadProgress(0)
 
+    return new Promise((resolve) => {
       const formData = new FormData()
       formData.append("file", file)
       formData.append("upload_preset", "xxlgbnci")
@@ -287,43 +287,39 @@ export default function ContentCalendarPage() {
       const resourceType = file.type.startsWith("video/") ? "video" : "image"
       const xhr = new XMLHttpRequest()
 
-      xhr.upload.addEventListener("progress", (e) => {
+      xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
           const pct = Math.round((e.loaded / e.total) * 100)
           setMediaUploadProgress(pct)
         }
-      })
+      }
 
-      xhr.addEventListener("load", () => {
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState !== 4) return
         setMediaUploading(false)
-        try {
-          const data = JSON.parse(xhr.responseText)
-          if (data.secure_url) {
-            setMediaUploadProgress(100)
-            setMediaHostedUrl(data.secure_url)
-            setNewPost((prev) => ({ ...prev, mediaUrl: data.secure_url }))
-            resolve(data.secure_url)
-          } else {
-            const errMsg = data.error?.message || JSON.stringify(data)
-            console.error("Cloudinary error:", errMsg)
-            setPostError("❌ Upload failed: " + errMsg)
+        if (xhr.status === 200) {
+          try {
+            const data = JSON.parse(xhr.responseText)
+            if (data.secure_url) {
+              setMediaUploadProgress(100)
+              setMediaHostedUrl(data.secure_url)
+              resolve(data.secure_url)
+            } else {
+              setPostError("❌ Upload failed: " + (data.error?.message || "No URL returned"))
+              setTimeout(() => setPostError(""), 8000)
+              resolve(null)
+            }
+          } catch {
+            setPostError("❌ Upload parse error — please try again")
             setTimeout(() => setPostError(""), 8000)
             resolve(null)
           }
-        } catch (e) {
-          console.error("Cloudinary parse error:", xhr.responseText)
-          setPostError("❌ Upload failed — " + xhr.status + ": " + xhr.responseText.slice(0, 100))
+        } else {
+          setPostError("❌ Upload failed (status " + xhr.status + ") — please try again")
           setTimeout(() => setPostError(""), 8000)
           resolve(null)
         }
-      })
-
-      xhr.addEventListener("error", () => {
-        setMediaUploading(false)
-        setPostError("❌ Upload failed — check your connection")
-        setTimeout(() => setPostError(""), 6000)
-        resolve(null)
-      })
+      }
 
       xhr.open("POST", `https://api.cloudinary.com/v1_1/denhiglem/${resourceType}/upload`)
       xhr.send(formData)
