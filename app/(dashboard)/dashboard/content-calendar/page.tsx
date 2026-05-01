@@ -169,6 +169,9 @@ export default function ContentCalendarPage() {
   const [postError, setPostError] = useState("")
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
+  const [mediaHostedUrl, setMediaHostedUrl] = useState<string | null>(null)
+  const [mediaUploading, setMediaUploading] = useState(false)
+  const [mediaUploadProgress, setMediaUploadProgress] = useState(0)
   const [previewPlatform, setPreviewPlatform] = useState("instagram")
   const [usePlatformCaptions, setUsePlatformCaptions] = useState(false)
   const [platformCaptions, setPlatformCaptions] = useState<Record<string, string>>({})
@@ -271,6 +274,37 @@ export default function ContentCalendarPage() {
     setNewPost({ ...newPost, content: current.substring(0, start) + formatted + current.substring(end) })
   }
 
+  // Cloudinary upload
+  const uploadToCloudinary = async (file: File): Promise<string | null> => {
+    setMediaUploading(true)
+    setMediaUploadProgress(0)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("upload_preset", "xxlgbnci")
+      formData.append("cloud_name", "denhiglem")
+
+      const resourceType = file.type.startsWith("video/") ? "video" : "image"
+      const res = await fetch(`https://api.cloudinary.com/v1_1/denhiglem/${resourceType}/upload`, {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.secure_url) {
+        setMediaUploadProgress(100)
+        setMediaHostedUrl(data.secure_url)
+        return data.secure_url
+      }
+      throw new Error(data.error?.message || "Upload failed")
+    } catch (err: any) {
+      setPostError("❌ Upload failed: " + (err.message || "Please try again"))
+      setTimeout(() => setPostError(""), 6000)
+      return null
+    } finally {
+      setMediaUploading(false)
+    }
+  }
+
   // AI Caption Generator — calls internal API route (keeps API key secure)
   const handleAIGenerateCaptions = async () => {
     if (!aiTopic) return
@@ -368,13 +402,14 @@ export default function ContentCalendarPage() {
       category: newPost.category || "educational",
       status: "scheduled",
       hashtags: newPost.hashtags || [],
-      mediaUrl: mediaPreview || undefined,
+      mediaUrl: mediaHostedUrl || (mediaPreview && !mediaPreview.startsWith('blob:') ? mediaPreview : undefined),
       aiGenerated: false,
     }
     setPosts([...posts, post])
     setShowCreateModal(false)
     setMediaFile(null)
     setMediaPreview(null)
+    setMediaHostedUrl(null)
     setPlatformCaptions({})
     setUsePlatformCaptions(false)
     setAiGenerated(false)
@@ -405,8 +440,10 @@ export default function ContentCalendarPage() {
         content: post.content,
         hashtags: post.hashtags,
       }
-      if (post.mediaUrl && !post.mediaUrl.startsWith("blob:")) {
-        payload.mediaUrls = [post.mediaUrl]
+      // Use hosted Cloudinary URL if available, else fall back to post.mediaUrl
+      const hostedUrl = mediaHostedUrl || (post.mediaUrl && !post.mediaUrl.startsWith("blob:") ? post.mediaUrl : null)
+      if (hostedUrl) {
+        payload.mediaUrls = [hostedUrl]
       }
 
       const res = await fetch("/api/social/post", {
@@ -660,7 +697,7 @@ export default function ContentCalendarPage() {
                 <button onClick={() => setActiveTab("ai")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "ai" ? "bg-amber-500 text-black" : "text-gray-400 hover:text-white"}`}>🤖 AI Captions</button>
                 <button onClick={() => setActiveTab("preview")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "preview" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"}`}>👁 Preview</button>
               </div>
-              <button onClick={() => { setShowCreateModal(false); setMediaFile(null); setMediaPreview(null); setPlatformCaptions({}); setUsePlatformCaptions(false); setAiGenerated(false) }} className="text-gray-500 hover:text-white text-xl">✕</button>
+              <button onClick={() => { setShowCreateModal(false); setMediaFile(null); setMediaPreview(null); setMediaHostedUrl(null); setPlatformCaptions({}); setUsePlatformCaptions(false); setAiGenerated(false) }} className="text-gray-500 hover:text-white text-xl">✕</button>
             </div>
 
             {/* AI CAPTIONS TAB */}
@@ -928,7 +965,15 @@ export default function ContentCalendarPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-sm font-semibold truncate">{mediaFile?.name}</p>
-                        <p className="text-gray-500 text-xs mt-0.5">{mediaFile?.type.startsWith("video/") ? "🎬 Video" : "🖼️ Image"} · Ready to post</p>
+                        <p className="text-gray-500 text-xs mt-0.5">
+                          {mediaUploading ? (
+                            <span className="text-amber-400">⬆️ Uploading... {mediaUploadProgress}%</span>
+                          ) : mediaHostedUrl ? (
+                            <span className="text-green-400">✅ {mediaFile?.type.startsWith("video/") ? "🎬 Video" : "🖼️ Image"} · Uploaded & ready</span>
+                          ) : (
+                            <span className="text-yellow-400">⚠️ Upload in progress...</span>
+                          )}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button onClick={() => setActiveTab("preview")}
@@ -940,7 +985,7 @@ export default function ContentCalendarPage() {
                   ) : (
                     <label className="flex items-center gap-3 border-2 border-dashed border-white/20 hover:border-purple-500 rounded-xl p-4 cursor-pointer transition group">
                       <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mov,video/avi,video/quicktime" className="hidden"
-                        onChange={(e) => { const file = e.target.files?.[0]; if (file) { setMediaFile(file); setMediaPreview(URL.createObjectURL(file)) } }} />
+                        onChange={async (e) => { const file = e.target.files?.[0]; if (file) { setMediaFile(file); setMediaPreview(URL.createObjectURL(file)); setMediaHostedUrl(null); await uploadToCloudinary(file) } }} />
                       <span className="text-2xl group-hover:scale-110 transition">📎</span>
                       <div>
                         <p className="text-sm text-gray-400 group-hover:text-white transition font-semibold">Click to upload image or video</p>
