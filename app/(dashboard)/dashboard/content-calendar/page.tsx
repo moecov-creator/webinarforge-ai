@@ -301,16 +301,19 @@ export default function ContentCalendarPage() {
           if (data.secure_url) {
             setMediaUploadProgress(100)
             setMediaHostedUrl(data.secure_url)
+            setNewPost((prev) => ({ ...prev, mediaUrl: data.secure_url }))
             resolve(data.secure_url)
           } else {
-            const errMsg = data.error?.message || "Upload failed"
+            const errMsg = data.error?.message || JSON.stringify(data)
+            console.error("Cloudinary error:", errMsg)
             setPostError("❌ Upload failed: " + errMsg)
-            setTimeout(() => setPostError(""), 6000)
+            setTimeout(() => setPostError(""), 8000)
             resolve(null)
           }
-        } catch {
-          setPostError("❌ Upload failed — please try again")
-          setTimeout(() => setPostError(""), 6000)
+        } catch (e) {
+          console.error("Cloudinary parse error:", xhr.responseText)
+          setPostError("❌ Upload failed — " + xhr.status + ": " + xhr.responseText.slice(0, 100))
+          setTimeout(() => setPostError(""), 8000)
           resolve(null)
         }
       })
