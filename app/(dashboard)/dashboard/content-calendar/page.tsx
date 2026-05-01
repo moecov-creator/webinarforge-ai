@@ -274,35 +274,57 @@ export default function ContentCalendarPage() {
     setNewPost({ ...newPost, content: current.substring(0, start) + formatted + current.substring(end) })
   }
 
-  // Cloudinary upload
-  const uploadToCloudinary = async (file: File): Promise<string | null> => {
-    setMediaUploading(true)
-    setMediaUploadProgress(0)
-    try {
+  // Cloudinary upload with progress tracking
+  const uploadToCloudinary = (file: File): Promise<string | null> => {
+    return new Promise((resolve) => {
+      setMediaUploading(true)
+      setMediaUploadProgress(0)
+
       const formData = new FormData()
       formData.append("file", file)
       formData.append("upload_preset", "xxlgbnci")
-      formData.append("cloud_name", "denhiglem")
 
       const resourceType = file.type.startsWith("video/") ? "video" : "image"
-      const res = await fetch(`https://api.cloudinary.com/v1_1/denhiglem/${resourceType}/upload`, {
-        method: "POST",
-        body: formData,
+      const xhr = new XMLHttpRequest()
+
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100)
+          setMediaUploadProgress(pct)
+        }
       })
-      const data = await res.json()
-      if (data.secure_url) {
-        setMediaUploadProgress(100)
-        setMediaHostedUrl(data.secure_url)
-        return data.secure_url
-      }
-      throw new Error(data.error?.message || "Upload failed")
-    } catch (err: any) {
-      setPostError("❌ Upload failed: " + (err.message || "Please try again"))
-      setTimeout(() => setPostError(""), 6000)
-      return null
-    } finally {
-      setMediaUploading(false)
-    }
+
+      xhr.addEventListener("load", () => {
+        setMediaUploading(false)
+        try {
+          const data = JSON.parse(xhr.responseText)
+          if (data.secure_url) {
+            setMediaUploadProgress(100)
+            setMediaHostedUrl(data.secure_url)
+            resolve(data.secure_url)
+          } else {
+            const errMsg = data.error?.message || "Upload failed"
+            setPostError("❌ Upload failed: " + errMsg)
+            setTimeout(() => setPostError(""), 6000)
+            resolve(null)
+          }
+        } catch {
+          setPostError("❌ Upload failed — please try again")
+          setTimeout(() => setPostError(""), 6000)
+          resolve(null)
+        }
+      })
+
+      xhr.addEventListener("error", () => {
+        setMediaUploading(false)
+        setPostError("❌ Upload failed — check your connection")
+        setTimeout(() => setPostError(""), 6000)
+        resolve(null)
+      })
+
+      xhr.open("POST", `https://api.cloudinary.com/v1_1/denhiglem/${resourceType}/upload`)
+      xhr.send(formData)
+    })
   }
 
   // AI Caption Generator — calls internal API route (keeps API key secure)
