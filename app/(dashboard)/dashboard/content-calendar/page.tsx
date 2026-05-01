@@ -1,616 +1,1472 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { useAuth } from "@clerk/nextjs"
 
-// ─── Spots config — update CLAIMED_SPOTS as real purchases come in ────────────
-const TOTAL_SPOTS = 500
-const CLAIMED_SPOTS = 387  // ← update this number as spots fill up
+const PLATFORMS = [
+  { id: "facebook_personal", name: "Facebook Personal", icon: "👤", color: "blue", category: "Facebook" },
+  { id: "facebook_page", name: "Facebook Page", icon: "📄", color: "blue", category: "Facebook" },
+  { id: "facebook_group", name: "Facebook Group", icon: "👥", color: "blue", category: "Facebook" },
+  { id: "instagram", name: "Instagram", icon: "📸", color: "pink", category: "Instagram" },
+  { id: "instagram_reels", name: "Instagram Reels", icon: "🎬", color: "pink", category: "Instagram" },
+  { id: "instagram_stories", name: "Instagram Stories", icon: "⭕", color: "pink", category: "Instagram" },
+  { id: "linkedin", name: "LinkedIn", icon: "💼", color: "indigo", category: "LinkedIn" },
+  { id: "linkedin_page", name: "LinkedIn Page", icon: "🏢", color: "indigo", category: "LinkedIn" },
+  { id: "tiktok", name: "TikTok", icon: "🎵", color: "red", category: "TikTok" },
+  { id: "twitter", name: "X (Twitter)", icon: "𝕏", color: "gray", category: "X" },
+  { id: "youtube", name: "YouTube", icon: "▶️", color: "red", category: "YouTube" },
+  { id: "youtube_shorts", name: "YouTube Shorts", icon: "📱", color: "red", category: "YouTube" },
+  { id: "pinterest", name: "Pinterest", icon: "📌", color: "red", category: "Pinterest" },
+  { id: "threads", name: "Threads", icon: "🧵", color: "gray", category: "Threads" },
+]
 
-// ─── Spots countdown bar ──────────────────────────────────────────────────────
-function SpotsBar() {
-  const remaining = TOTAL_SPOTS - CLAIMED_SPOTS
-  const pct = Math.round((CLAIMED_SPOTS / TOTAL_SPOTS) * 100)
-  return (
-    <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
-      <p className="text-red-700 font-black text-sm uppercase tracking-widest mb-3">
-        ⚠️ Spots Remaining
-      </p>
-      <div className="flex items-center justify-center gap-4 mb-3">
-        <div className="text-center">
-          <div className="text-4xl font-black text-red-600">{remaining}</div>
-          <div className="text-xs text-red-400 font-semibold uppercase tracking-wider">Left</div>
-        </div>
-        <div className="text-gray-300 text-2xl font-thin">|</div>
-        <div className="text-center">
-          <div className="text-4xl font-black text-gray-800">{TOTAL_SPOTS}</div>
-          <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Total</div>
-        </div>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden mb-2">
-        <div
-          className="h-3 bg-red-600 rounded-full transition-all duration-700"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <p className="text-xs text-gray-500">
-        <span className="text-red-600 font-bold">{CLAIMED_SPOTS} people</span> have already claimed their spot
-      </p>
-    </div>
-  )
+const PLATFORM_SPECS: Record<string, {
+  ratio: string
+  ratioLabel: string
+  maxChars: number
+  captionStyle: string
+  bgColor: string
+  algorithm: string
+}> = {
+  instagram:         { ratio: "aspect-square",  ratioLabel: "1:1 Square",   maxChars: 2200,  captionStyle: "below",   bgColor: "bg-gradient-to-br from-purple-900 to-pink-900", algorithm: "instagram" },
+  instagram_reels:   { ratio: "aspect-[9/16]",  ratioLabel: "9:16 Reels",   maxChars: 2200,  captionStyle: "overlay", bgColor: "bg-black", algorithm: "instagram_reels" },
+  instagram_stories: { ratio: "aspect-[9/16]",  ratioLabel: "9:16 Story",   maxChars: 0,     captionStyle: "overlay", bgColor: "bg-black", algorithm: "instagram_reels" },
+  tiktok:            { ratio: "aspect-[9/16]",  ratioLabel: "9:16 TikTok",  maxChars: 2200,  captionStyle: "overlay", bgColor: "bg-black", algorithm: "tiktok" },
+  youtube_shorts:    { ratio: "aspect-[9/16]",  ratioLabel: "9:16 Shorts",  maxChars: 500,   captionStyle: "overlay", bgColor: "bg-black", algorithm: "youtube_shorts" },
+  youtube:           { ratio: "aspect-video",   ratioLabel: "16:9 YouTube", maxChars: 5000,  captionStyle: "below",   bgColor: "bg-gray-900", algorithm: "youtube" },
+  facebook_personal: { ratio: "aspect-video",   ratioLabel: "16:9 Facebook",maxChars: 63206, captionStyle: "below",   bgColor: "bg-blue-950", algorithm: "facebook" },
+  facebook_page:     { ratio: "aspect-video",   ratioLabel: "16:9 Facebook",maxChars: 63206, captionStyle: "below",   bgColor: "bg-blue-950", algorithm: "facebook" },
+  facebook_group:    { ratio: "aspect-video",   ratioLabel: "16:9 Facebook",maxChars: 63206, captionStyle: "below",   bgColor: "bg-blue-950", algorithm: "facebook" },
+  linkedin:          { ratio: "aspect-video",   ratioLabel: "16:9 LinkedIn",maxChars: 3000,  captionStyle: "below",   bgColor: "bg-indigo-950", algorithm: "linkedin" },
+  linkedin_page:     { ratio: "aspect-video",   ratioLabel: "16:9 LinkedIn",maxChars: 3000,  captionStyle: "below",   bgColor: "bg-indigo-950", algorithm: "linkedin" },
+  twitter:           { ratio: "aspect-video",   ratioLabel: "16:9 Twitter", maxChars: 280,   captionStyle: "below",   bgColor: "bg-gray-950", algorithm: "twitter" },
+  pinterest:         { ratio: "aspect-[2/3]",   ratioLabel: "2:3 Pinterest",maxChars: 500,   captionStyle: "below",   bgColor: "bg-red-950", algorithm: "pinterest" },
+  threads:           { ratio: "aspect-square",  ratioLabel: "1:1 Threads",  maxChars: 500,   captionStyle: "below",   bgColor: "bg-gray-950", algorithm: "instagram" },
 }
 
-// ─── Video Player ─────────────────────────────────────────────────────────────
-function VideoPlayer() {
-  return (
-    <div className="relative rounded-xl overflow-hidden border-2 border-gray-800 bg-black">
-      <iframe
-        src="https://player.vimeo.com/video/1187522463?h=b04750c25a&badge=0&autopause=0&player_id=0&app_id=58479"
-        className="w-full aspect-video border-none block"
-        allowFullScreen
-        allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
-        loading="lazy"
-        title="WebinarForge AI — Early Bird Offer"
-      />
-    </div>
-  )
-}
-// ─── Order Bump ───────────────────────────────────────────────────────────────
-function OrderBump({
-  checked,
-  onToggle,
-}: {
-  checked: boolean
-  onToggle: () => void
-}) {
-  return (
-    <div
-      onClick={onToggle}
-      className={`w-full max-w-xl mx-auto cursor-pointer rounded-2xl border-2 border-dashed transition-all duration-200 p-5 ${
-        checked
-          ? "border-amber-500 bg-amber-50"
-          : "border-gray-300 bg-gray-50 hover:border-amber-400 hover:bg-amber-50/50"
-      }`}
-    >
-      <div className="flex items-start gap-4">
-        {/* Checkbox */}
-        <div
-          className={`w-6 h-6 rounded-md border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${
-            checked
-              ? "bg-amber-500 border-amber-500"
-              : "border-gray-300 bg-white"
-          }`}
-        >
-          {checked && (
-            <svg className="w-3.5 h-3.5 text-white fill-none stroke-white" strokeWidth="3" viewBox="0 0 12 12">
-              <polyline points="1.5,6 4.5,9 10.5,3" />
-            </svg>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
-              ⚡ Special One-Time Offer
-            </span>
-          </div>
-          <h4 className="text-base font-black text-gray-900 mb-1">
-            Add AI Webinar Templates Pack{" "}
-            <span className="text-amber-600">+$47</span>
-          </h4>
-          <p className="text-sm text-gray-600 leading-relaxed mb-2">
-            Get 10+ proven webinar scripts and frameworks — coach, SaaS, agency,
-            and course creator niches — so you can launch faster with copy that
-            already converts.
-          </p>
-          <ul className="space-y-1">
-            {[
-              "10+ done-for-you webinar scripts",
-              "High-converting hook frameworks",
-              "Proven close sequences",
-              "Instant download — use immediately",
-            ].map((item) => (
-              <li key={item} className="flex items-center gap-2 text-xs text-gray-600">
-                <span className="text-green-500 font-black flex-shrink-0">✔</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Price */}
-        <div className="text-right flex-shrink-0">
-          <div className="text-xs text-gray-400 line-through">$97</div>
-          <div className="text-xl font-black text-amber-600">$47</div>
-        </div>
-      </div>
-
-      {checked && (
-        <div className="mt-3 pt-3 border-t border-amber-200 text-center">
-          <p className="text-xs font-semibold text-amber-700">
-            ✔ Added to your order — you're getting the Templates Pack!
-          </p>
-        </div>
-      )}
-    </div>
-  )
+const ALGORITHM_PROMPTS: Record<string, string> = {
+  tiktok: `You are a top 1% TikTok growth expert. TikTok's algorithm rewards: hooks in first 3 words, pattern interrupts, curiosity gaps, conversational tone, trending sounds references, challenges, duet invites, and FOMO. Keep it under 150 chars for display but allow up to 2200. Use 3-5 ultra-specific niche hashtags + 2-3 trending broad hashtags. Start with a HOOK that stops the scroll. Use lowercase for authenticity. End with a question or CTA that drives comments (comments = biggest signal).`,
+  instagram_reels: `You are a top 1% Instagram Reels growth expert. IG Reels algorithm rewards: saves and shares above all else, relatable hooks, value-packed content, storytelling. First line must be a scroll-stopping hook under 125 chars (gets cut off). Use line breaks for readability. Mix niche hashtags (10K-500K posts) with broader ones. Include a strong save/share CTA. Emojis add personality. Aim for 3-5 sentences max before the hashtag block.`,
+  instagram: `You are a top 1% Instagram growth expert. IG feed algorithm rewards saves and shares. Write a compelling 2-3 line caption with a hook, value, and CTA. Add a line break then hashtags. Use 20-25 hashtags mixing niche (10K-300K), mid (300K-1M), and broad. Include a question at the end to drive comments. Personal, authentic tone outperforms corporate speak.`,
+  facebook: `You are a top 1% Facebook growth expert. Facebook algorithm rewards meaningful interactions — comments and shares. Write longer, story-driven captions that evoke emotion or debate. Ask a strong open-ended question. Avoid external links in the post body (kills reach). Use 2-3 relevant hashtags max. Emojis add visual breaks. Tag relevant pages when appropriate.`,
+  linkedin: `You are a top 1% LinkedIn growth expert. LinkedIn algorithm rewards dwell time and comments. Use the "LinkedIn hook formula": bold first line that stops scrolling, then expand with a story or insight using short punchy paragraphs (1-2 sentences each). No hashtag spam — use 3-5 highly relevant professional hashtags. End with a thought-provoking question. Professional but human tone. Show vulnerability and expertise.`,
+  twitter: `You are a top 1% Twitter/X growth expert. Twitter rewards retweets and replies. Under 280 chars total. Write a punchy, opinionated, or controversial take that makes people react. Use 1-2 hashtags max or none at all — organic performs better. Brevity is power. Make it quotable. End with a question or hot take.`,
+  youtube: `You are a top 1% YouTube SEO expert. YouTube description should start with the most important keyword-rich sentence (first 2-3 lines shown before "more"). Include timestamps, links, and a strong subscribe CTA. Use keyword-rich sentences naturally. Include 3-5 hashtags at the very end. Write for both humans and the algorithm.`,
+  youtube_shorts: `You are a top 1% YouTube Shorts growth expert. Shorts algorithm rewards watch completion and likes. Write a punchy 1-2 sentence caption with the main keyword + 3-5 hashtags including #Shorts. Keep it under 100 words. Strong hook in first line.`,
+  pinterest: `You are a top 1% Pinterest growth expert. Pinterest is a search engine. Write SEO-optimized descriptions with primary keyword in first sentence. Include secondary keywords naturally. 2-3 hashtags max. Describe what value viewers get. Include a soft CTA.`,
 }
 
-// ─── CTA Button — bump-aware ──────────────────────────────────────────────────
-function CTAButton({
-  size = "lg",
-  bumpChecked = false,
-}: {
-  size?: "lg" | "md"
-  bumpChecked?: boolean
-}) {
-  const { isSignedIn, isLoaded } = useAuth()
-  const [loading, setLoading] = useState(false)
-  const total = bumpChecked ? 96 : 49
+const CONTENT_TYPES = [
+  { id: "post", label: "Post", icon: "📝", desc: "Static text or image post" },
+  { id: "reel", label: "Reel / Short", icon: "🎬", desc: "Short vertical video 15-90 sec" },
+  { id: "story", label: "Story", icon: "⭕", desc: "24-hour disappearing content" },
+  { id: "carousel", label: "Carousel", icon: "🖼️", desc: "Multiple images/slides" },
+  { id: "video", label: "Long Video", icon: "🎥", desc: "YouTube or Facebook video" },
+  { id: "live", label: "Live Stream", icon: "🔴", desc: "Real-time live broadcast" },
+  { id: "article", label: "Article", icon: "📰", desc: "LinkedIn or Facebook article" },
+  { id: "thread", label: "Thread", icon: "🧵", desc: "Twitter/X thread" },
+]
 
-  const handleClick = async () => {
-    if (!isLoaded) return
-    setLoading(true)
+const CATEGORIES = [
+  { id: "educational", label: "Educational", color: "blue", icon: "🎓" },
+  { id: "promotional", label: "Promotional", color: "green", icon: "📢" },
+  { id: "engagement", label: "Engagement", color: "yellow", icon: "💬" },
+  { id: "behindscenes", label: "Behind the Scenes", color: "purple", icon: "🎭" },
+  { id: "testimonial", label: "Testimonial", color: "pink", icon: "⭐" },
+  { id: "trending", label: "Trending / News", color: "red", icon: "🔥" },
+  { id: "personal", label: "Personal Story", color: "orange", icon: "❤️" },
+  { id: "webinar", label: "Webinar Promo", color: "indigo", icon: "🎬" },
+]
 
-    if (isSignedIn) {
-      try {
-        const res = await fetch("/api/billing/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            planKey: "EARLY_BIRD",
-            includeBump: bumpChecked, // ← separate flag, not a different planKey
-          }),
-        })
-        const data = await res.json()
-        if (data.url) {
-          window.location.href = data.url
-        } else {
-          setLoading(false)
+const CALENDAR_APPS = [
+  { id: "google", name: "Google Calendar", icon: "📅", color: "blue" },
+  { id: "outlook", name: "Outlook", icon: "📧", color: "indigo" },
+  { id: "apple", name: "Apple Calendar", icon: "🍎", color: "gray" },
+  { id: "notion", name: "Notion", icon: "📓", color: "gray" },
+  { id: "airtable", name: "Airtable", icon: "🗃️", color: "yellow" },
+  { id: "trello", name: "Trello", icon: "📋", color: "blue" },
+]
+
+const ZERNIO_PLATFORM_MAP: Record<string, string[]> = {
+  facebook: ["facebook_personal", "facebook_page", "facebook_group"],
+  instagram: ["instagram", "instagram_reels", "instagram_stories"],
+  linkedin: ["linkedin", "linkedin_page"],
+  tiktok: ["tiktok"],
+  youtube: ["youtube", "youtube_shorts"],
+  twitter: ["twitter"],
+  pinterest: ["pinterest"],
+  threads: ["threads"],
+  reddit: ["reddit"],
+  bluesky: ["bluesky"],
+  googlebusiness: ["googlebusiness"],
+  telegram: ["telegram"],
+}
+
+const EMOJIS = ["🔥","💡","🚀","✨","💪","🎯","📈","💰","🙌","❤️","😍","🤯","👀","⚡","🎬","📣","💥","🌟","👇","✅","🏆","💎","🤝","📱","🎉"]
+
+type Post = {
+  id: string
+  title: string
+  content: string
+  platformCaptions: Record<string, string>
+  date: string
+  time: string
+  platforms: string[]
+  contentType: string
+  category: string
+  status: "draft" | "scheduled" | "published" | "failed"
+  mediaUrl?: string
+  hashtags: string[]
+  aiGenerated: boolean
+}
+
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"]
+
+const colorMap: Record<string, string> = {
+  blue: "bg-blue-500/20 border-blue-500/50 text-blue-400",
+  pink: "bg-pink-500/20 border-pink-500/50 text-pink-400",
+  indigo: "bg-indigo-500/20 border-indigo-500/50 text-indigo-400",
+  red: "bg-red-500/20 border-red-500/50 text-red-400",
+  gray: "bg-gray-500/20 border-gray-500/50 text-gray-400",
+  green: "bg-green-500/20 border-green-500/50 text-green-400",
+  yellow: "bg-yellow-500/20 border-yellow-500/50 text-yellow-400",
+  purple: "bg-purple-500/20 border-purple-500/50 text-purple-400",
+  orange: "bg-orange-500/20 border-orange-500/50 text-orange-400",
+}
+
+const statusColors: Record<string, string> = {
+  draft: "bg-gray-500/20 text-gray-400 border-gray-500/30",
+  scheduled: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  published: "bg-green-500/20 text-green-400 border-green-500/30",
+  failed: "bg-red-500/20 text-red-400 border-red-500/30",
+}
+
+const SAMPLE_POSTS: Post[] = [
+  { id: "1", title: "Early Bird Launch Announcement", content: "🚀 Big news! WebinarForge AI Early Bird is LIVE. Get lifetime access for just $49 — only 500 spots available. Link in bio!", platformCaptions: {}, date: "2026-04-12", time: "09:00", platforms: ["facebook_personal", "instagram", "linkedin", "twitter"], contentType: "post", category: "promotional", status: "scheduled", hashtags: ["#WebinarForgeAI", "#EarlyBird", "#AIWebinar", "#OnlineBusiness"], aiGenerated: true },
+  { id: "2", title: "How AI Webinars Work - Reel", content: "Ever wondered how AI runs a webinar without you being live? Here is exactly how it works in 60 seconds...", platformCaptions: {}, date: "2026-04-13", time: "12:00", platforms: ["instagram_reels", "tiktok", "youtube_shorts"], contentType: "reel", category: "educational", status: "scheduled", hashtags: ["#AIMarketing", "#WebinarTips", "#PassiveIncome"], aiGenerated: true },
+  { id: "3", title: "Client Result Testimonial", content: "Sarah generated 312 leads in her first week using WebinarForge AI. Here is her story...", platformCaptions: {}, date: "2026-04-14", time: "15:00", platforms: ["facebook_page", "instagram", "linkedin"], contentType: "carousel", category: "testimonial", status: "draft", hashtags: ["#ClientResults", "#Success", "#Testimonial"], aiGenerated: false },
+  { id: "4", title: "Behind the Scenes - Building WebinarForge", content: "Taking you behind the scenes of how we built the AI that runs webinars 24/7...", platformCaptions: {}, date: "2026-04-15", time: "10:00", platforms: ["instagram_stories", "facebook_personal", "tiktok"], contentType: "story", category: "behindscenes", status: "draft", hashtags: ["#BehindTheScenes", "#Startup", "#BuildInPublic"], aiGenerated: false },
+  { id: "5", title: "5 Reasons Webinars Fail", content: "Most webinars fail because of these 5 reasons. Here is how to fix all of them with AI...", platformCaptions: {}, date: "2026-04-16", time: "11:00", platforms: ["linkedin", "twitter", "facebook_page"], contentType: "thread", category: "educational", status: "scheduled", hashtags: ["#WebinarTips", "#MarketingStrategy", "#ContentMarketing"], aiGenerated: true },
+]
+
+export default function ContentCalendarPage() {
+  const [view, setView] = useState<"calendar" | "list" | "grid">("calendar")
+  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS)
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showPostModal, setShowPostModal] = useState<Post | null>(null)
+  const [showCalendarSync, setShowCalendarSync] = useState(false)
+  const [activeTab, setActiveTab] = useState<"create" | "ai" | "preview">("create")
+  const [syncedCalendars, setSyncedCalendars] = useState<string[]>([])
+  const [filterPlatform, setFilterPlatform] = useState("all")
+  const [filterStatus, setFilterStatus] = useState("all")
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([])
+  const [posting, setPosting] = useState(false)
+  const [postSuccess, setPostSuccess] = useState("")
+  const [postError, setPostError] = useState("")
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
+  const [previewPlatform, setPreviewPlatform] = useState("instagram")
+  const [usePlatformCaptions, setUsePlatformCaptions] = useState(false)
+  const [platformCaptions, setPlatformCaptions] = useState<Record<string, string>>({})
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [activeTextarea, setActiveTextarea] = useState<"main" | string>("main")
+  const captionRef = useRef<HTMLTextAreaElement>(null)
+
+  // AI Caption Generator state
+  const [aiTopic, setAiTopic] = useState("")
+  const [aiNiche, setAiNiche] = useState("")
+  const [aiPlatforms, setAiPlatforms] = useState<string[]>(["instagram_reels", "tiktok"])
+  const [aiGenerating, setAiGenerating] = useState(false)
+  const [aiCaptions, setAiCaptions] = useState<Record<string, string>>({})
+  const [aiHashtags, setAiHashtags] = useState<Record<string, string[]>>({})
+  const [aiGenerated, setAiGenerated] = useState(false)
+  const [selectedAiCaption, setSelectedAiCaption] = useState<string | null>(null)
+
+  const [newPost, setNewPost] = useState<Partial<Post>>({
+    platforms: [],
+    contentType: "post",
+    category: "educational",
+    status: "draft",
+    hashtags: [],
+    platformCaptions: {},
+  })
+  const [hashtagInput, setHashtagInput] = useState("")
+
+  useEffect(() => {
+    fetch("/api/social/status")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.expandedPlatforms && data.expandedPlatforms.length > 0) {
+          setConnectedPlatforms(data.expandedPlatforms)
+          return
         }
-      } catch {
-        setLoading(false)
-      }
-    } else {
-      sessionStorage.setItem("checkout_intent", "EARLY_BIRD")
-      sessionStorage.setItem("checkout_bump", bumpChecked ? "true" : "false")
-      window.location.href = "/sign-up"
-    }
+        const rawPlatforms: string[] = data.connected?.map((s: any) =>
+          (s.platform || s.network || s.type || "").toLowerCase()
+        ).filter(Boolean) || []
+        const expanded = rawPlatforms.flatMap((p) => ZERNIO_PLATFORM_MAP[p] || [p])
+        setConnectedPlatforms(expanded)
+      })
+      .catch(() => {})
+  }, [])
+
+  const getDaysInMonth = (month: number, year: number) => new Date(year, month + 1, 0).getDate()
+  const getFirstDayOfMonth = (month: number, year: number) => new Date(year, month, 1).getDay()
+  const daysInMonth = getDaysInMonth(currentMonth, currentYear)
+  const firstDay = getFirstDayOfMonth(currentMonth, currentYear)
+
+  const getPostsForDate = (day: number) => {
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+    return posts.filter((p) => p.date === dateStr)
   }
 
+  const normalizeDate = (date: string): string => {
+    if (!date) return ""
+    if (date.includes("/")) {
+      const parts = date.split("/")
+      if (parts.length === 3) return `${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`
+    }
+    return date
+  }
+
+  const insertAtCursor = (text: string) => {
+    const textarea = captionRef.current
+    if (!textarea) {
+      setNewPost({ ...newPost, content: (newPost.content || "") + text })
+      return
+    }
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const current = newPost.content || ""
+    const newContent = current.substring(0, start) + text + current.substring(end)
+    setNewPost({ ...newPost, content: newContent })
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + text.length, start + text.length)
+    }, 0)
+  }
+
+  const formatText = (type: "bold" | "italic" | "caps" | "lower") => {
+    const textarea = captionRef.current
+    if (!textarea) return
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selected = (newPost.content || "").substring(start, end)
+    if (!selected) return
+    let formatted = selected
+    if (type === "caps") formatted = selected.toUpperCase()
+    if (type === "lower") formatted = selected.toLowerCase()
+    if (type === "bold") formatted = selected.split("").map(c => {
+      const bold: Record<string, string> = { a:"𝗮",b:"𝗯",c:"𝗰",d:"𝗱",e:"𝗲",f:"𝗳",g:"𝗴",h:"𝗵",i:"𝗶",j:"𝗷",k:"𝗸",l:"𝗹",m:"𝗺",n:"𝗻",o:"𝗼",p:"𝗽",q:"𝗾",r:"𝗿",s:"𝘀",t:"𝘁",u:"𝘂",v:"𝘃",w:"𝘄",x:"𝘅",y:"𝘆",z:"𝘇",A:"𝗔",B:"𝗕",C:"𝗖",D:"𝗗",E:"𝗘",F:"𝗙",G:"𝗚",H:"𝗛",I:"𝗜",J:"𝗝",K:"𝗞",L:"𝗟",M:"𝗠",N:"𝗡",O:"𝗢",P:"𝗣",Q:"𝗤",R:"𝗥",S:"𝗦",T:"𝗧",U:"𝗨",V:"𝗩",W:"𝗪",X:"𝗫",Y:"𝗬",Z:"𝗭" }
+      return bold[c] || c
+    }).join("")
+    if (type === "italic") formatted = selected.split("").map(c => {
+      const italic: Record<string, string> = { a:"𝘢",b:"𝘣",c:"𝘤",d:"𝘥",e:"𝘦",f:"𝘧",g:"𝘨",h:"𝘩",i:"𝘪",j:"𝘫",k:"𝘬",l:"𝘭",m:"𝘮",n:"𝘯",o:"𝘰",p:"𝘱",q:"𝘲",r:"𝘳",s:"𝘴",t:"𝘵",u:"𝘶",v:"𝘷",w:"𝘸",x:"𝘹",y:"𝘺",z:"𝘻",A:"𝘈",B:"𝘉",C:"𝘊",D:"𝘋",E:"𝘌",F:"𝘍",G:"𝘎",H:"𝘏",I:"𝘐",J:"𝘑",K:"𝘒",L:"𝘓",M:"𝘔",N:"𝘕",O:"𝘖",P:"𝘗",Q:"𝘘",R:"𝘙",S:"𝘚",T:"𝘛",U:"𝘜",V:"𝘝",W:"𝘞",X:"𝘟",Y:"𝘠",Z:"𝘡" }
+      return italic[c] || c
+    }).join("")
+    const current = newPost.content || ""
+    setNewPost({ ...newPost, content: current.substring(0, start) + formatted + current.substring(end) })
+  }
+
+  // AI Caption Generator — calls internal API route (keeps API key secure)
+  const handleAIGenerateCaptions = async () => {
+    if (!aiTopic) return
+    setAiGenerating(true)
+    setAiGenerated(false)
+    setAiCaptions({})
+    setAiHashtags({})
+
+    const platformsToGenerate = aiPlatforms.length > 0 ? aiPlatforms : ["instagram_reels", "tiktok"]
+
+    try {
+      const platformList = platformsToGenerate.map(pid => {
+        const platform = PLATFORMS.find(p => p.id === pid)
+        const spec = PLATFORM_SPECS[pid]
+        const algoKey = spec?.algorithm || pid
+        return { pid, name: platform?.name || pid, algoKey, maxChars: spec?.maxChars || 2200 }
+      })
+
+      const response = await fetch("/api/ai/captions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: aiTopic,
+          niche: aiNiche,
+          contentType: newPost.contentType,
+          category: newPost.category,
+          platforms: platformList,
+          algorithmPrompts: ALGORITHM_PROMPTS,
+        }),
+      })
+
+      if (!response.ok) {
+        const errData = await response.json()
+        throw new Error(errData.error || "API request failed")
+      }
+
+      const parsed = await response.json()
+
+      if (parsed.error) throw new Error(parsed.error)
+
+      setAiCaptions(parsed.captions || {})
+      setAiHashtags(parsed.hashtags || {})
+      setAiGenerated(true)
+
+      // Auto-select first platform caption
+      const firstPid = platformList[0]?.pid
+      if (firstPid && parsed.captions?.[firstPid]) {
+        setSelectedAiCaption(firstPid)
+      }
+
+    } catch (err: any) {
+      console.error("AI generation failed:", err)
+      // Show error to user
+      setPostError(`AI generation failed: ${err.message || "Please try again."}`)
+      setTimeout(() => setPostError(""), 5000)
+    }
+
+    setAiGenerating(false)
+  }
+
+  const applyAICaptions = () => {
+    if (!aiGenerated) return
+    const firstPid = aiPlatforms[0]
+    const mainCaption = aiCaptions[firstPid] || Object.values(aiCaptions)[0] || ""
+    const mainHashtags = aiHashtags[firstPid] || Object.values(aiHashtags)[0] || []
+
+    setNewPost({
+      ...newPost,
+      content: mainCaption,
+      hashtags: mainHashtags,
+      platforms: aiPlatforms,
+    })
+
+    const caps: Record<string, string> = {}
+    aiPlatforms.forEach(pid => {
+      if (aiCaptions[pid]) caps[pid] = aiCaptions[pid]
+    })
+    setPlatformCaptions(caps)
+    setUsePlatformCaptions(Object.keys(caps).length > 1)
+    setActiveTab("create")
+  }
+
+  const handleCreatePost = () => {
+    const resolvedDate = newPost.date || selectedDate || ""
+    if (!newPost.title || !newPost.content || !resolvedDate) return
+    const post: Post = {
+      id: Date.now().toString(),
+      title: newPost.title || "",
+      content: newPost.content || "",
+      platformCaptions: usePlatformCaptions ? platformCaptions : {},
+      date: normalizeDate(resolvedDate),
+      time: newPost.time || "09:00",
+      platforms: newPost.platforms || [],
+      contentType: newPost.contentType || "post",
+      category: newPost.category || "educational",
+      status: "scheduled",
+      hashtags: newPost.hashtags || [],
+      mediaUrl: mediaPreview || undefined,
+      aiGenerated: false,
+    }
+    setPosts([...posts, post])
+    setShowCreateModal(false)
+    setMediaFile(null)
+    setMediaPreview(null)
+    setPlatformCaptions({})
+    setUsePlatformCaptions(false)
+    setAiGenerated(false)
+    setAiCaptions({})
+    setAiHashtags({})
+    setNewPost({ platforms: [], contentType: "post", category: "educational", status: "draft", hashtags: [], platformCaptions: {} })
+  }
+
+  const handlePublishNow = async (post: Post) => {
+    const zernioIds = Object.entries(ZERNIO_PLATFORM_MAP)
+      .filter(([, calIds]) => post.platforms.some((p) => calIds.includes(p)))
+      .map(([zernioId]) => zernioId)
+
+    if (zernioIds.length === 0) {
+      setPostError("No connected platforms selected. Connect your accounts in Social Settings first.")
+      setTimeout(() => setPostError(""), 6000)
+      setShowPostModal(null)
+      return
+    }
+
+    setPosting(true)
+    setShowPostModal(null)
+
+    try {
+      // blob: URLs only exist in the browser — Zernio cannot fetch them from their servers
+      const payload: Record<string, any> = {
+        platforms: zernioIds,
+        content: post.content,
+        hashtags: post.hashtags,
+      }
+      if (post.mediaUrl && !post.mediaUrl.startsWith("blob:")) {
+        payload.mediaUrls = [post.mediaUrl]
+      }
+
+      const res = await fetch("/api/social/post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setPosts(posts.map((p) => p.id === post.id ? { ...p, status: "published" } : p))
+        setPostSuccess(`✅ Published to ${zernioIds.length} platform${zernioIds.length > 1 ? "s" : ""}!`)
+        setTimeout(() => setPostSuccess(""), 5000)
+        if (post.mediaUrl?.startsWith("blob:")) {
+          setTimeout(() => {
+            setPostError("⚠️ Post published as text only — local files cannot be sent to social platforms. Host your video/image online and paste the URL instead.")
+            setTimeout(() => setPostError(""), 10000)
+          }, 1500)
+        }
+      } else {
+        const errMsg = data.error || data.message || "Failed to publish. Check your Zernio connection."
+        console.error("Zernio publish error:", data)
+        setPostError("❌ " + errMsg)
+        setTimeout(() => setPostError(""), 8000)
+        setPosts(posts.map((p) => p.id === post.id ? { ...p, status: "failed" } : p))
+      }
+    } catch (err) {
+      console.error("Publish network error:", err)
+      setPostError("❌ Network error — could not reach publishing service. Please try again.")
+      setTimeout(() => setPostError(""), 6000)
+    }
+
+    setPosting(false)
+  }
+
+  const handleDeletePost = (id: string) => { setPosts(posts.filter((p) => p.id !== id)); setShowPostModal(null) }
+  const handleSyncCalendar = (calendarId: string) => {
+    setSyncedCalendars(syncedCalendars.includes(calendarId) ? syncedCalendars.filter((c) => c !== calendarId) : [...syncedCalendars, calendarId])
+  }
+
+  const filteredPosts = posts.filter((p) => {
+    const matchPlatform = filterPlatform === "all" || p.platforms.includes(filterPlatform)
+    const matchStatus = filterStatus === "all" || p.status === filterStatus
+    return matchPlatform && matchStatus
+  })
+
+  const currentPreviewSpec = PLATFORM_SPECS[previewPlatform] || PLATFORM_SPECS["instagram"]
+  const previewCaption = usePlatformCaptions && platformCaptions[previewPlatform] ? platformCaptions[previewPlatform] : (newPost.content || "")
+  const previewHashtags = newPost.hashtags?.join(" ") || ""
+  const fullPreviewText = [previewCaption, previewHashtags].filter(Boolean).join("\n\n")
+  const charCount = fullPreviewText.length
+  const maxChars = currentPreviewSpec.maxChars
+  const isOverLimit = maxChars > 0 && charCount > maxChars
+
   return (
-    <div className="flex flex-col items-center gap-2 w-full">
-      <button
-        onClick={handleClick}
-        disabled={loading}
-        className={`relative w-full max-w-xl flex items-center justify-center gap-3 font-black rounded-2xl transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden bg-green-500 hover:bg-green-400 text-white group ${
-          size === "lg" ? "py-5 px-8 text-xl md:text-2xl" : "py-4 px-6 text-lg"
-        }`}
-        style={{ boxShadow: "0 4px 20px rgba(34,197,94,0.4)" }}
-      >
-        <span className="absolute inset-0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
-        {loading ? (
-          <>
-            <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            Processing...
-          </>
-        ) : (
-          `YES! GET INSTANT ACCESS FOR $${total} →`
-        )}
-      </button>
-      <p className="text-gray-500 text-xs text-center">
-        🔒 256-bit SSL · Instant Access · 30-Day Money Back Guarantee
-      </p>
-    </div>
-  )
-}
+    <main className="min-h-screen bg-black text-white">
 
-// ─── FAQ Item ─────────────────────────────────────────────────────────────────
-function FAQ({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <button
-      onClick={() => setOpen(!open)}
-      className="w-full text-left bg-white hover:bg-gray-50 border border-gray-200 hover:border-green-400 rounded-2xl px-6 py-5 transition-all text-left"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <h3 className="font-black text-base text-gray-900 leading-snug">{q}</h3>
-        <span className={`text-green-500 text-xl flex-shrink-0 transition-transform duration-200 ${open ? "rotate-45" : ""}`}>+</span>
-      </div>
-      {open && (
-        <p className="text-gray-600 text-sm leading-relaxed mt-3 border-t border-gray-100 pt-3">{a}</p>
-      )}
-    </button>
-  )
-}
-
-// ─── Section helpers ──────────────────────────────────────────────────────────
-function Section({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <section className={`py-16 md:py-20 px-5 ${className}`}>
-      <div className="max-w-5xl mx-auto">{children}</div>
-    </section>
-  )
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function EarlyBirdPage() {
-  const remaining = TOTAL_SPOTS - CLAIMED_SPOTS
-  const [bumpChecked, setBumpChecked] = useState(false)
-
-  return (
-    <main className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
-
-      {/* ── URGENT TOP BAR ───────────────────────────────────────────────── */}
-      <div className="bg-red-600 text-white text-center py-3 px-4 font-bold text-sm tracking-wide sticky top-0 z-50">
-        ⚠️ WARNING: Only {remaining} of {TOTAL_SPOTS} spots remaining. This offer closes permanently when all spots are claimed!
-      </div>
-
-      {/* ── HERO — DotCom Secrets two-column layout ──────────────────────── */}
-      <Section className="bg-white pt-10 pb-8">
-
-        {/* Eyebrow */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 bg-gray-900 text-white font-black px-5 py-2 rounded-full text-xs uppercase tracking-widest">
-            Attention: Coaches, Consultants &amp; Agency Owners
-          </div>
-        </div>
-
-        {/* Main headline */}
-        <div className="text-center mb-8">
-          <p className="text-base md:text-lg text-gray-600 mb-3">
-            Want To Build an AI-Powered Webinar That Generates Leads On Autopilot?
-          </p>
-          <h1 className="text-4xl md:text-6xl font-black leading-tight text-gray-900 mb-4">
-            Get Lifetime Access to<br />
-            <span className="text-green-500">WebinarForge AI</span><br />
-            for Just{" "}
-            <span className="relative inline-block">
-              <span className="relative z-10">$49</span>
-              <span className="absolute inset-0 bg-yellow-300 -rotate-1 rounded" />
-            </span>
-          </h1>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            <strong className="text-gray-900">WebinarForge AI Is The #1 AI Operating System</strong>{" "}
-            For Building Evergreen Webinars That Generate Leads, Book Appointments,
-            And Close Sales — Completely On Autopilot.
-          </p>
-        </div>
-
-        {/* Two-column: VSL left, offer panel right */}
-        <div className="grid md:grid-cols-[1fr_320px] gap-8 items-start">
-
-          {/* LEFT — VSL */}
-          <div>
-            <VideoPlayer />
-            <div className="flex items-center gap-2 mt-3 justify-center">
-              <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-3 h-3 text-white fill-current" viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-2 14V8l6 4-6 4z"/></svg>
+      {/* HEADER */}
+      <section className="py-12 px-6 border-b border-white/10">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold mb-1">Content Calendar</h1>
+              <p className="text-gray-400">Schedule, generate, and publish to all platforms in one place</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2 border border-white/10 rounded-xl px-3 py-2">
+                {connectedPlatforms.length > 0 ? (
+                  <><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /><span className="text-xs text-green-400 font-semibold">{connectedPlatforms.length} platform{connectedPlatforms.length > 1 ? "s" : ""} connected</span></>
+                ) : (
+                  <><div className="w-2 h-2 bg-yellow-400 rounded-full" /><span className="text-xs text-yellow-400 font-semibold">No platforms connected</span></>
+                )}
               </div>
-              <p className="text-gray-500 text-xs font-semibold">Make Sure Your Sound Is ON! Watch This Short Video First</p>
-            </div>
-
-            {/* Below video — endorsement quotes */}
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              {[
-                { initials: "SM", name: "Sarah M.", role: "Business Coach", quote: '"I had 312 registrations by the next morning. This thing is insane."', color: "#7c3aed", result: "312 registrations · week 1" },
-                { initials: "JK", name: "James K.", role: "SaaS Founder", quote: '"My conversion rate jumped from 3% to 18.4%. I wish I had this years ago."', color: "#059669", result: "18.4% conversion rate" },
-              ].map(({ initials, name, role, quote, color, result }) => (
-                <div key={name} className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs flex-shrink-0" style={{ background: color }}>
-                      {initials}
-                    </div>
-                    <div>
-                      <div className="text-yellow-400 text-xs">★★★★★</div>
-                      <div className="font-black text-green-600 text-[10px]">{result}</div>
-                    </div>
-                  </div>
-                  <p className="text-gray-700 text-xs leading-relaxed italic mb-2">{quote}</p>
-                  <p className="text-gray-500 text-[10px] font-semibold">{name} — {role}</p>
-                </div>
-              ))}
+              <Link href="/dashboard/settings/social"><button className="flex items-center gap-2 border border-white/20 hover:border-purple-500 px-4 py-2 rounded-xl text-sm font-semibold transition">🔗 Connect Accounts</button></Link>
+              <button onClick={() => setShowCalendarSync(true)} className="flex items-center gap-2 border border-white/20 hover:border-purple-500 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                📅 Sync Calendar {syncedCalendars.length > 0 && <span className="bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full">{syncedCalendars.length}</span>}
+              </button>
+              <Link href="/content-calendar/bulk"><button className="flex items-center gap-2 border border-white/20 hover:border-purple-500 px-4 py-2 rounded-xl text-sm font-semibold transition">📤 Bulk Upload</button></Link>
+              <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl text-sm font-bold transition">+ Create Post</button>
+              <button onClick={() => { setShowCreateModal(true); setActiveTab("ai") }} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-xl text-sm font-bold transition">🤖 AI Generate</button>
             </div>
           </div>
 
-          {/* RIGHT — Offer panel */}
-          <div className="md:sticky md:top-20">
-
-            {/* Product visual */}
-            <div className="border-2 border-gray-900 rounded-2xl overflow-hidden mb-4 bg-white">
-              {/* Product header */}
-              <div className="bg-gray-900 p-5 text-center">
-                <div className="w-full mx-auto mb-3">
-                  <img
-                    src="https://i.ibb.co/mFGHpzg0/Gemini-Generated-Image-avcc9oavcc9oavcc.png"
-                    alt="AI Webinar Templates Pack"
-                    className="w-full rounded-lg shadow-xl"
-                  />
-                </div>
-                {/* Stars */}
-                <div className="flex items-center justify-center gap-0.5 mb-1">
-                  {[1,2,3,4,5].map(i => (
-                    <svg key={i} className="w-3.5 h-3.5 text-yellow-400 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                  ))}
-                </div>
-                <p className="text-gray-400 text-xs">{CLAIMED_SPOTS}+ early users</p>
-              </div>
-
-              {/* CTA section */}
-              <div className="p-5">
-                <div className="text-center mb-4">
-                  <p className="text-gray-500 text-sm line-through mb-0.5">Regular Price: $97/month</p>
-                  <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-5xl font-black text-gray-900">${bumpChecked ? 96 : 49}</span>
-                    <span className="text-gray-500 text-sm">one-time</span>
-                  </div>
-                  <p className="text-green-600 text-xs font-bold mt-1">No monthly fees. Ever.</p>
-                </div>
-                {/* Order bump */}
-                <div className="mb-4">
-                  <OrderBump checked={bumpChecked} onToggle={() => setBumpChecked(!bumpChecked)} />
-                </div>
-                <CTAButton size="md" bumpChecked={bumpChecked} />
-              </div>
+          {postSuccess && <div className="mt-4 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-green-400 text-sm font-semibold">{postSuccess}</div>}
+          {postError && (
+            <div className="mt-4 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm font-semibold flex items-center justify-between">
+              <span>❌ {postError}</span>
+              {postError.includes("Connect") && <Link href="/dashboard/settings/social" className="text-xs underline text-red-300 ml-2">Connect accounts →</Link>}
             </div>
+          )}
 
-            {/* Spots remaining */}
-            <SpotsBar />
-
-            {/* Trust badges */}
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {[
-                ["🔒", "256-bit SSL", "Secure checkout"],
-                ["⚡", "Instant Access", "Start in minutes"],
-                ["🔄", "30-Day Guarantee", "Full refund policy"],
-                ["💳", "All Cards", "Accepted worldwide"],
-              ].map(([icon, title, sub]) => (
-                <div key={title as string} className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-center">
-                  <div className="text-base mb-1">{icon}</div>
-                  <div className="text-xs font-semibold text-gray-800">{title}</div>
-                  <div className="text-[10px] text-gray-400">{sub}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      {/* ── PAIN ─────────────────────────────────────────────────────────── */}
-      <Section className="bg-gray-50">
-        <div className="text-center">
-          <h2 className="text-3xl md:text-5xl font-black uppercase mb-12 leading-tight text-gray-900">
-            Be Honest With Yourself For A Second...
-          </h2>
-          <div className="grid md:grid-cols-2 gap-4 mb-12 text-left">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
             {[
-              "You're tired of showing up LIVE every week just to make sales",
-              "Your webinars have low attendance and even lower conversions",
-              "You spend hours creating content that nobody actually buys from",
-              "You watch competitors crush it while you struggle to get leads",
-              "You know webinars work — but the tech and time kill you every time",
-              "You've tried other tools but they're too complicated or too expensive",
-            ].map((pain) => (
-              <div key={pain} className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl p-4">
-                <span className="text-red-500 text-lg flex-shrink-0 mt-0.5">✕</span>
-                <p className="text-gray-700 text-sm leading-relaxed">{pain}</p>
+              { label: "Total Posts", value: posts.length, color: "text-white" },
+              { label: "Scheduled", value: posts.filter(p => p.status === "scheduled").length, color: "text-blue-400" },
+              { label: "Published", value: posts.filter(p => p.status === "published").length, color: "text-green-400" },
+              { label: "Drafts", value: posts.filter(p => p.status === "draft").length, color: "text-gray-400" },
+              { label: "Connected", value: connectedPlatforms.length, color: "text-purple-400" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className={`text-2xl font-bold ${color}`}>{value}</div>
+                <div className="text-xs text-gray-500 mt-1">{label}</div>
               </div>
             ))}
           </div>
-          <p className="text-xl md:text-2xl font-black text-green-600">
-            If you nodded yes to ANY of these — keep reading. This is for you.
-          </p>
-        </div>
-      </Section>
-
-      {/* ── SOLUTION ─────────────────────────────────────────────────────── */}
-      <Section className="bg-white">
-        <div className="text-center mb-12">
-          <div className="inline-block bg-gray-900 text-white font-black px-4 py-1.5 rounded-full text-xs uppercase tracking-widest mb-6">Introducing</div>
-          <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tight text-gray-900 mb-4">WebinarForge AI</h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            The world's first AI Operating System for evergreen webinars that builds,
-            presents, and converts for you — completely on autopilot.
-          </p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-5 mb-14">
-          {[
-            { icon: "🤖", title: "AI Builds Everything", desc: "Script, slides, funnel, CTAs — generated in minutes. Not hours. Not days. Minutes." },
-            { icon: "🎭", title: "AI Presents For You", desc: "Powered by HeyGen — your hyper-realistic AI avatar delivers your webinar 24/7 while you do literally anything else." },
-            { icon: "💰", title: "AI Converts Leads", desc: "Automated follow-up, email sequences, and retargeting that turns viewers into buyers." },
-            { icon: "📊", title: "Real-Time Analytics", desc: "See exactly what's converting. Registrations, clicks, revenue — all in one dashboard." },
-            { icon: "🔄", title: "Evergreen Engine", desc: "Your webinar runs forever. Set it once and collect leads and sales indefinitely." },
-            { icon: "⚡", title: "Launch In Minutes", desc: "From zero to live webinar funnel in under 10 minutes. No tech skills required." },
-          ].map(({ icon, title, desc }) => (
-            <div key={title} className="group bg-white hover:bg-gray-50 border border-gray-200 hover:border-green-400 rounded-2xl p-6 text-left transition-all">
-              <div className="text-3xl mb-3">{icon}</div>
-              <h3 className="text-base font-black mb-2 text-gray-900">{title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-center">
-          <CTAButton size="lg" bumpChecked={bumpChecked} />
-        </div>
-      </Section>
-
-      {/* ── VALUE STACK ──────────────────────────────────────────────────── */}
-      <Section className="bg-gray-50">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-black uppercase mb-4 leading-tight text-gray-900">
-            Here's Everything You Get Today
-          </h2>
-          <p className="text-gray-500 mb-8">Total value: over $3,285 — yours for just $49 one-time</p>
-
-          {/* Product image */}
-          <div className="flex justify-center mb-10">
-            <img
-              src="https://i.ibb.co/84DPTQPf/Gemini-Generated-Image-pud2hhpud2hhpud2.png"
-              alt="WebinarForge AI — AI Webinar Templates Pack and Software"
-              className="w-full max-w-2xl rounded-2xl shadow-2xl"
-            />
-          </div>
-
-          <div className="space-y-3 mb-10">
-            {[
-              { item: "AI Webinar Builder", value: "$997" },
-              { item: "AI Avatar Presenter (Powered by HeyGen)", value: "$497" },
-              { item: "Proven Funnel Templates", value: "$297" },
-              { item: "Email + SMS Automation", value: "$497" },
-              { item: "Evergreen Replay Engine", value: "$997" },
-              { item: "Early Bird Lifetime Access", value: "PRICELESS" },
-            ].map(({ item, value }) => (
-              <div key={item} className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-green-500 font-black">✔</span>
-                  <span className="font-semibold text-sm md:text-base text-gray-800">{item}</span>
-                </div>
-                <span className="text-gray-400 line-through text-sm">{value}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Price box */}
-          <div className="bg-white border-4 border-gray-900 rounded-3xl p-8 mb-6">
-            <p className="text-gray-500 text-base mb-1">Total Value: <span className="line-through">$3,285+</span></p>
-            <p className="text-gray-500 text-base mb-3">Regular Price: <span className="line-through">$97/month</span></p>
-            <p className="text-5xl md:text-6xl font-black text-gray-900 mb-1">TODAY: $49</p>
-            <p className="text-green-600 font-bold">One-time payment. No monthly fees. Ever.</p>
-            <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-3">
-              <p className="text-red-600 font-black text-sm">
-                ⚠️ Only {remaining} of {TOTAL_SPOTS} spots remaining — offer closes permanently when all spots are claimed
-              </p>
-            </div>
-          </div>
-
-          {/* Spots bar in value section */}
-          <div className="mb-8">
-            <SpotsBar />
-          </div>
-
-          <div className="flex justify-center">
-            <CTAButton size="lg" bumpChecked={bumpChecked} />
-          </div>
-        </div>
-      </Section>
-
-      {/* ── ALL TESTIMONIALS ─────────────────────────────────────────────── */}
-      <Section className="bg-white">
-        <h2 className="text-3xl md:text-5xl font-black uppercase text-center mb-12 leading-tight text-gray-900">
-          Real Results From Real Users
-        </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { initials: "SM", name: "Sarah M.", role: "Business Coach", result: "312 registrations in first week", quote: "I set up my webinar funnel in 8 minutes. By the next morning I had 312 registrations and 18 sales. This thing is insane.", color: "#7c3aed" },
-            { initials: "JK", name: "James K.", role: "SaaS Founder", result: "18.4% conversion rate", quote: "My old webinars converted at 3%. WebinarForge AI got me to 18.4% in my first funnel. I wish I had this two years ago.", color: "#059669" },
-            { initials: "ML", name: "Maria L.", role: "Marketing Consultant", result: "$14,700 in 30 days", quote: "I run webinars for my clients now using WebinarForge AI. Made $14,700 last month while the AI did all the presenting.", color: "#d97706" },
-          ].map(({ initials, name, role, result, quote, color }) => (
-            <div key={name} className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center font-black text-sm text-white flex-shrink-0" style={{ background: color }}>
-                  {initials}
-                </div>
-                <div>
-                  <div className="text-yellow-400 text-sm">★★★★★</div>
-                  <div className="font-black text-green-600 text-xs mt-0.5">{result}</div>
-                </div>
-              </div>
-              <p className="text-gray-600 text-sm leading-relaxed italic flex-1 mb-3">"{quote}"</p>
-              <div className="border-t border-gray-100 pt-3">
-                <p className="text-gray-900 font-semibold text-sm">{name}</p>
-                <p className="text-gray-400 text-xs">{role}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* ── GUARANTEE ────────────────────────────────────────────────────── */}
-      <Section className="bg-gray-50">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="text-7xl mb-6">🛡️</div>
-          <h2 className="text-3xl md:text-5xl font-black uppercase mb-6 leading-tight text-gray-900">
-            30-Day Money Back Guarantee
-          </h2>
-          <p className="text-gray-600 text-lg leading-relaxed mb-6 max-w-2xl mx-auto">
-            Try WebinarForge AI for a full 30 days. If you don't get results,
-            if it's not the easiest webinar tool you've ever used, or if you're
-            not completely blown away — email us and we'll refund every penny.
-            No questions. No hassle. No hard feelings.
-          </p>
-          <p className="text-green-600 font-black text-xl">
-            You either get results or you get your money back. Period.
-          </p>
-        </div>
-      </Section>
-
-      {/* ── FAQ ──────────────────────────────────────────────────────────── */}
-      <Section className="bg-white">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-5xl font-black uppercase text-center mb-12 leading-tight text-gray-900">
-            You're Probably Wondering...
-          </h2>
-          <div className="space-y-3">
-            {[
-              { q: "Do I need any tech skills?", a: "Zero. If you can fill out a form, you can launch a webinar funnel with WebinarForge AI. We built it for non-tech people from the ground up." },
-              { q: "How fast can I launch my first webinar?", a: "Most users launch their first evergreen webinar funnel in under 10 minutes. The AI does 95% of the work — you just review and publish." },
-              { q: "Is this really a one-time payment?", a: "Yes. $49 one-time. No monthly fees, no hidden charges, no surprises. Early bird members lock in lifetime access permanently." },
-              { q: "What happens when all 500 spots are claimed?", a: "The early bird offer closes permanently and the price goes to $97/month. Once the 500 spots are gone, this offer is gone forever. There's no way to get it back at this price." },
-              { q: "Does it work for my niche?", a: "WebinarForge AI works for coaches, consultants, SaaS, real estate, agencies, local businesses, and more. If you have an offer, it will work." },
-              { q: "What if I already have a webinar tool?", a: "Most people who switch to WebinarForge AI never go back. It replaces 5–7 different tools and does everything automatically — often better." },
-            ].map(({ q, a }) => <FAQ key={q} q={q} a={a} />)}
-          </div>
-        </div>
-      </Section>
-
-      {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
-      <section className="py-20 md:py-28 px-5 bg-gray-900">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-4xl md:text-6xl font-black uppercase leading-tight mb-5 text-white">
-            This Is Your Last Chance
-          </h2>
-          <p className="text-gray-300 text-lg md:text-xl leading-relaxed mb-8 max-w-2xl mx-auto">
-            500 spots. $49 one-time. Lifetime access.{" "}
-            <span className="text-yellow-400 font-black">
-              When they're gone — they're GONE.
-            </span>{" "}
-            Don't be the person who waits and pays $97/month forever.
-          </p>
-
-          <div className="max-w-sm mx-auto mb-8">
-            <SpotsBar />
-          </div>
-
-          <div className="mb-8">
-            <CTAButton size="lg" bumpChecked={bumpChecked} />
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-5 text-sm text-gray-400 mb-8">
-            <span>🔒 256-bit SSL Secure</span>
-            <span>💳 All Cards Accepted</span>
-            <span>🔄 30-Day Guarantee</span>
-            <span>⚡ Instant Access</span>
-          </div>
-
-          <p className="text-gray-600 text-xs">
-            WebinarForge AI &nbsp;·&nbsp; hello@webinarforge.ai &nbsp;·&nbsp;
-            <Link href="/privacy" className="underline hover:text-gray-400 transition-colors">Privacy</Link>
-            &nbsp;·&nbsp;
-            <Link href="/terms" className="underline hover:text-gray-400 transition-colors">Terms</Link>
-          </p>
-          <p className="text-gray-600 text-xs mt-1">
-            WebinarForge AI, LLC &nbsp;■&nbsp; All Rights Reserved © 2026 &nbsp;■&nbsp; 19179 Blanco Rd Ste 105 PMB 1036, San Antonio, TX 78258
-          </p>
-          <p className="text-gray-600 text-xs mt-3 max-w-2xl mx-auto leading-relaxed">
-            EARNINGS DISCLAIMER: Results mentioned are not typical. Individual results will vary based on effort, experience, and market conditions. WebinarForge AI is a software tool — your results depend on how you use it.
-          </p>
         </div>
       </section>
+
+      {/* CONTROLS */}
+      <section className="px-6 py-4 border-b border-white/10">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
+            {[{ id: "calendar", label: "📅 Calendar" }, { id: "list", label: "📋 List" }, { id: "grid", label: "⊞ Grid" }].map(({ id, label }) => (
+              <button key={id} onClick={() => setView(id as any)} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${view === id ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"}`}>{label}</button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500">
+              <option value="all">All Platforms</option>
+              {PLATFORMS.map((p) => <option key={p.id} value={p.id}>{p.icon} {p.name}</option>)}
+            </select>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500">
+              <option value="all">All Status</option>
+              <option value="draft">Draft</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="published">Published</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      {/* CALENDAR VIEW */}
+      {view === "calendar" && (
+        <section className="px-6 py-6 max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={() => { if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1) } else setCurrentMonth(currentMonth - 1) }} className="p-2 hover:bg-white/10 rounded-xl transition">←</button>
+            <h2 className="text-xl font-bold">{MONTHS[currentMonth]} {currentYear}</h2>
+            <button onClick={() => { if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(currentYear + 1) } else setCurrentMonth(currentMonth + 1) }} className="p-2 hover:bg-white/10 rounded-xl transition">→</button>
+          </div>
+          <div className="grid grid-cols-7 gap-2 mb-2">
+            {DAYS.map((day) => <div key={day} className="text-center text-xs text-gray-500 font-semibold py-2">{day}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} className="h-28 rounded-xl" />)}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1
+              const dayPosts = getPostsForDate(day)
+              const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+              const isToday = new Date().toISOString().split("T")[0] === dateStr
+              return (
+                <div key={day} onClick={() => { setSelectedDate(dateStr); setShowCreateModal(true) }}
+                  className={`h-28 rounded-xl border p-2 cursor-pointer transition hover:border-purple-500 ${isToday ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:bg-white/10"}`}>
+                  <div className={`text-sm font-bold mb-1 ${isToday ? "text-purple-400" : "text-gray-400"}`}>{day}</div>
+                  <div className="space-y-1 overflow-hidden">
+                    {dayPosts.slice(0, 2).map((post) => {
+                      const platform = PLATFORMS.find((p) => post.platforms[0] === p.id)
+                      return <div key={post.id} onClick={(e) => { e.stopPropagation(); setShowPostModal(post) }} className={`text-xs px-2 py-0.5 rounded-full truncate border ${colorMap[platform?.color || "gray"]}`}>{post.title.slice(0, 15)}...</div>
+                    })}
+                    {dayPosts.length > 2 && <div className="text-xs text-gray-500 pl-1">+{dayPosts.length - 2} more</div>}
+                    {dayPosts.length === 0 && <div className="text-xs text-gray-700 pl-1">+ Add</div>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* LIST VIEW */}
+      {view === "list" && (
+        <section className="px-6 py-6 max-w-7xl mx-auto">
+          <div className="space-y-3">
+            {filteredPosts.length === 0 ? (
+              <div className="text-center py-20 text-gray-500"><div className="text-5xl mb-4">📭</div><p>No posts found. Create your first post!</p></div>
+            ) : (
+              filteredPosts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((post) => (
+                <div key={post.id} onClick={() => setShowPostModal(post)} className="bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-2xl p-5 cursor-pointer transition flex items-start gap-4">
+                  <div className="flex-shrink-0 text-center">
+                    <div className="text-xs text-gray-500">{MONTHS[parseInt(post.date.split("-")[1]) - 1].slice(0, 3)}</div>
+                    <div className="text-2xl font-black text-white">{post.date.split("-")[2]}</div>
+                    <div className="text-xs text-gray-500">{post.time}</div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="font-bold text-white">{post.title}</h3>
+                      {post.aiGenerated && <span className="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-full">🤖 AI</span>}
+                      <span className={`text-xs border px-2 py-0.5 rounded-full ${statusColors[post.status]}`}>{post.status}</span>
+                      {post.mediaUrl && <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">📎 Media</span>}
+                    </div>
+                    <p className="text-gray-400 text-sm truncate mb-2">{post.content}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {post.platforms.map((pid) => {
+                        const platform = PLATFORMS.find((p) => p.id === pid)
+                        const isConn = connectedPlatforms.includes(pid)
+                        return platform ? <span key={pid} className={`text-xs border px-2 py-0.5 rounded-full ${colorMap[platform.color]} ${isConn ? "ring-1 ring-green-400/50" : ""}`}>{platform.icon} {platform.name}{isConn ? " ●" : ""}</span> : null
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0">{CONTENT_TYPES.find((c) => c.id === post.contentType)?.icon}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* GRID VIEW */}
+      {view === "grid" && (
+        <section className="px-6 py-6 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredPosts.map((post) => (
+              <div key={post.id} onClick={() => setShowPostModal(post)} className="bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-2xl p-5 cursor-pointer transition">
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`text-xs border px-2 py-0.5 rounded-full ${statusColors[post.status]}`}>{post.status}</span>
+                  <span className="text-xl">{CONTENT_TYPES.find((c) => c.id === post.contentType)?.icon}</span>
+                </div>
+                <h3 className="font-bold text-white mb-2 line-clamp-2">{post.title}</h3>
+                <p className="text-gray-400 text-sm line-clamp-3 mb-3">{post.content}</p>
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                  <span>📅 {post.date} at {post.time}</span>
+                  {post.aiGenerated && <span className="text-purple-400">🤖 AI</span>}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {post.platforms.slice(0, 3).map((pid) => {
+                    const platform = PLATFORMS.find((p) => p.id === pid)
+                    const isConn = connectedPlatforms.includes(pid)
+                    return platform ? <span key={pid} className={`text-sm ${isConn ? "" : "opacity-50"}`}>{platform.icon}</span> : null
+                  })}
+                  {post.platforms.length > 3 && <span className="text-xs text-gray-500">+{post.platforms.length - 3}</span>}
+                </div>
+              </div>
+            ))}
+            <div onClick={() => setShowCreateModal(true)} className="border-2 border-dashed border-white/10 hover:border-purple-500 rounded-2xl p-5 cursor-pointer transition flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-white min-h-[200px]">
+              <span className="text-4xl">+</span>
+              <span className="text-sm font-semibold">Create New Post</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* CREATE MODAL */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-8 overflow-y-auto">
+          <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-y-auto">
+
+            {/* Header Tabs */}
+            <div className="p-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#0a0a0a] z-10">
+              <div className="flex bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
+                <button onClick={() => setActiveTab("create")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "create" ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"}`}>✏️ Create</button>
+                <button onClick={() => setActiveTab("ai")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "ai" ? "bg-amber-500 text-black" : "text-gray-400 hover:text-white"}`}>🤖 AI Captions</button>
+                <button onClick={() => setActiveTab("preview")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "preview" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"}`}>👁 Preview</button>
+              </div>
+              <button onClick={() => { setShowCreateModal(false); setMediaFile(null); setMediaPreview(null); setPlatformCaptions({}); setUsePlatformCaptions(false); setAiGenerated(false) }} className="text-gray-500 hover:text-white text-xl">✕</button>
+            </div>
+
+            {/* AI CAPTIONS TAB */}
+            {activeTab === "ai" && (
+              <div className="p-6 space-y-6">
+                <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-5">
+                  <h3 className="font-black text-amber-400 text-lg mb-1">🔥 Viral Caption Generator</h3>
+                  <p className="text-gray-400 text-sm">Describe your video/content and AI will generate platform-optimized captions tuned to each algorithm — engineered to reach the top 1% of creators in your niche.</p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block font-semibold">What is your video/post about? *</label>
+                    <textarea value={aiTopic} onChange={(e) => setAiTopic(e.target.value)}
+                      placeholder="e.g. I show how I made $10k in 30 days using AI webinars while working only 2 hours a day — step by step breakdown..."
+                      rows={4}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-amber-500 transition resize-none text-sm" />
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-400 mb-1 block font-semibold">Your Niche / Industry</label>
+                      <input type="text" value={aiNiche} onChange={(e) => setAiNiche(e.target.value)}
+                        placeholder="e.g. online business, AI tools, coaching, real estate..."
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-amber-500 transition text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400 mb-1 block font-semibold">Content Type</label>
+                      <select value={newPost.contentType} onChange={(e) => setNewPost({ ...newPost, contentType: e.target.value })}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 text-sm">
+                        {CONTENT_TYPES.map((t) => <option key={t.id} value={t.id}>{t.icon} {t.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Platform Selection for AI */}
+                <div>
+                  <label className="text-sm text-gray-400 mb-2 block font-semibold">Generate captions for these platforms:</label>
+                  <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                    {PLATFORMS.filter(p => PLATFORM_SPECS[p.id]).map((platform) => (
+                      <button key={platform.id}
+                        onClick={() => setAiPlatforms(aiPlatforms.includes(platform.id) ? aiPlatforms.filter(p => p !== platform.id) : [...aiPlatforms, platform.id])}
+                        className={`flex items-center gap-2 p-2 rounded-xl border text-xs transition ${aiPlatforms.includes(platform.id) ? "border-amber-500 bg-amber-500/10 text-white" : "border-white/10 bg-white/5 text-gray-400 hover:border-white/30"}`}>
+                        <span>{platform.icon}</span>
+                        <span>{platform.name.split(" ")[0]}</span>
+                        {aiPlatforms.includes(platform.id) && <span className="ml-auto text-amber-400">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button onClick={handleAIGenerateCaptions} disabled={!aiTopic || aiGenerating || aiPlatforms.length === 0}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black py-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-3 text-base">
+                  {aiGenerating ? (
+                    <><div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />Analyzing algorithms & generating viral captions...</>
+                  ) : "🚀 Generate Viral Captions →"}
+                </button>
+
+                {/* Generated Captions Results */}
+                {aiGenerated && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-white text-lg">✅ Your Viral Captions</h3>
+                      <button onClick={applyAICaptions}
+                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2 rounded-xl text-sm transition">
+                        Use These Captions →
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {aiPlatforms.filter(pid => aiCaptions[pid]).map((pid) => {
+                        const platform = PLATFORMS.find(p => p.id === pid)
+                        const spec = PLATFORM_SPECS[pid]
+                        const caption = aiCaptions[pid] || ""
+                        const tags = aiHashtags[pid] || []
+                        const isSelected = selectedAiCaption === pid
+                        return (
+                          <div key={pid}
+                            onClick={() => setSelectedAiCaption(isSelected ? null : pid)}
+                            className={`border rounded-2xl p-4 cursor-pointer transition ${isSelected ? "border-amber-500 bg-amber-500/5" : "border-white/10 bg-white/5 hover:border-white/20"}`}>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl">{platform?.icon}</span>
+                                <div>
+                                  <p className="font-bold text-white text-sm">{platform?.name}</p>
+                                  <p className="text-xs text-gray-500">{spec?.ratioLabel} · {spec?.maxChars > 0 ? `${caption.length}/${spec.maxChars} chars` : `${caption.length} chars`}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-full font-semibold">
+                                  🔥 Viral Optimized
+                                </span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(caption + "\n\n" + tags.join(" ")) }}
+                                  className="text-xs border border-white/20 hover:border-white/50 text-gray-400 hover:text-white px-2 py-1 rounded-lg transition">
+                                  Copy
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed mb-3 line-clamp-6">
+                              {caption}
+                            </p>
+                            {tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {tags.map((tag) => (
+                                  <span key={tag} className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">{tag}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <button onClick={applyAICaptions} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl transition text-sm">
+                      ✅ Apply All Captions & Go to Create Post →
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CREATE TAB */}
+            {activeTab === "create" && (
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Post Title *</label>
+                  <input type="text" value={newPost.title || ""}
+                    onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                    placeholder="Give your post a title..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition" />
+                </div>
+
+                {/* Caption Editor with Toolbar */}
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Caption *</label>
+
+                  {/* Formatting Toolbar */}
+                  <div className="flex items-center gap-1 bg-white/5 border border-white/10 border-b-0 rounded-t-xl px-3 py-2 flex-wrap">
+                    <button onClick={() => formatText("bold")} title="Bold (select text first)" className="px-2 py-1 rounded hover:bg-white/10 transition text-sm font-black text-white">𝗕</button>
+                    <button onClick={() => formatText("italic")} title="Italic (select text first)" className="px-2 py-1 rounded hover:bg-white/10 transition text-sm italic text-white">𝘐</button>
+                    <button onClick={() => formatText("caps")} title="ALL CAPS (select text first)" className="px-2 py-1 rounded hover:bg-white/10 transition text-xs font-bold text-gray-400 hover:text-white">AA</button>
+                    <button onClick={() => formatText("lower")} title="lowercase (select text first)" className="px-2 py-1 rounded hover:bg-white/10 transition text-xs text-gray-400 hover:text-white">aa</button>
+                    <div className="w-px h-4 bg-white/20 mx-1" />
+                    <button onClick={() => insertAtCursor("\n\n")} title="Line break" className="px-2 py-1 rounded hover:bg-white/10 transition text-xs text-gray-400 hover:text-white">↵</button>
+                    <button onClick={() => insertAtCursor("👉 ")} className="px-2 py-1 rounded hover:bg-white/10 transition text-sm">👉</button>
+                    <button onClick={() => insertAtCursor("✅ ")} className="px-2 py-1 rounded hover:bg-white/10 transition text-sm">✅</button>
+                    <button onClick={() => insertAtCursor("🔥 ")} className="px-2 py-1 rounded hover:bg-white/10 transition text-sm">🔥</button>
+                    <button onClick={() => insertAtCursor("💡 ")} className="px-2 py-1 rounded hover:bg-white/10 transition text-sm">💡</button>
+                    <button onClick={() => insertAtCursor("🚀 ")} className="px-2 py-1 rounded hover:bg-white/10 transition text-sm">🚀</button>
+                    <button onClick={() => insertAtCursor("💰 ")} className="px-2 py-1 rounded hover:bg-white/10 transition text-sm">💰</button>
+                    <button onClick={() => insertAtCursor("⚡ ")} className="px-2 py-1 rounded hover:bg-white/10 transition text-sm">⚡</button>
+                    <button onClick={() => insertAtCursor("🎯 ")} className="px-2 py-1 rounded hover:bg-white/10 transition text-sm">🎯</button>
+                    <div className="w-px h-4 bg-white/20 mx-1" />
+                    <div className="relative">
+                      <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="px-2 py-1 rounded hover:bg-white/10 transition text-xs text-gray-400 hover:text-white flex items-center gap-1">
+                        😀 <span className="text-xs">More</span>
+                      </button>
+                      {showEmojiPicker && (
+                        <div className="absolute top-8 left-0 bg-[#1a1a1a] border border-white/20 rounded-xl p-3 z-20 grid grid-cols-5 gap-2 w-44 shadow-2xl">
+                          {EMOJIS.map((emoji) => (
+                            <button key={emoji} onClick={() => { insertAtCursor(emoji + " "); setShowEmojiPicker(false) }}
+                              className="text-xl hover:bg-white/10 rounded-lg p-1 transition">{emoji}</button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="ml-auto text-xs text-gray-600">{(newPost.content || "").length} chars</div>
+                  </div>
+
+                  <textarea
+                    ref={captionRef}
+                    value={newPost.content || ""}
+                    onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                    placeholder="Write your caption here, or use 🤖 AI Captions to generate viral platform-optimized captions..."
+                    rows={6}
+                    className="w-full bg-white/5 border border-white/10 rounded-b-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition resize-none" />
+
+                  {aiGenerated && (
+                    <div className="mt-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 flex items-center justify-between">
+                      <p className="text-xs text-amber-400">🔥 AI viral captions generated! Platform-specific captions are ready.</p>
+                      <button onClick={() => setActiveTab("ai")} className="text-xs text-amber-400 underline">View captions →</button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Per-Platform Caption Toggle */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="font-semibold text-white text-sm">Customize Caption Per Platform</p>
+                      <p className="text-xs text-gray-500">Different captions for each platform's algorithm</p>
+                    </div>
+                    <button onClick={() => setUsePlatformCaptions(!usePlatformCaptions)}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${usePlatformCaptions ? "bg-purple-600" : "bg-white/20"}`}>
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${usePlatformCaptions ? "translate-x-7" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+                  {usePlatformCaptions && (
+                    <div className="space-y-3 mt-4">
+                      {(newPost.platforms || []).map((pid) => {
+                        const platform = PLATFORMS.find((p) => p.id === pid)
+                        const spec = PLATFORM_SPECS[pid]
+                        if (!platform || !spec) return null
+                        const caption = platformCaptions[pid] || ""
+                        const count = caption.length
+                        const over = spec.maxChars > 0 && count > spec.maxChars
+                        return (
+                          <div key={pid} className="bg-black/30 border border-white/10 rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span>{platform.icon}</span>
+                                <span className="text-sm font-semibold text-white">{platform.name}</span>
+                                <span className="text-xs text-gray-500">{spec.ratioLabel}</span>
+                                {aiCaptions[pid] && <span className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">🔥 AI Ready</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {aiCaptions[pid] && (
+                                  <button onClick={() => setPlatformCaptions({ ...platformCaptions, [pid]: aiCaptions[pid] + "\n\n" + (aiHashtags[pid] || []).join(" ") })}
+                                    className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-1 rounded-lg hover:bg-amber-500/30 transition">
+                                    Use AI Caption
+                                  </button>
+                                )}
+                                <span className={`text-xs font-mono ${over ? "text-red-400" : "text-gray-500"}`}>{count}{spec.maxChars > 0 ? `/${spec.maxChars}` : ""}</span>
+                              </div>
+                            </div>
+                            <textarea value={caption} onChange={(e) => setPlatformCaptions({ ...platformCaptions, [pid]: e.target.value })}
+                              placeholder={`Caption for ${platform.name}...`} rows={3}
+                              className={`w-full bg-white/5 border rounded-xl px-3 py-2 text-white placeholder:text-gray-600 focus:outline-none transition resize-none text-sm ${over ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-purple-500"}`} />
+                            {over && <p className="text-xs text-red-400 mt-1">⚠️ Over limit by {count - spec.maxChars} chars</p>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* DATE / TIME — always visible at top of form */}
+                <div className="grid grid-cols-2 gap-4 bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
+                  <div>
+                    <label className="text-sm text-purple-400 mb-1 block font-semibold">📅 Date *</label>
+                    <input type="date" value={newPost.date || selectedDate || ""}
+                      onChange={(e) => setNewPost({ ...newPost, date: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-purple-400 mb-1 block font-semibold">⏰ Time</label>
+                    <input type="time" value={newPost.time || "09:00"}
+                      onChange={(e) => setNewPost({ ...newPost, time: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
+                  </div>
+                </div>
+
+                {/* Media Upload — compact thumbnail when loaded */}
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Media (Image or Video — optional)</label>
+                  {mediaPreview ? (
+                    <div className="rounded-xl border border-white/10 bg-black/40 p-3 flex items-center gap-3">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-black">
+                        {mediaFile?.type.startsWith("video/") ? (
+                          <video src={mediaPreview} className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={mediaPreview} alt="preview" className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-semibold truncate">{mediaFile?.name}</p>
+                        <p className="text-gray-500 text-xs mt-0.5">{mediaFile?.type.startsWith("video/") ? "🎬 Video" : "🖼️ Image"} · Ready to post</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button onClick={() => setActiveTab("preview")}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-lg font-semibold transition">👁 Preview</button>
+                        <button onClick={() => { setMediaFile(null); setMediaPreview(null) }}
+                          className="bg-red-500/20 hover:bg-red-500/40 text-red-400 w-8 h-8 rounded-lg flex items-center justify-center text-sm transition">✕</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex items-center gap-3 border-2 border-dashed border-white/20 hover:border-purple-500 rounded-xl p-4 cursor-pointer transition group">
+                      <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mov,video/avi,video/quicktime" className="hidden"
+                        onChange={(e) => { const file = e.target.files?.[0]; if (file) { setMediaFile(file); setMediaPreview(URL.createObjectURL(file)) } }} />
+                      <span className="text-2xl group-hover:scale-110 transition">📎</span>
+                      <div>
+                        <p className="text-sm text-gray-400 group-hover:text-white transition font-semibold">Click to upload image or video</p>
+                        <p className="text-xs text-gray-600">JPG, PNG, GIF, WebP, MP4, MOV up to 500MB</p>
+                      </div>
+                    </label>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Content Type</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {CONTENT_TYPES.map((type) => (
+                      <button key={type.id} onClick={() => setNewPost({ ...newPost, contentType: type.id })}
+                        className={`p-2 rounded-xl border text-center transition ${newPost.contentType === type.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/30"}`}>
+                        <div className="text-xl mb-1">{type.icon}</div>
+                        <div className="text-xs text-gray-400">{type.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Category</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {CATEGORIES.map((cat) => (
+                      <button key={cat.id} onClick={() => setNewPost({ ...newPost, category: cat.id })}
+                        className={`p-2 rounded-xl border text-center transition ${newPost.category === cat.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/30"}`}>
+                        <div className="text-lg mb-1">{cat.icon}</div>
+                        <div className="text-xs text-gray-400">{cat.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 mb-2 block">
+                    Platforms *
+                    {connectedPlatforms.length > 0 && <span className="ml-2 text-xs text-green-400">● = connected</span>}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                    {PLATFORMS.map((platform) => {
+                      const isConn = connectedPlatforms.includes(platform.id)
+                      return (
+                        <button key={platform.id}
+                          onClick={() => {
+                            const current = newPost.platforms || []
+                            setNewPost({ ...newPost, platforms: current.includes(platform.id) ? current.filter((p) => p !== platform.id) : [...current, platform.id] })
+                          }}
+                          className={`flex items-center gap-2 p-2 rounded-xl border text-sm transition ${newPost.platforms?.includes(platform.id) ? "border-purple-500 bg-purple-500/10 text-white" : "border-white/10 bg-white/5 text-gray-400 hover:border-white/30"}`}>
+                          <span>{platform.icon}</span>
+                          <span className="text-xs">{platform.name}</span>
+                          {isConn ? <span className="ml-auto text-green-400 text-xs font-bold">●</span> : <span className="ml-auto text-gray-600 text-xs">○</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Hashtags</label>
+                  <div className="flex gap-2 mb-2">
+                    <input type="text" value={hashtagInput} onChange={(e) => setHashtagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && hashtagInput) {
+                          const tag = hashtagInput.startsWith("#") ? hashtagInput : `#${hashtagInput}`
+                          setNewPost({ ...newPost, hashtags: [...(newPost.hashtags || []), tag] })
+                          setHashtagInput("")
+                        }
+                      }}
+                      placeholder="Type hashtag and press Enter..."
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500 transition text-sm" />
+                    <button onClick={() => { if (hashtagInput) { const tag = hashtagInput.startsWith("#") ? hashtagInput : `#${hashtagInput}`; setNewPost({ ...newPost, hashtags: [...(newPost.hashtags || []), tag] }); setHashtagInput("") } }}
+                      className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-xl text-sm transition">Add</button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {newPost.hashtags?.map((tag) => (
+                      <span key={tag} onClick={() => setNewPost({ ...newPost, hashtags: newPost.hashtags?.filter((t) => t !== tag) })}
+                        className="text-xs bg-purple-500/20 border border-purple-500/30 text-purple-400 px-2 py-1 rounded-full cursor-pointer hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition">
+                        {tag} ✕
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 sticky bottom-0 bg-[#0a0a0a] py-4 border-t border-white/10 -mx-6 px-6 mt-4">
+                  <button onClick={() => { setNewPost({ ...newPost, status: "draft" }); handleCreatePost() }} className="flex-1 border border-white/20 hover:border-white/50 py-3 rounded-xl font-semibold text-sm transition">Save as Draft</button>
+                  <button onClick={handleCreatePost} disabled={!newPost.title || !newPost.content || !(newPost.date || selectedDate)}
+                    className="flex-2 flex-grow-[2] bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    {!(newPost.date || selectedDate) ? "⚠️ Select a date to schedule" : "Schedule Post →"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* PREVIEW TAB — upgraded phone-frame mockups */}
+            {activeTab === "preview" && (
+              <div className="flex h-full min-h-[540px]">
+
+                {/* ── Left: platform selector ── */}
+                <div className="w-48 flex-shrink-0 border-r border-white/10 p-3 overflow-y-auto">
+                  <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider mb-2 px-1">Platform</p>
+                  {(newPost.platforms && newPost.platforms.length > 0
+                    ? newPost.platforms
+                    : ["instagram_reels", "instagram", "tiktok", "facebook_personal", "linkedin", "twitter", "youtube_shorts"]
+                  ).map((pid) => {
+                    const platform = PLATFORMS.find((p) => p.id === pid)
+                    const spec = PLATFORM_SPECS[pid]
+                    if (!platform || !spec) return null
+                    return (
+                      <button key={pid} onClick={() => setPreviewPlatform(pid)}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl border mb-1.5 text-left transition ${
+                          previewPlatform === pid
+                            ? "border-purple-500 bg-purple-500/10"
+                            : "border-white/8 bg-white/3 hover:border-white/20 hover:bg-white/5"
+                        }`}>
+                        <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm flex-shrink-0">{platform.icon}</div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">{platform.name}</p>
+                          <p className="text-[10px] text-gray-500">{spec.ratioLabel}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* ── Right: phone mockup + caption ── */}
+                <div className="flex-1 flex flex-col items-center justify-start gap-4 p-5 bg-[#050508] overflow-y-auto">
+
+                  {/* Platform label + char count */}
+                  <div className="w-full flex items-center justify-between">
+                    <p className="text-sm font-semibold text-white flex items-center gap-2">
+                      <span>{PLATFORMS.find(p => p.id === previewPlatform)?.icon}</span>
+                      <span>{PLATFORMS.find(p => p.id === previewPlatform)?.name}</span>
+                      <span className="text-xs text-gray-500 font-normal">{currentPreviewSpec.ratioLabel}</span>
+                    </p>
+                    <span className={`text-xs font-mono px-2 py-1 rounded-lg ${isOverLimit ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-white/5 text-gray-500"}`}>
+                      {charCount}{maxChars > 0 ? `/${maxChars}` : ""} chars
+                    </span>
+                  </div>
+
+                  {/* ── VERTICAL formats: IG Reels, TikTok, YT Shorts ── */}
+                  {(previewPlatform === "instagram_reels" || previewPlatform === "tiktok" || previewPlatform === "youtube_shorts" || previewPlatform === "instagram_stories") && (
+                    <div className="flex flex-col items-center gap-3">
+                      {/* Phone frame */}
+                      <div className="relative" style={{ width: 240 }}>
+                        <div className="bg-[#0a0a0a] rounded-[28px] overflow-hidden border-[3px] border-[#1a1a1a]">
+                          {/* Notch */}
+                          <div className="flex justify-center pt-1 pb-0 bg-[#0a0a0a]">
+                            <div className="w-14 h-4 bg-[#0a0a0a] rounded-full" />
+                          </div>
+                          {/* Screen */}
+                          <div className="relative bg-black overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: 300 }}>
+                            {mediaPreview ? (
+                              mediaFile?.type.startsWith("video/") ? (
+                                <video src={mediaPreview} className="absolute inset-0 w-full h-full object-cover" autoPlay loop playsInline controls style={{ zIndex: 2 }} />
+                              ) : (
+                                <img src={mediaPreview} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
+                              )
+                            ) : (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#111]">
+                                <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </div>
+                                <p className="text-gray-600 text-[9px] text-center px-4">Upload media to preview</p>
+                              </div>
+                            )}
+
+                            {/* Caption overlay */}
+                            {previewCaption && (
+                              <div className="absolute bottom-0 left-0 right-10 p-2" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.75))" }}>
+                                <p className="text-white text-[8px] leading-snug line-clamp-3">{previewCaption}</p>
+                                {newPost.hashtags && newPost.hashtags.length > 0 && (
+                                  <p className="text-blue-300 text-[7px] mt-0.5 truncate">{newPost.hashtags.slice(0, 4).join(" ")}</p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* TikTok / Reels action sidebar */}
+                            <div className="absolute right-2 bottom-8 flex flex-col gap-3 items-center">
+                              {previewPlatform === "tiktok" && (
+                                <div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-[8px] text-white font-bold mb-1">WF</div>
+                              )}
+                              {[
+                                { icon: "♥", count: previewPlatform === "tiktok" ? "12k" : "2.4k" },
+                                { icon: "💬", count: "847" },
+                                { icon: "↗", count: previewPlatform === "tiktok" ? "2.1k" : "Share" },
+                              ].map(({ icon, count }) => (
+                                <div key={icon} className="flex flex-col items-center gap-0.5">
+                                  <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center text-[9px] text-white">{icon}</div>
+                                  <span className="text-white text-[7px]">{count}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* TikTok bottom bar */}
+                            {previewPlatform === "tiktok" && (
+                              <div className="absolute bottom-1 left-2 right-10">
+                                <p className="text-white text-[8px] font-semibold">@webinarforgeai</p>
+                                <p className="text-white/60 text-[7px]">♪ Original sound</p>
+                              </div>
+                            )}
+                          </div>
+                          {/* Home bar */}
+                          <div className="flex justify-center py-1.5 bg-[#0a0a0a]">
+                            <div className="w-10 h-1 bg-white/30 rounded-full" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Caption box below phone */}
+                      <div className="w-full max-w-[280px] bg-white/5 border border-white/10 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Caption</p>
+                          <button onClick={() => navigator.clipboard.writeText(fullPreviewText)}
+                            className="text-[10px] text-gray-500 hover:text-white border border-white/10 px-2 py-0.5 rounded-lg transition">Copy</button>
+                        </div>
+                        <textarea
+                          value={previewCaption}
+                          onChange={(e) => {
+                            if (usePlatformCaptions) {
+                              setPlatformCaptions({ ...platformCaptions, [previewPlatform]: e.target.value })
+                            } else {
+                              setNewPost({ ...newPost, content: e.target.value })
+                            }
+                          }}
+                          rows={4}
+                          className="w-full bg-transparent text-white text-xs leading-relaxed resize-none outline-none placeholder:text-gray-600"
+                          placeholder="Your caption will appear here..." />
+                        {newPost.hashtags && newPost.hashtags.length > 0 && (
+                          <p className="text-blue-400 text-[10px] mt-1 leading-relaxed">{newPost.hashtags.join(" ")}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── SQUARE format: IG Feed, Threads ── */}
+                  {(previewPlatform === "instagram" || previewPlatform === "threads") && (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-[260px] bg-white/4 border border-white/10 rounded-2xl overflow-hidden">
+                        {/* Profile row */}
+                        <div className="flex items-center gap-2 p-3">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">WF</div>
+                          <div>
+                            <p className="text-white text-xs font-semibold">webinarforgeai</p>
+                            <p className="text-gray-500 text-[9px]">Just now</p>
+                          </div>
+                          <div className="ml-auto text-gray-500 text-sm">···</div>
+                        </div>
+                        {/* Image */}
+                        <div className="aspect-square bg-[#111] overflow-hidden flex items-center justify-center">
+                          {mediaPreview ? (
+                            <img src={mediaPreview} alt="preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </div>
+                              <p className="text-gray-600 text-[9px]">1:1 Square</p>
+                            </div>
+                          )}
+                        </div>
+                        {/* Actions */}
+                        <div className="flex gap-3 px-3 py-2">
+                          {["♥", "💬", "↗"].map(icon => (
+                            <span key={icon} className="text-gray-300 text-sm">{icon}</span>
+                          ))}
+                          <span className="ml-auto text-gray-300 text-sm">🔖</span>
+                        </div>
+                        {/* Caption */}
+                        <div className="px-3 pb-3">
+                          <p className="text-white text-[10px] leading-relaxed line-clamp-4">
+                            <span className="font-semibold">webinarforgeai</span>{" "}
+                            {previewCaption || <span className="text-gray-500">Your caption appears here...</span>}
+                          </p>
+                          {newPost.hashtags && newPost.hashtags.length > 0 && (
+                            <p className="text-blue-400 text-[9px] mt-1 line-clamp-1">{newPost.hashtags.join(" ")}</p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Editable caption */}
+                      <div className="w-full max-w-[280px] bg-white/5 border border-white/10 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Edit caption</p>
+                          <button onClick={() => navigator.clipboard.writeText(fullPreviewText)}
+                            className="text-[10px] text-gray-500 hover:text-white border border-white/10 px-2 py-0.5 rounded-lg transition">Copy</button>
+                        </div>
+                        <textarea
+                          value={previewCaption}
+                          onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                          rows={3}
+                          className="w-full bg-transparent text-white text-xs leading-relaxed resize-none outline-none placeholder:text-gray-600"
+                          placeholder="Your caption will appear here..." />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── CARD formats: Facebook, LinkedIn, Twitter ── */}
+                  {(previewPlatform === "facebook_personal" || previewPlatform === "facebook_page" || previewPlatform === "facebook_group" || previewPlatform === "linkedin" || previewPlatform === "linkedin_page" || previewPlatform === "twitter") && (() => {
+                    const isLinkedIn = previewPlatform.startsWith("linkedin")
+                    const isTwitter = previewPlatform === "twitter"
+                    return (
+                      <div className="flex flex-col items-center gap-3 w-full max-w-[300px]">
+                        <div className="w-full bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                          {/* Header */}
+                          <div className="flex items-center gap-2.5 p-3">
+                            <div className={`w-8 h-8 rounded-${isLinkedIn ? "lg" : "full"} flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 ${isLinkedIn ? "bg-[#0F6E56]" : isTwitter ? "bg-gray-800" : "bg-[#534AB7]"}`}>WF</div>
+                            <div>
+                              <p className="text-white text-xs font-semibold">WebinarForge AI</p>
+                              <p className="text-gray-500 text-[9px]">{isLinkedIn ? "AI Operating System for Webinars · Just now" : isTwitter ? "@webinarforgeai" : "Just now · 🌐"}</p>
+                            </div>
+                            {!isTwitter && <div className="ml-auto text-gray-500 text-sm">···</div>}
+                          </div>
+                          {/* Caption */}
+                          <div className="px-3 pb-2">
+                            <p className="text-white text-xs leading-relaxed line-clamp-4">
+                              {previewCaption || <span className="text-gray-500">Your post text will appear here...</span>}
+                            </p>
+                            {newPost.hashtags && newPost.hashtags.length > 0 && (
+                              <p className="text-blue-400 text-[9px] mt-1">{newPost.hashtags.slice(0, 3).join(" ")}</p>
+                            )}
+                          </div>
+                          {/* Media */}
+                          {mediaPreview ? (
+                            <div className="aspect-video overflow-hidden">
+                              {mediaFile?.type.startsWith("video/") ? (
+                                <video src={mediaPreview} className="w-full h-full object-cover" />
+                              ) : (
+                                <img src={mediaPreview} alt="preview" className="w-full h-full object-cover" />
+                              )}
+                            </div>
+                          ) : (
+                            <div className="aspect-video bg-[#111] flex items-center justify-center">
+                              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </div>
+                            </div>
+                          )}
+                          {/* Actions */}
+                          <div className="flex border-t border-white/8 px-2">
+                            {(isTwitter ? ["♥ Like", "💬 Reply", "↗ Retweet"] : isLinkedIn ? ["👍 Like", "💬 Comment", "↗ Share"] : ["👍 Like", "💬 Comment", "↗ Share"]).map(a => (
+                              <div key={a} className="flex-1 text-center py-2 text-[9px] text-gray-500">{a}</div>
+                            ))}
+                          </div>
+                        </div>
+                        {/* Editable caption */}
+                        <div className="w-full bg-white/5 border border-white/10 rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Edit caption</p>
+                            <button onClick={() => navigator.clipboard.writeText(fullPreviewText)}
+                              className="text-[10px] text-gray-500 hover:text-white border border-white/10 px-2 py-0.5 rounded-lg transition">Copy</button>
+                          </div>
+                          <textarea
+                            value={previewCaption}
+                            onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                            rows={3}
+                            className="w-full bg-transparent text-white text-xs leading-relaxed resize-none outline-none placeholder:text-gray-600"
+                            placeholder="Your caption will appear here..." />
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* ── YouTube 16:9 ── */}
+                  {(previewPlatform === "youtube") && (
+                    <div className="flex flex-col items-center gap-3 w-full max-w-[300px]">
+                      <div className="w-full bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                        <div className="aspect-video bg-[#111] overflow-hidden flex items-center justify-center">
+                          {mediaPreview ? (
+                            mediaFile?.type.startsWith("video/")
+                              ? <video src={mediaPreview} className="w-full h-full object-cover" controls />
+                              : <img src={mediaPreview} alt="preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </div>
+                              <p className="text-gray-600 text-[9px]">16:9 YouTube</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <p className="text-white text-xs font-semibold line-clamp-2 mb-1">{newPost.title || "Your video title"}</p>
+                          <p className="text-gray-500 text-[9px]">WebinarForge AI · Just now · 0 views</p>
+                          <p className="text-white text-[10px] leading-relaxed mt-2 line-clamp-3">{previewCaption || <span className="text-gray-500">Description appears here...</span>}</p>
+                        </div>
+                      </div>
+                      <div className="w-full bg-white/5 border border-white/10 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Edit description</p>
+                          <button onClick={() => navigator.clipboard.writeText(fullPreviewText)}
+                            className="text-[10px] text-gray-500 hover:text-white border border-white/10 px-2 py-0.5 rounded-lg transition">Copy</button>
+                        </div>
+                        <textarea
+                          value={previewCaption}
+                          onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                          rows={4}
+                          className="w-full bg-transparent text-white text-xs leading-relaxed resize-none outline-none placeholder:text-gray-600"
+                          placeholder="YouTube description..." />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Over limit warning */}
+                  {isOverLimit && (
+                    <div className="w-full max-w-[300px] bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
+                      <p className="text-xs text-red-400">⚠️ {charCount - maxChars} chars over the {PLATFORMS.find(p => p.id === previewPlatform)?.name} limit</p>
+                    </div>
+                  )}
+
+                  {/* Footer actions */}
+                  <div className="flex gap-3 w-full max-w-[300px]">
+                    <button onClick={() => setActiveTab("create")}
+                      className="flex-1 border border-white/20 hover:border-purple-500 py-2.5 rounded-xl text-sm font-semibold transition text-gray-400 hover:text-white">
+                      ← Edit
+                    </button>
+                    <button onClick={handleCreatePost} disabled={!newPost.title || !newPost.content || !newPost.date}
+                      className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl transition text-sm disabled:opacity-50">
+                      Schedule →
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* POST DETAIL MODAL */}
+      {showPostModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-8">
+          <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-white/10 flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-xs border px-2 py-0.5 rounded-full ${statusColors[showPostModal.status]}`}>{showPostModal.status}</span>
+                  <span className="text-xs text-gray-500">{CONTENT_TYPES.find((c) => c.id === showPostModal.contentType)?.icon} {CONTENT_TYPES.find((c) => c.id === showPostModal.contentType)?.label}</span>
+                  {showPostModal.aiGenerated && <span className="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-full">🤖 AI</span>}
+                </div>
+                <h2 className="text-xl font-bold text-white">{showPostModal.title}</h2>
+              </div>
+              <button onClick={() => setShowPostModal(null)} className="text-gray-500 hover:text-white text-xl ml-4">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-gray-300 text-sm whitespace-pre-wrap">{showPostModal.content}</p>
+              </div>
+              {showPostModal.platformCaptions && Object.keys(showPostModal.platformCaptions).length > 0 && (
+                <div>
+                  <p className="text-gray-500 text-xs mb-2 font-semibold">Platform-Specific Captions</p>
+                  <div className="space-y-2">
+                    {Object.entries(showPostModal.platformCaptions).map(([pid, caption]) => {
+                      const platform = PLATFORMS.find((p) => p.id === pid)
+                      return platform ? (
+                        <div key={pid} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                          <p className="text-xs text-gray-400 mb-1">{platform.icon} {platform.name}</p>
+                          <p className="text-white text-xs">{caption}</p>
+                        </div>
+                      ) : null
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><p className="text-gray-500 text-xs mb-1">Scheduled For</p><p className="text-white font-semibold">{showPostModal.date} at {showPostModal.time}</p></div>
+                <div><p className="text-gray-500 text-xs mb-1">Category</p><p className="text-white font-semibold">{CATEGORIES.find((c) => c.id === showPostModal.category)?.icon} {CATEGORIES.find((c) => c.id === showPostModal.category)?.label}</p></div>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs mb-2">Publishing To</p>
+                <div className="flex flex-wrap gap-2">
+                  {showPostModal.platforms.map((pid) => {
+                    const platform = PLATFORMS.find((p) => p.id === pid)
+                    const isConn = connectedPlatforms.includes(pid)
+                    return platform ? <span key={pid} className={`text-xs border px-2 py-1 rounded-full ${colorMap[platform.color]} ${isConn ? "ring-1 ring-green-400/50" : "opacity-60"}`}>{platform.icon} {platform.name} {isConn ? "✅" : "⚠️"}</span> : null
+                  })}
+                </div>
+              </div>
+              {showPostModal.hashtags.length > 0 && (
+                <div>
+                  <p className="text-gray-500 text-xs mb-2">Hashtags</p>
+                  <div className="flex flex-wrap gap-2">
+                    {showPostModal.hashtags.map((tag) => <span key={tag} className="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-1 rounded-full">{tag}</span>)}
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => handlePublishNow(showPostModal)} disabled={posting}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                  {posting ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Publishing...</> : "🚀 Publish Now"}
+                </button>
+                <button onClick={() => handleDeletePost(showPostModal.id)} className="flex-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30 font-semibold py-3 rounded-xl transition text-sm">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CALENDAR SYNC MODAL */}
+      {showCalendarSync && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-[#0a0a0a] border border-white/20 rounded-2xl max-w-md w-full">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-xl font-bold">Sync Calendar</h2>
+              <button onClick={() => setShowCalendarSync(false)} className="text-gray-500 hover:text-white text-xl">✕</button>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-gray-400 text-sm mb-4">Connect your calendar apps to sync scheduled posts and get reminders.</p>
+              {CALENDAR_APPS.map((app) => (
+                <div key={app.id} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center gap-3"><span className="text-2xl">{app.icon}</span><span className="font-semibold">{app.name}</span></div>
+                  <button onClick={() => handleSyncCalendar(app.id)}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${syncedCalendars.includes(app.id) ? "bg-green-600/20 text-green-400 border border-green-600/30" : "bg-purple-600 hover:bg-purple-700 text-white"}`}>
+                    {syncedCalendars.includes(app.id) ? "✅ Connected" : "Connect"}
+                  </button>
+                </div>
+              ))}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mt-4">
+                <p className="text-amber-400 text-xs font-semibold mb-1">🔒 Early Bird Access Required</p>
+                <p className="text-gray-400 text-xs">Calendar sync is available with full WebinarForge AI access. Get started for $49 one-time.</p>
+                <Link href="/pricing"><button className="mt-3 w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 rounded-xl text-sm transition">Unlock Calendar Sync — $49 →</button></Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </main>
   )
