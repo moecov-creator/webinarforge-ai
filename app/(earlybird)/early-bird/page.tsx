@@ -450,7 +450,7 @@ export default function EarlyBirdPage() {
           {/* Product image */}
           <div className="flex justify-center mb-10">
             <img
-              src="https://i.ibb.co/Qjp7Cbzh/webinarforge-product-image.png"
+              src="https://i.ibb.co/84DPTQPf/Gemini-Generated-Image-pud2hhpud2hhpud2.png"
               alt="WebinarForge AI — AI Webinar Templates Pack and Software"
               className="w-full max-w-2xl rounded-2xl shadow-2xl"
             />
