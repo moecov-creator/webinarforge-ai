@@ -11,11 +11,8 @@ const ZERNIO_ACCOUNTS: Record<string, string> = {
   youtube:   "69dc0bcd7dea335c2be0b775",
 }
 
-const PLATFORM_MAP: Record<string, {
-  zernioName: string
-  contentType?: string
-  requiresMedia?: boolean
-}> = {
+const PLATFORM_MAP: Record<string, { zernioName: string; contentType?: string; requiresMedia?: boolean }> = {
+  facebook:           { zernioName: "facebook" },
   facebook_personal:  { zernioName: "facebook" },
   facebook_page:      { zernioName: "facebook" },
   facebook_group:     { zernioName: "facebook" },
@@ -30,6 +27,10 @@ const PLATFORM_MAP: Record<string, {
   twitter:            { zernioName: "twitter" },
   pinterest:          { zernioName: "pinterest", requiresMedia: true },
   threads:            { zernioName: "threads" },
+  reddit:             { zernioName: "reddit" },
+  bluesky:            { zernioName: "bluesky" },
+  googlebusiness:     { zernioName: "googlebusiness" },
+  telegram:           { zernioName: "telegram" },
 }
 
 export async function POST(req: NextRequest) {
@@ -40,6 +41,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { platforms, content, mediaUrls, scheduledAt, hashtags } = await req.json()
+
+    console.log("Incoming platforms:", platforms)
 
     if (!platforms || platforms.length === 0) {
       return NextResponse.json({ error: "No platforms selected" }, { status: 400 })
@@ -58,11 +61,17 @@ export async function POST(req: NextRequest) {
 
     for (const p of platforms) {
       const mapping = PLATFORM_MAP[p]
-      if (!mapping) continue
+      if (!mapping) {
+        console.log("No mapping for platform:", p)
+        continue
+      }
 
       const { zernioName, contentType, requiresMedia } = mapping
       const accountId = ZERNIO_ACCOUNTS[zernioName]
-      if (!accountId) continue
+      if (!accountId) {
+        console.log("No account ID for:", zernioName)
+        continue
+      }
 
       if (requiresMedia && hostedMedia.length === 0) {
         skippedPlatforms.push(p)
@@ -74,16 +83,15 @@ export async function POST(req: NextRequest) {
       seen.add(key)
 
       const entry: Record<string, any> = { platform: zernioName, accountId }
-
       if (contentType) {
         entry.platformSpecificData = { contentType }
-        if (contentType === "reels") {
-          entry.platformSpecificData.shareToFeed = true
-        }
+        if (contentType === "reels") entry.platformSpecificData.shareToFeed = true
       }
 
       platformsPayload.push(entry)
     }
+
+    console.log("Platforms payload:", JSON.stringify(platformsPayload))
 
     if (platformsPayload.length === 0) {
       if (skippedPlatforms.length > 0) {
