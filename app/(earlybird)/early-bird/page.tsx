@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Script from "next/script"
 import { useAuth } from "@clerk/nextjs"
 
 // ─── Spots config — update CLAIMED_SPOTS as real purchases come in ────────────
@@ -421,7 +422,7 @@ export default function EarlyBirdPage() {
         <div className="grid md:grid-cols-3 gap-5 mb-14">
           {[
             { icon: "🤖", title: "AI Builds Everything", desc: "Script, slides, funnel, CTAs — generated in minutes. Not hours. Not days. Minutes." },
-            { icon: "🎭", title: "AI Presents For You", desc: "Your AI avatar delivers your webinar 24/7 while you do literally anything else." },
+            { icon: "🎭", title: "AI Presents For You", desc: "Powered by HeyGen — your hyper-realistic AI avatar delivers your webinar 24/7 while you do literally anything else." },
             { icon: "💰", title: "AI Converts Leads", desc: "Automated follow-up, email sequences, and retargeting that turns viewers into buyers." },
             { icon: "📊", title: "Real-Time Analytics", desc: "See exactly what's converting. Registrations, clicks, revenue — all in one dashboard." },
             { icon: "🔄", title: "Evergreen Engine", desc: "Your webinar runs forever. Set it once and collect leads and sales indefinitely." },
@@ -459,7 +460,7 @@ export default function EarlyBirdPage() {
           <div className="space-y-3 mb-10">
             {[
               { item: "AI Webinar Builder", value: "$997" },
-              { item: "AI Avatar Presenter", value: "$497" },
+              { item: "AI Avatar Presenter (Powered by HeyGen)", value: "$497" },
               { item: "Proven Funnel Templates", value: "$297" },
               { item: "Email + SMS Automation", value: "$497" },
               { item: "Evergreen Replay Engine", value: "$997" },
@@ -613,5 +614,13 @@ export default function EarlyBirdPage() {
       </section>
 
     </main>
+
+      {/* LeadConnector Chat Widget */}
+      <Script
+        src="https://widgets.leadconnectorhq.com/loader.js"
+        data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
+        data-widget-id="69fc87d89376f12ee533eb5c"
+        strategy="lazyOnload"
+      />
   )
 }
