@@ -613,8 +613,6 @@ export default function EarlyBirdPage() {
         </div>
       </section>
 
-    </main>
-
       {/* LeadConnector Chat Widget */}
       <Script
         src="https://widgets.leadconnectorhq.com/loader.js"
@@ -622,5 +620,6 @@ export default function EarlyBirdPage() {
         data-widget-id="69fc87d89376f12ee533eb5c"
         strategy="lazyOnload"
       />
+    </main>
   )
 }
