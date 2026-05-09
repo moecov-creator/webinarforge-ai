@@ -35,9 +35,17 @@ export async function POST(req: NextRequest) {
     const data = await res.json()
     console.log("HL response:", res.status, JSON.stringify(data))
 
+    // If contact already exists, treat it as success and redirect
     if (!res.ok) {
-      const errMsg = data.message || data.error || `HL error ${res.status}`
-      return NextResponse.json({ error: errMsg }, { status: res.status })
+      const errMsg = (data.message || data.error || "").toLowerCase()
+      if (
+        errMsg.includes("duplicate") ||
+        errMsg.includes("already exists") ||
+        errMsg.includes("duplicated")
+      ) {
+        return NextResponse.json({ success: true, existing: true })
+      }
+      return NextResponse.json({ error: data.message || "Failed to submit" }, { status: res.status })
     }
 
     return NextResponse.json({ success: true, contact: data })
