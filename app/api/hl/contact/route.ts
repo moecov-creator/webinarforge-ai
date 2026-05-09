@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
     const [firstName, ...lastParts] = name.trim().split(" ")
     const lastName = lastParts.join(" ") || ""
 
-    const res = await fetch("https://services.leadconnectorhq.com/contacts/", {
+    // Try upsert endpoint first — creates or updates contact
+    const res = await fetch("https://services.leadconnectorhq.com/contacts/upsert", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -33,22 +34,43 @@ export async function POST(req: NextRequest) {
     })
 
     const data = await res.json()
-    console.log("HL response:", res.status, JSON.stringify(data))
+    console.log("HL upsert response:", res.status, JSON.stringify(data))
 
-    // If contact already exists, treat it as success and redirect
-    if (!res.ok) {
-      const errMsg = (data.message || data.error || "").toLowerCase()
-      if (
-        errMsg.includes("duplicate") ||
-        errMsg.includes("already exists") ||
-        errMsg.includes("duplicated")
-      ) {
-        return NextResponse.json({ success: true, existing: true })
-      }
-      return NextResponse.json({ error: data.message || "Failed to submit" }, { status: res.status })
+    if (res.ok) {
+      return NextResponse.json({ success: true, contact: data })
     }
 
-    return NextResponse.json({ success: true, contact: data })
+    // Fallback to regular create
+    const res2 = await fetch("https://services.leadconnectorhq.com/contacts/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${HL_API_KEY}`,
+        "Version": "2021-07-28",
+      },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        email,
+        phone,
+        locationId: HL_LOCATION_ID,
+        tags: ["early-bird", "webinarforge-ai"],
+        source: "WebinarForge AI Homepage",
+      }),
+    })
+
+    const data2 = await res2.json()
+    console.log("HL create response:", res2.status, JSON.stringify(data2))
+
+    if (!res2.ok) {
+      const errMsg = (data2.message || data2.error || "").toLowerCase()
+      if (errMsg.includes("duplicate") || errMsg.includes("already exists") || errMsg.includes("duplicated")) {
+        return NextResponse.json({ success: true, existing: true })
+      }
+      return NextResponse.json({ error: data2.message || "Failed to submit" }, { status: res2.status })
+    }
+
+    return NextResponse.json({ success: true, contact: data2 })
 
   } catch (err) {
     console.error("HL contact route error:", err)
