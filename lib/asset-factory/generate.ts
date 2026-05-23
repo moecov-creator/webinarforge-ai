@@ -72,79 +72,77 @@ export interface AssetFactoryOutput {
 }
 
 export async function generateAssetFactory(input: AssetFactoryInput): Promise<AssetFactoryOutput> {
-  const prompt = `You are an elite marketing strategist and copywriter. Generate a complete business asset package for the following business:
+  const prompt = `You are an elite marketing strategist. Generate a complete business asset package as valid JSON only (no markdown, no explanation).
 
-BUSINESS DETAILS:
+BUSINESS:
 - Niche: ${input.niche}
-- Target Audience: ${input.targetAudience}
-- Desired Outcome: ${input.desiredOutcome}
+- Audience: ${input.targetAudience}
+- Outcome: ${input.desiredOutcome}
 - Offer Type: ${input.offerType}
-- Tone/Style: ${input.tone}
-- Main CTA: ${input.cta}
+- Tone: ${input.tone}
+- CTA: ${input.cta}
 - Industry: ${input.industry}
-- Price Point: ${input.pricePoint}
+- Price: ${input.pricePoint}
 
-Generate a comprehensive, production-ready asset package. Be specific, detailed, and actionable. Use real marketing principles. Write copy that converts.
-
-Return ONLY valid JSON matching this exact structure (no markdown, no explanation):
+Return ONLY this JSON structure with real, specific, high-converting content:
 
 {
   "strategic_intelligence": {
-    "pain_points": ["5 specific pain points the target audience faces"],
-    "dream_outcome": "The specific transformation they want",
-    "market_positioning": "How to position against competitors",
-    "unique_mechanism": "The unique mechanism that makes this offer different",
-    "offer_angle": "The specific angle to approach the market",
-    "objections": ["5 common objections and how to handle them"],
-    "big_promise": "The big bold promise of the offer",
-    "hooks": ["8 powerful hook ideas for content and ads"]
+    "pain_points": ["pain 1","pain 2","pain 3","pain 4","pain 5"],
+    "dream_outcome": "specific transformation",
+    "market_positioning": "positioning statement",
+    "unique_mechanism": "unique mechanism name and explanation",
+    "offer_angle": "specific angle",
+    "objections": ["objection 1 + reframe","objection 2 + reframe","objection 3 + reframe"],
+    "big_promise": "bold promise statement",
+    "hooks": ["hook 1","hook 2","hook 3","hook 4","hook 5","hook 6","hook 7","hook 8"]
   },
   "offer_engineering": {
-    "product_name": "Compelling product name",
-    "offer_stack": ["List of everything included in the offer"],
-    "bonuses": ["3-5 bonus items that increase perceived value"],
-    "guarantee": "Specific guarantee wording",
-    "urgency": "Urgency and scarcity angle",
-    "pricing": "Pricing recommendation with justification",
-    "value_ladder": ["Entry level", "Core offer", "Premium", "VIP/Done-for-you"],
-    "order_bump": "Order bump idea and copy",
-    "upsell": "Upsell offer and copy",
-    "downsell": "Downsell offer and copy"
+    "product_name": "compelling product name",
+    "offer_stack": ["item 1","item 2","item 3","item 4","item 5"],
+    "bonuses": ["bonus 1 with value","bonus 2 with value","bonus 3 with value"],
+    "guarantee": "specific guarantee wording",
+    "urgency": "urgency angle",
+    "pricing": "pricing recommendation with justification",
+    "value_ladder": ["entry $27","core $297","premium $997","VIP $2997"],
+    "order_bump": "order bump description and price",
+    "upsell": "upsell description and price",
+    "downsell": "downsell description and price"
   },
   "digital_product": {
-    "ebook_title": "Compelling ebook title",
-    "ebook_outline": ["10 chapter titles with descriptions"],
-    "ebook_draft": "Full 800-word introduction chapter",
-    "checklist": ["15-item actionable checklist"],
-    "workbook": "Full workbook introduction with 3 exercises",
-    "swipe_file": ["5 email swipe copy pieces"],
-    "lead_magnet": "Lead magnet concept and delivery description"
+    "ebook_title": "compelling title",
+    "ebook_outline": ["Chapter 1: title","Chapter 2: title","Chapter 3: title","Chapter 4: title","Chapter 5: title","Chapter 6: title","Chapter 7: title"],
+    "ebook_draft": "400 word introduction chapter with hook, promise, and overview",
+    "checklist": ["step 1","step 2","step 3","step 4","step 5","step 6","step 7","step 8","step 9","step 10"],
+    "workbook": "workbook intro with 2 exercises",
+    "swipe_file": ["email swipe 1 subject + body","email swipe 2 subject + body","email swipe 3 subject + body"],
+    "lead_magnet": "lead magnet concept and delivery"
   },
   "webinar_engine": {
-    "webinar_title": "High-converting webinar title",
-    "perfect_webinar_script": "Full Perfect Webinar framework script (1200+ words)",
-    "slide_outline": ["20 slide titles with content descriptions"],
-    "cta_close": "Full close script with price reveal and CTA",
-    "objection_handling": "Full objection handling section (500+ words)",
-    "follow_up_sequence": ["7 follow-up email subjects and body copy"]
+    "webinar_title": "high-converting webinar title",
+    "perfect_webinar_script": "600 word Perfect Webinar script with intro, story, content, offer, close",
+    "slide_outline": ["Slide 1: title","Slide 2: title","Slide 3: title","Slide 4: title","Slide 5: title","Slide 6: title","Slide 7: title","Slide 8: title","Slide 9: title","Slide 10: title"],
+    "cta_close": "full close script with price reveal and urgency",
+    "objection_handling": "300 word objection handling for top 3 objections",
+    "follow_up_sequence": ["Day 1: subject + body","Day 2: subject + body","Day 3: subject + body","Day 4: subject + body","Day 5: subject + body"]
   },
   "ai_video_content": {
-    "reel_scripts": ["10 complete short-form video scripts (30-60 seconds each)"],
-    "heygen_avatar_script": "Full HeyGen avatar presentation script (500+ words)",
-    "scene_direction": "Detailed scene direction and visual instructions",
-    "broll_suggestions": ["10 specific B-roll shot ideas"],
-    "caption_package": ["10 platform-optimized captions with emojis"],
-    "hashtags": ["30 relevant hashtags organized by category"],
-    "cta_keyword": "Primary CTA keyword for comments"
+    "reel_scripts": ["Reel 1 (30s): full script","Reel 2 (30s): full script","Reel 3 (30s): full script","Reel 4 (30s): full script","Reel 5 (30s): full script"],
+    "heygen_avatar_script": "300 word avatar presentation script",
+    "scene_direction": "visual direction and scene instructions",
+    "broll_suggestions": ["broll 1","broll 2","broll 3","broll 4","broll 5"],
+    "caption_package": ["caption 1 with emojis","caption 2 with emojis","caption 3 with emojis","caption 4 with emojis","caption 5 with emojis"],
+    "hashtags": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6","#tag7","#tag8","#tag9","#tag10","#tag11","#tag12","#tag13","#tag14","#tag15"],
+    "cta_keyword": "primary CTA keyword"
   },
   "funnel_crm_assets": {
-    "landing_page_copy": "Full landing page copy with headline, subheadline, bullets, and CTA (800+ words)",
-    "thank_you_page_copy": "Thank you page copy with next steps",
-    "booking_page_copy": "Booking/call page copy",
-    "email_sequence": ["7 complete nurture emails with subject lines and full body copy"],
-    "sms_sequence": ["5 SMS follow-up messages"],
-    "pipeline_stages": ["CRM pipeline stages with descriptions"],
-    "highlevel_workflow_outline": "Complete HighLevel automation workflow description"
+    "landing_page_copy": "400 word landing page with headline, subheadline, bullets, social proof, CTA",
+    "thank_you_page_copy": "thank you page with next steps and upsell bridge",
+    "booking_page_copy": "booking page copy with what to expect",
+    "email_sequence": ["Email 1 subject + body","Email 2 subject + body","Email 3 subject + body","Email 4 subject + body","Email 5 subject + body"],
+    "sms_sequence": ["SMS 1","SMS 2","SMS 3","SMS 4","SMS 5"],
+    "pipeline_stages": ["Stage 1: name + action","Stage 2: name + action","Stage 3: name + action","Stage 4: name + action","Stage 5: name + action"],
+    "highlevel_workflow_outline": "complete HL automation workflow with triggers and actions"
   }
 }`
 
@@ -157,7 +155,7 @@ Return ONLY valid JSON matching this exact structure (no markdown, no explanatio
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 8000,
+      max_tokens: 6000,
       messages: [{ role: "user", content: prompt }],
     }),
   })
@@ -169,8 +167,6 @@ Return ONLY valid JSON matching this exact structure (no markdown, no explanatio
 
   const data = await response.json()
   const text = data.content[0].text.trim()
-
-  // Strip markdown if present
   const clean = text.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim()
 
   try {
