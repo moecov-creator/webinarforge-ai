@@ -1,5 +1,7 @@
 // app/api/asset-factory/generate/route.ts
 
+export const maxDuration = 300 // 5 minutes — requires Vercel Pro
+
 import { NextRequest, NextResponse } from "next/server"
 import { currentUser } from "@clerk/nextjs/server"
 import { PrismaClient } from "@prisma/client"
