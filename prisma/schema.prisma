@@ -45,3 +45,37 @@ model AnalyticsEvent {
   webinarId String?
   webinar   Webinar? @relation(fields: [webinarId], references: [id])
 }
+
+model AssetFactoryProject {
+  id             String               @id @default(cuid())
+  userId         String
+  title          String
+  niche          String
+  targetAudience String
+  desiredOutcome String
+  offerType      String
+  tone           String
+  cta            String
+  industry       String
+  pricePoint     String
+  status         String               @default("pending")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  outputs        AssetFactoryOutput[]
+
+  @@index([userId])
+}
+
+model AssetFactoryOutput {
+  id           String              @id @default(cuid())
+  projectId    String
+  phase        String
+  sectionTitle String
+  content      String              @db.Text
+  format       String              @default("text")
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  project      AssetFactoryProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
