@@ -4,7 +4,7 @@ import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import {
   LayoutDashboard, PlayCircle, Library, Users, Globe,
-  BarChart2, CreditCard, Zap, Bot, Link2, Settings, Radio,
+  BarChart2, CreditCard, Zap, Bot, Link2, Settings, Radio, Factory,
 } from "lucide-react";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -31,16 +31,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <nav className="flex-1 py-4 px-3 overflow-y-auto">
           <div className="space-y-0.5">
             {[
-              { href: "/dashboard",                icon: LayoutDashboard, label: "Dashboard" },
-              { href: "/dashboard/webinars",       icon: PlayCircle,      label: "Webinars" },
-              { href: "/dashboard/templates",      icon: Library,         label: "Templates" },
-              { href: "/dashboard/evergreen",      icon: Globe,           label: "Evergreen Rooms" },
-              { href: "/dashboard/live",           icon: Radio,           label: "Live Webinars" },
-              { href: "/dashboard/presenters",     icon: Bot,             label: "AI Presenters" },
-              { href: "/dashboard/analytics",      icon: BarChart2,       label: "Analytics" },
-              { href: "/dashboard/affiliates",     icon: Users,           label: "Affiliates" },
-              { href: "/dashboard/integrations",   icon: Link2,           label: "Integrations" },
-              { href: "/dashboard/billing",        icon: CreditCard,      label: "Billing" },
+              { href: "/dashboard",                      icon: LayoutDashboard, label: "Dashboard" },
+              { href: "/dashboard/webinars",             icon: PlayCircle,      label: "Webinars" },
+              { href: "/dashboard/templates",            icon: Library,         label: "Templates" },
+              { href: "/dashboard/evergreen",            icon: Globe,           label: "Evergreen Rooms" },
+              { href: "/dashboard/live",                 icon: Radio,           label: "Live Webinars" },
+              { href: "/dashboard/presenters",           icon: Bot,             label: "AI Presenters" },
+              { href: "/dashboard/analytics",            icon: BarChart2,       label: "Analytics" },
+              { href: "/dashboard/affiliates",           icon: Users,           label: "Affiliates" },
+              { href: "/dashboard/integrations",         icon: Link2,           label: "Integrations" },
+              { href: "/dashboard/billing",              icon: CreditCard,      label: "Billing" },
             ].map(({ href, icon: Icon, label }) => (
               <Link key={href} href={href}
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition">
@@ -48,6 +48,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <span>{label}</span>
               </Link>
             ))}
+
+            {/* Divider */}
+            <div className="my-2 border-t border-white/5" />
+
+            {/* AI Asset Factory */}
+            <Link href="/dashboard/asset-factory"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 transition font-semibold">
+              <Factory className="w-4 h-4" />
+              <span>AI Asset Factory™</span>
+            </Link>
           </div>
         </nav>
 
