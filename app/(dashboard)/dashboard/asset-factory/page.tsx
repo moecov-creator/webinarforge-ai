@@ -1,557 +1,351 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface Project {
+interface GenerationStep {
   id: string
-  title: string
-  niche: string
-  status: string
-  createdAt: string
+  label: string
+  status: "pending" | "running" | "done" | "error"
 }
 
-interface Output {
-  id: string
-  phase: string
-  sectionTitle: string
-  content: string
-  format: string
+interface ProductOutput {
+  productTitle: string
+  productPromise: string
+  ebookTitle: string
+  chapterOutline: string[]
+  ebookDraft: string
+  coverPrompt: string
+  ebookHtml: string
+  checklistContent: string
+  workbookContent: string
+  bonusTitle: string
+  bonusContent: string
+  salesPageCopy: string
+  socialPromoPack: string
 }
 
-interface ProjectDetail extends Project {
-  outputs: Output[]
-}
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-const PHASES = [
-  { key: "strategic_intelligence", label: "🧠 Strategic Intelligence", color: "purple" },
-  { key: "offer_engineering", label: "💰 Offer Engineering", color: "amber" },
-  { key: "digital_product", label: "📚 Digital Product", color: "blue" },
-  { key: "webinar_engine", label: "🎙️ Webinar Engine", color: "green" },
-  { key: "ai_video_content", label: "🎬 AI Video Content", color: "pink" },
-  { key: "funnel_crm_assets", label: "🔧 Funnel + CRM", color: "orange" },
+const STEPS: GenerationStep[] = [
+  { id: "offer", label: "🎯 Creating $100M-style offer", status: "pending" },
+  { id: "title", label: "📚 Generating product title & promise", status: "pending" },
+  { id: "outline", label: "📋 Building chapter outline", status: "pending" },
+  { id: "draft", label: "✍️ Writing full ebook draft", status: "pending" },
+  { id: "cover", label: "🎨 Creating cover image prompt", status: "pending" },
+  { id: "html", label: "🌐 Building styled HTML ebook", status: "pending" },
+  { id: "bonus", label: "🎁 Creating bonus resources", status: "pending" },
+  { id: "checklist", label: "✅ Building checklist & workbook", status: "pending" },
+  { id: "sales", label: "💰 Writing sales page copy", status: "pending" },
+  { id: "social", label: "📱 Creating social promo pack", status: "pending" },
+  { id: "export", label: "📦 Preparing downloadable files", status: "pending" },
 ]
 
-const TONE_OPTIONS = ["Professional", "Conversational", "Bold & Direct", "Educational", "Inspirational", "Urgent", "Story-based"]
-const OFFER_TYPES = ["Course", "Coaching Program", "Done-For-You Service", "SaaS / Software", "Consulting", "Membership", "Digital Product", "Agency Service"]
-const INDUSTRIES = ["Business & Entrepreneurship", "Health & Wellness", "Real Estate", "Finance & Investing", "Marketing & Advertising", "Personal Development", "E-commerce", "Technology", "Education", "Other"]
-
-// ─── Copy Button ──────────────────────────────────────────────────────────────
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
+function DownloadButton({ label, content, filename, type }: {
+  label: string; content: string; filename: string; type: "html" | "md" | "txt" | "json"
+}) {
+  const mimeTypes = { html: "text/html", md: "text/markdown", txt: "text/plain", json: "application/json" }
+  const handleDownload = () => {
+    const blob = new Blob([content], { type: mimeTypes[type] })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url; a.download = filename; a.click()
+    URL.revokeObjectURL(url)
+  }
   return (
-    <button
-      onClick={() => {
-        navigator.clipboard.writeText(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      }}
-      className="text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-2 py-1 rounded-lg transition-all flex-shrink-0"
-    >
-      {copied ? "✅ Copied" : "📋 Copy"}
+    <button onClick={handleDownload} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/40 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all">
+      <span>📥</span> {label}
     </button>
   )
 }
 
-// ─── Output Card ──────────────────────────────────────────────────────────────
-function OutputCard({ output }: { output: Output }) {
-  const [expanded, setExpanded] = useState(false)
+function CopyBtn({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+      className="text-xs text-gray-500 hover:text-white border border-gray-700 hover:border-gray-500 px-2 py-1 rounded-lg transition-all">
+      {copied ? "✅" : "📋"}
+    </button>
+  )
+}
 
-  let displayContent = output.content
-  let items: string[] = []
-  const isList = output.format === "json"
+export default function AssetFactoryPage() {
+  const [keyword, setKeyword] = useState("")
+  const [audience, setAudience] = useState("")
+  const [outcome, setOutcome] = useState("")
+  const [pricePoint, setPricePoint] = useState("$27")
+  const [steps, setSteps] = useState<GenerationStep[]>(STEPS)
+  const [generating, setGenerating] = useState(false)
+  const [output, setOutput] = useState<ProductOutput | null>(null)
+  const [error, setError] = useState("")
+  const [activeTab, setActiveTab] = useState("overview")
 
-  if (isList) {
+  const updateStep = (id: string, status: GenerationStep["status"]) => {
+    setSteps(prev => prev.map(s => s.id === id ? { ...s, status } : s))
+  }
+
+  const handleGenerate = async () => {
+    if (!keyword.trim()) { setError("Please enter a keyword or niche."); return }
+    setError(""); setOutput(null); setGenerating(true)
+    setSteps(STEPS.map(s => ({ ...s, status: "pending" })))
+
     try {
-      items = JSON.parse(output.content)
-    } catch {
-      items = []
+      updateStep("offer", "running")
+      const res = await fetch("/api/asset-factory/generate-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keyword, audience, outcome, pricePoint }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Generation failed") }
+      const data = await res.json()
+
+      const stepIds = ["offer","title","outline","draft","cover","html","bonus","checklist","sales","social","export"]
+      for (let i = 0; i < stepIds.length; i++) {
+        if (i > 0) updateStep(stepIds[i-1], "done")
+        updateStep(stepIds[i], "running")
+        await new Promise(r => setTimeout(r, 250))
+      }
+      updateStep(stepIds[stepIds.length-1], "done")
+      setOutput(data.output); setActiveTab("overview")
+    } catch (err: any) {
+      setError(err.message || "Generation failed.")
+      setSteps(prev => prev.map(s => s.status === "running" ? { ...s, status: "error" } : s))
+    } finally {
+      setGenerating(false)
     }
   }
 
-  const label = output.sectionTitle.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
-  const preview = isList ? items.slice(0, 2).join(" · ") : displayContent.slice(0, 120)
+  const completedSteps = steps.filter(s => s.status === "done").length
+  const progress = Math.round((completedSteps / steps.length) * 100)
+  const buildJson = () => output ? JSON.stringify({ productTitle: output.productTitle, productPromise: output.productPromise, ebookTitle: output.ebookTitle, coverPrompt: output.coverPrompt, chapterOutline: output.chapterOutline, generatedAt: new Date().toISOString() }, null, 2) : ""
 
   return (
-    <div className="bg-[#0f0f1a] border border-white/10 rounded-xl p-4 hover:border-purple-500/30 transition-all">
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <h4 className="text-sm font-bold text-white">{label}</h4>
-        <div className="flex items-center gap-2">
-          <CopyButton text={isList ? items.join("\n") : displayContent} />
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-xs text-gray-500 hover:text-white transition-colors"
-          >
-            {expanded ? "▲ Less" : "▼ More"}
-          </button>
+    <div className="min-h-screen bg-[#080810] text-white">
+      <div className="border-b border-white/5 px-8 py-5">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center text-xl">🏭</div>
+            <div>
+              <h1 className="text-xl font-black">AI Asset Factory™</h1>
+              <p className="text-gray-500 text-xs">One keyword → complete digital product</p>
+            </div>
+          </div>
+          {output && <span className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-full font-semibold">✅ Product Ready</span>}
         </div>
       </div>
 
-      {isList ? (
-        <ul className="space-y-1">
-          {(expanded ? items : items.slice(0, 3)).map((item, i) => (
-            <li key={i} className="text-gray-400 text-xs flex gap-2">
-              <span className="text-purple-400 flex-shrink-0">{i + 1}.</span>
-              <span>{item}</span>
-            </li>
-          ))}
-          {!expanded && items.length > 3 && (
-            <li className="text-gray-600 text-xs">+{items.length - 3} more...</li>
-          )}
-        </ul>
-      ) : (
-        <p className="text-gray-400 text-xs leading-relaxed">
-          {expanded ? displayContent : preview + (displayContent.length > 120 ? "..." : "")}
-        </p>
-      )}
-    </div>
-  )
-}
+      <div className="max-w-6xl mx-auto px-8 py-8">
 
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-6 animate-pulse">
-      {PHASES.map(phase => (
-        <div key={phase.key}>
-          <div className="h-6 bg-white/5 rounded w-48 mb-3" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-24 bg-white/5 rounded-xl" />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function AssetFactoryPage() {
-  const [view, setView] = useState<"form" | "results" | "history">("form")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [toast, setToast] = useState("")
-  const [activePhase, setActivePhase] = useState("strategic_intelligence")
-  const [projects, setProjects] = useState<Project[]>([])
-  const [currentProject, setCurrentProject] = useState<ProjectDetail | null>(null)
-  const [currentOutput, setCurrentOutput] = useState<Record<string, Record<string, unknown>> | null>(null)
-
-  const [form, setForm] = useState({
-    niche: "",
-    targetAudience: "",
-    desiredOutcome: "",
-    offerType: "",
-    tone: "Professional",
-    cta: "",
-    industry: "",
-    pricePoint: "",
-  })
-
-  const showToast = (msg: string) => {
-    setToast(msg)
-    setTimeout(() => setToast(""), 3000)
-  }
-
-  const loadProjects = async () => {
-    try {
-      const res = await fetch("/api/asset-factory/projects")
-      const data = await res.json()
-      if (data.projects) setProjects(data.projects)
-    } catch {}
-  }
-
-  useEffect(() => { loadProjects() }, [])
-
-  const handleGenerate = async () => {
-    if (!form.niche || !form.targetAudience || !form.desiredOutcome || !form.offerType) {
-      setError("Please fill in all required fields.")
-      return
-    }
-    setLoading(true)
-    setError("")
-    setCurrentOutput(null)
-
-    try {
-      const res = await fetch("/api/asset-factory/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Generation failed")
-
-      setCurrentOutput(data.output)
-      setCurrentProject(data.project)
-      setView("results")
-      setActivePhase("strategic_intelligence")
-      showToast("✅ Asset package generated successfully!")
-      loadProjects()
-    } catch (err: any) {
-      setError(err.message || "Generation failed. Please try again.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadProject = async (id: string) => {
-    try {
-      const res = await fetch(`/api/asset-factory/projects/${id}`)
-      const data = await res.json()
-      if (data.project) {
-        setCurrentProject(data.project)
-        // Reconstruct output object from outputs array
-        const rebuilt: Record<string, Record<string, unknown>> = {}
-        for (const output of data.project.outputs) {
-          if (!rebuilt[output.phase]) rebuilt[output.phase] = {}
-          try {
-            rebuilt[output.phase][output.sectionTitle] = output.format === "json"
-              ? JSON.parse(output.content)
-              : output.content
-          } catch {
-            rebuilt[output.phase][output.sectionTitle] = output.content
-          }
-        }
-        setCurrentOutput(rebuilt)
-        setView("results")
-        setActivePhase("strategic_intelligence")
-      }
-    } catch {}
-  }
-
-  const deleteProject = async (id: string) => {
-    try {
-      await fetch(`/api/asset-factory/projects/${id}`, { method: "DELETE" })
-      setProjects(prev => prev.filter(p => p.id !== id))
-      showToast("🗑️ Project deleted")
-    } catch {}
-  }
-
-  const handleExport = async (type: "json" | "markdown") => {
-    if (!currentProject) return
-    try {
-      const res = await fetch("/api/asset-factory/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: currentProject.id, exportType: type }),
-      })
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `asset-factory-${Date.now()}.${type === "markdown" ? "md" : type}`
-      a.click()
-      URL.revokeObjectURL(url)
-      showToast(`📥 Exported as ${type.toUpperCase()}`)
-    } catch {
-      showToast("❌ Export failed")
-    }
-  }
-
-  // Get outputs for active phase
-  const phaseOutputs = currentProject?.outputs.filter(o => o.phase === activePhase) || []
-
-  return (
-    <div className="min-h-screen bg-[#080810] text-white p-6">
-
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-6 right-6 z-50 bg-gray-900 border border-white/20 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium">
-          {toast}
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center text-xl">
-                🏭
+        {/* FORM */}
+        {!generating && !output && (
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-10 text-xs text-gray-500 flex-wrap">
+              {["Keyword","Offer","Ebook","Cover","Bonuses","Downloads"].map((s, i, arr) => (
+                <div key={s} className="flex items-center gap-2">
+                  <span className="bg-purple-500/10 border border-purple-500/20 text-purple-300 px-3 py-1 rounded-full">{s}</span>
+                  {i < arr.length-1 && <span className="text-gray-600">→</span>}
+                </div>
+              ))}
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+              <h2 className="text-xl font-black mb-6">🚀 Create Your Digital Product</h2>
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Keyword / Niche *</label>
+                  <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="e.g. Night Shift Nurse Reset — 7 Days to Supercharged Energy"
+                    className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none text-sm transition-colors" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Target Audience</label>
+                    <input value={audience} onChange={e => setAudience(e.target.value)} placeholder="e.g. Night shift nurses"
+                      className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none text-sm transition-colors" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Price Point</label>
+                    <select value={pricePoint} onChange={e => setPricePoint(e.target.value)} className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white outline-none text-sm">
+                      {["$7","$17","$27","$37","$47","$97","$197","$297","$497","$997"].map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Desired Outcome</label>
+                  <input value={outcome} onChange={e => setOutcome(e.target.value)} placeholder="e.g. Feel energized and clear-headed within 7 days"
+                    className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none text-sm transition-colors" />
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-black">AI Asset Factory™</h1>
-                <p className="text-gray-500 text-sm">One keyword → complete client acquisition system</p>
-              </div>
+              {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl mb-4">{error}</div>}
+              <button onClick={handleGenerate} className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-black py-4 rounded-xl text-lg transition-all">
+                🏭 Generate Full Digital Product →
+              </button>
+              <p className="text-gray-600 text-xs text-center mt-2">Generates ebook, cover prompt, bonuses, sales page & downloads • ~60 seconds</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setView("form")}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${view === "form" ? "bg-purple-600 text-white" : "bg-white/5 text-gray-400 hover:text-white"}`}
-            >
-              ✨ New Project
-            </button>
-            <button
-              onClick={() => { setView("history"); loadProjects() }}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${view === "history" ? "bg-purple-600 text-white" : "bg-white/5 text-gray-400 hover:text-white"}`}
-            >
-              📁 History ({projects.length})
-            </button>
-            {view === "results" && currentProject && (
-              <div className="flex items-center gap-2">
-                <button onClick={() => handleExport("json")} className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 text-gray-400 hover:text-white transition-all">
-                  📥 JSON
-                </button>
-                <button onClick={() => handleExport("markdown")} className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 text-gray-400 hover:text-white transition-all">
-                  📥 Markdown
-                </button>
-              </div>
-            )}
+        )}
+
+        {/* PROGRESS */}
+        {generating && (
+          <div className="max-w-xl mx-auto">
+            <div className="text-center mb-8">
+              <div className="text-4xl mb-3 animate-bounce">🏭</div>
+              <h2 className="text-2xl font-black mb-1">Building Your Product...</h2>
+              <p className="text-gray-500 text-sm">Creating a complete digital product package</p>
+            </div>
+            <div className="bg-white/5 rounded-full h-2 mb-8 overflow-hidden">
+              <div className="h-2 bg-gradient-to-r from-purple-600 to-blue-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="space-y-2">
+              {steps.map(step => (
+                <div key={step.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  step.status==="running" ? "bg-purple-500/10 border border-purple-500/30" :
+                  step.status==="done" ? "bg-white/3 border border-white/5 opacity-60" : "bg-white/2 border border-white/5 opacity-30"
+                }`}>
+                  <span className="text-lg flex-shrink-0">{step.status==="done"?"✅":step.status==="running"?"⚡":step.status==="error"?"❌":"⏳"}</span>
+                  <span className={`text-sm font-medium ${step.status==="running"?"text-white":"text-gray-400"}`}>{step.label}</span>
+                  {step.status==="running" && (
+                    <div className="ml-auto flex gap-1">
+                      {[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay:`${i*0.15}s`}} />)}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* FORM VIEW */}
-        {view === "form" && (
-          <div className="max-w-3xl mx-auto">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-              <h2 className="text-xl font-black mb-6 flex items-center gap-2">
-                <span>🚀</span> Create Your Asset Package
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
-                    Business Niche / Keyword *
-                  </label>
-                  <input
-                    value={form.niche}
-                    onChange={e => setForm(p => ({ ...p, niche: e.target.value }))}
-                    placeholder="e.g. Real estate investing for beginners"
-                    className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none text-sm transition-colors"
-                  />
+        {/* OUTPUT */}
+        {output && !generating && (
+          <div>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/20 rounded-2xl p-6 mb-6">
+              <div className="flex items-start justify-between gap-6">
+                <div className="flex-1">
+                  <div className="text-xs text-purple-400 font-bold uppercase tracking-widest mb-2">✅ Product Ready</div>
+                  <h2 className="text-2xl font-black mb-2">{output.productTitle}</h2>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-4">{output.productPromise}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="bg-amber-500/20 text-amber-300 text-xs font-bold px-3 py-1 rounded-full border border-amber-500/20">{pricePoint} Digital Product</span>
+                    <span className="bg-white/10 text-gray-300 text-xs font-semibold px-3 py-1 rounded-full">📚 {output.chapterOutline.length} Chapters</span>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
-                    Target Audience *
-                  </label>
-                  <input
-                    value={form.targetAudience}
-                    onChange={e => setForm(p => ({ ...p, targetAudience: e.target.value }))}
-                    placeholder="e.g. Busy professionals aged 30-50"
-                    className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none text-sm transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
-                    Desired Outcome *
-                  </label>
-                  <input
-                    value={form.desiredOutcome}
-                    onChange={e => setForm(p => ({ ...p, desiredOutcome: e.target.value }))}
-                    placeholder="e.g. Buy their first rental property in 90 days"
-                    className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none text-sm transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
-                    Offer Type *
-                  </label>
-                  <select
-                    value={form.offerType}
-                    onChange={e => setForm(p => ({ ...p, offerType: e.target.value }))}
-                    className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white outline-none text-sm transition-colors"
-                  >
-                    <option value="">Select offer type...</option>
-                    {OFFER_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
-                    Tone / Style
-                  </label>
-                  <select
-                    value={form.tone}
-                    onChange={e => setForm(p => ({ ...p, tone: e.target.value }))}
-                    className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white outline-none text-sm transition-colors"
-                  >
-                    {TONE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
-                    Main CTA
-                  </label>
-                  <input
-                    value={form.cta}
-                    onChange={e => setForm(p => ({ ...p, cta: e.target.value }))}
-                    placeholder="e.g. Book a Free Strategy Call"
-                    className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none text-sm transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
-                    Industry
-                  </label>
-                  <select
-                    value={form.industry}
-                    onChange={e => setForm(p => ({ ...p, industry: e.target.value }))}
-                    className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white outline-none text-sm transition-colors"
-                  >
-                    <option value="">Select industry...</option>
-                    {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
-                    Price Point
-                  </label>
-                  <input
-                    value={form.pricePoint}
-                    onChange={e => setForm(p => ({ ...p, pricePoint: e.target.value }))}
-                    placeholder="e.g. $997 or $297/month"
-                    className="w-full bg-[#0f0f1a] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none text-sm transition-colors"
-                  />
-                </div>
+                <button onClick={() => { setOutput(null); setSteps(STEPS) }} className="text-gray-500 hover:text-white text-sm border border-gray-700 hover:border-gray-500 px-3 py-2 rounded-xl transition-all flex-shrink-0">
+                  ✨ New Product
+                </button>
               </div>
+            </div>
 
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl mb-4">
-                  {error}
+            {/* Downloads */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">📦 Download All Assets</p>
+              <div className="flex flex-wrap gap-2">
+                <DownloadButton label="Ebook (HTML)" content={output.ebookHtml} filename="main-ebook.html" type="html" />
+                <DownloadButton label="Ebook (Markdown)" content={output.ebookDraft} filename="main-ebook.md" type="md" />
+                <DownloadButton label="Checklist" content={output.checklistContent} filename="checklist.md" type="md" />
+                <DownloadButton label="Workbook" content={output.workbookContent} filename="workbook.md" type="md" />
+                <DownloadButton label="Sales Page" content={output.salesPageCopy} filename="sales-page-copy.md" type="md" />
+                <DownloadButton label="Social Pack" content={output.socialPromoPack} filename="social-promo-pack.md" type="md" />
+                <DownloadButton label="Bonus Resource" content={output.bonusContent} filename="bonus-resource.md" type="md" />
+                <DownloadButton label="Product JSON" content={buildJson()} filename="product-summary.json" type="json" />
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+              {[{id:"overview",label:"📋 Overview"},{id:"ebook",label:"📚 Ebook"},{id:"cover",label:"🎨 Cover"},{id:"bonus",label:"🎁 Bonuses"},{id:"sales",label:"💰 Sales Page"},{id:"social",label:"📱 Social Pack"}].map(tab => (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab===tab.id?"bg-purple-600 text-white":"bg-white/5 text-gray-400 hover:text-white"}`}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+              {activeTab==="overview" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-[#0f0f1a] border border-white/10 rounded-xl p-5">
+                      <div className="flex items-center justify-between mb-3"><h3 className="font-black text-sm">📚 Ebook Title</h3><CopyBtn text={output.ebookTitle} /></div>
+                      <p className="text-gray-300 text-sm">{output.ebookTitle}</p>
+                    </div>
+                    <div className="bg-[#0f0f1a] border border-white/10 rounded-xl p-5">
+                      <div className="flex items-center justify-between mb-3"><h3 className="font-black text-sm">💎 Product Promise</h3><CopyBtn text={output.productPromise} /></div>
+                      <p className="text-gray-300 text-sm">{output.productPromise}</p>
+                    </div>
+                  </div>
+                  <div className="bg-[#0f0f1a] border border-white/10 rounded-xl p-5">
+                    <h3 className="font-black text-sm mb-3">📋 Chapter Outline ({output.chapterOutline.length} chapters)</h3>
+                    <ol className="space-y-2">
+                      {output.chapterOutline.map((ch, i) => (
+                        <li key={i} className="flex gap-3 text-sm">
+                          <span className="text-purple-400 font-black flex-shrink-0 w-6">{i+1}.</span>
+                          <span className="text-gray-300">{ch}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
                 </div>
               )}
 
-              <button
-                onClick={handleGenerate}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-xl text-lg transition-all mt-2"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-3">
-                    <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Generating your asset package... (60-90 seconds)
-                  </span>
-                ) : (
-                  "🏭 Generate Full Asset Package →"
-                )}
-              </button>
-
-              <p className="text-gray-600 text-xs text-center mt-3">
-                Generates 6 phases • 40+ assets • Takes ~60-90 seconds
-              </p>
-            </div>
-
-            {/* What you get */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
-              {PHASES.map(phase => (
-                <div key={phase.key} className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-                  <div className="text-2xl mb-1">{phase.label.split(" ")[0]}</div>
-                  <div className="text-xs font-semibold text-gray-300">{phase.label.split(" ").slice(1).join(" ")}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* RESULTS VIEW */}
-        {view === "results" && (
-          <div>
-            {/* Project info bar */}
-            {currentProject && (
-              <div className="bg-white/5 border border-white/10 rounded-xl px-5 py-3 mb-6 flex items-center justify-between">
+              {activeTab==="ebook" && (
                 <div>
-                  <span className="text-sm font-bold text-white">{currentProject.title}</span>
-                  <span className="ml-3 text-xs text-gray-500">
-                    {new Date(currentProject.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full font-semibold">
-                  ✅ Complete
-                </span>
-              </div>
-            )}
-
-            {/* Phase tabs */}
-            <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-              {PHASES.map(phase => (
-                <button
-                  key={phase.key}
-                  onClick={() => setActivePhase(phase.key)}
-                  className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    activePhase === phase.key
-                      ? "bg-purple-600 text-white"
-                      : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  {phase.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Phase content */}
-            {loading ? (
-              <LoadingSkeleton />
-            ) : phaseOutputs.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {phaseOutputs.map(output => (
-                  <OutputCard key={output.id} output={output} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-20 text-gray-600">
-                <div className="text-4xl mb-3">📭</div>
-                <p>No content for this phase yet.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* HISTORY VIEW */}
-        {view === "history" && (
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-xl font-black mb-4">📁 Project History</h2>
-            {projects.length === 0 ? (
-              <div className="text-center py-20 bg-white/5 border border-white/10 rounded-2xl">
-                <div className="text-5xl mb-4">🏭</div>
-                <p className="text-gray-400 mb-4">No projects yet. Generate your first asset package!</p>
-                <button
-                  onClick={() => setView("form")}
-                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-3 rounded-xl transition-all"
-                >
-                  ✨ Create First Project
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {projects.map(project => (
-                  <div key={project.id} className="bg-white/5 border border-white/10 hover:border-purple-500/30 rounded-xl p-5 flex items-center justify-between transition-all">
-                    <div>
-                      <h3 className="font-bold text-white text-sm">{project.title}</h3>
-                      <p className="text-gray-500 text-xs mt-0.5">
-                        {project.niche} · {new Date(project.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                        project.status === "complete" ? "bg-green-500/20 text-green-400" :
-                        project.status === "error" ? "bg-red-500/20 text-red-400" :
-                        "bg-amber-500/20 text-amber-400"
-                      }`}>
-                        {project.status}
-                      </span>
-                      {project.status === "complete" && (
-                        <button
-                          onClick={() => loadProject(project.id)}
-                          className="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
-                        >
-                          View →
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteProject(project.id)}
-                        className="text-gray-600 hover:text-red-400 text-xs px-2 py-1.5 rounded-lg transition-colors"
-                      >
-                        🗑️
-                      </button>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-black">{output.ebookTitle}</h3>
+                    <div className="flex gap-2">
+                      <DownloadButton label="HTML" content={output.ebookHtml} filename="main-ebook.html" type="html" />
+                      <DownloadButton label="Markdown" content={output.ebookDraft} filename="main-ebook.md" type="md" />
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="bg-white rounded-xl overflow-hidden" style={{height:"500px"}}>
+                    <iframe srcDoc={output.ebookHtml} className="w-full h-full border-none" title="Ebook Preview" />
+                  </div>
+                  <details className="mt-4">
+                    <summary className="text-sm text-gray-400 cursor-pointer hover:text-white">View Markdown Source</summary>
+                    <pre className="mt-3 text-xs text-gray-400 bg-black/30 rounded-xl p-4 overflow-auto max-h-60 whitespace-pre-wrap">{output.ebookDraft}</pre>
+                  </details>
+                </div>
+              )}
+
+              {activeTab==="cover" && (
+                <div>
+                  <h3 className="font-black mb-4">🎨 Cover Image Prompt</h3>
+                  <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/20 rounded-xl p-6 mb-4">
+                    <p className="text-xs text-purple-400 font-bold uppercase tracking-wider mb-2">Use this prompt in Midjourney, DALL-E, or Leonardo AI:</p>
+                    <p className="text-gray-200 text-sm leading-relaxed mb-3">{output.coverPrompt}</p>
+                    <CopyBtn text={output.coverPrompt} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[{name:"Midjourney",url:"https://midjourney.com",color:"from-blue-600/20 to-blue-800/20"},{name:"DALL-E 3",url:"https://openai.com/dall-e-3",color:"from-green-600/20 to-green-800/20"},{name:"Leonardo AI",url:"https://leonardo.ai",color:"from-orange-600/20 to-orange-800/20"}].map(t => (
+                      <a key={t.name} href={t.url} target="_blank" rel="noopener noreferrer" className={`bg-gradient-to-br ${t.color} border border-white/10 hover:border-white/20 rounded-xl p-4 text-center transition-all`}>
+                        <div className="font-bold text-sm text-white">{t.name}</div>
+                        <div className="text-xs text-gray-400 mt-1">Generate cover →</div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab==="bonus" && (
+                <div className="space-y-4">
+                  <div><div className="flex items-center justify-between mb-2"><h3 className="font-black">🎁 {output.bonusTitle}</h3><DownloadButton label="Download" content={output.bonusContent} filename="bonus-resource.md" type="md" /></div>
+                  <pre className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap bg-[#0f0f1a] border border-white/10 rounded-xl p-5">{output.bonusContent}</pre></div>
+                  <div><div className="flex items-center justify-between mb-2"><h3 className="font-black">✅ Checklist</h3><DownloadButton label="Download" content={output.checklistContent} filename="checklist.md" type="md" /></div>
+                  <pre className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap bg-[#0f0f1a] border border-white/10 rounded-xl p-5">{output.checklistContent}</pre></div>
+                  <div><div className="flex items-center justify-between mb-2"><h3 className="font-black">📓 Workbook</h3><DownloadButton label="Download" content={output.workbookContent} filename="workbook.md" type="md" /></div>
+                  <pre className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap bg-[#0f0f1a] border border-white/10 rounded-xl p-5">{output.workbookContent}</pre></div>
+                </div>
+              )}
+
+              {activeTab==="sales" && (
+                <div>
+                  <div className="flex items-center justify-between mb-4"><h3 className="font-black">💰 Sales Page Copy</h3><div className="flex gap-2"><CopyBtn text={output.salesPageCopy} /><DownloadButton label="Download" content={output.salesPageCopy} filename="sales-page-copy.md" type="md" /></div></div>
+                  <pre className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap bg-[#0f0f1a] border border-white/10 rounded-xl p-5 max-h-[600px] overflow-auto">{output.salesPageCopy}</pre>
+                </div>
+              )}
+
+              {activeTab==="social" && (
+                <div>
+                  <div className="flex items-center justify-between mb-4"><h3 className="font-black">📱 Social Promo Pack</h3><div className="flex gap-2"><CopyBtn text={output.socialPromoPack} /><DownloadButton label="Download" content={output.socialPromoPack} filename="social-promo-pack.md" type="md" /></div></div>
+                  <pre className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap bg-[#0f0f1a] border border-white/10 rounded-xl p-5 max-h-[600px] overflow-auto">{output.socialPromoPack}</pre>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
